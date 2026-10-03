@@ -233,3 +233,21 @@ Stage Summary:
 - Home IS the Medical Map now: interactive universe hero + struggle zones + branch galaxy, all in a calming warm nature design. Content nearly doubled (73→88 concepts, 84→121 edges).
 - Real-data trust strip surfaced on home; NEET-PG countdown removed everywhere on home/topbar (still lives in Roadmap where it belongs).
 - NEXT ROUND PRIORITIES: (1) seed questions/flashcards for the 16 new struggle concepts (quiz currently falls back to linked concepts), (2) confuse-pairs for acid-base/coag, (3) internship-mode dashboard (§44), (4) exam-mode planner polish, (5) map "guided tour" mode + branch detail mini-panels on galaxy click, (6) light-mode contrast pass on struggle cards.
+
+---
+Task ID: 7 (cron round 4)
+Agent: main
+Task: Struggle-zone content bank + Mock Test mode + light-mode contrast
+
+Work Log:
+- STATUS ASSESSMENT: app stable (HTTP 200, lint 0 errors, tsc 0 errors, dev.log clean, home renders map-first hero). No bugs found in browser QA sweep → chose feature expansion per worklog Task 6 priorities.
+- CONTENT — Struggle-zone bank (seed-questions.ts): +22 original questions targeting the 16 struggle concepts (ABG ×3 incl. Winters + salicylate mixed disorder, RTA, HIT, warfarin skin necrosis, CGD, PPD type IV, Von Gierke, Erb palsy, CN III palsy, PPV/prevalence, ANOVA, OP poisoning first-line, snakebite ASV+neostigmine, SVT→adenosine, torsades→Mg²⁺, steroid sick-day rule, CXR shift-toward-collapse, MH→dantrolene, X-linked dominant pedigree, WHO Plan B fluids). +19 flashcards (f-65..f-83) covering every struggle concept. +4 confusion pairs: Type1-vs-Type2 RTA, VT-vs-SVT-aberrancy, PT-vs-aPTT (cf-9), Sensitivity-vs-Specificity. Fixed leftover "bixa..." typo. Reseeded: 85 questions / 83 flashcards / 10 confusion pairs.
+- Verified via API: conceptId drills now hit direct questions (acidbase 6, coag 4, biostat 6, arrhythmia 4, antidotes 2 incl. graph-linked fallbacks) — struggle Practice buttons are truly targeted now.
+- FEATURE — MOCK TEST mode (spec §46-lite): new src/components/questions/mock-test-view.tsx + questions-index.tsx tab shell (Practice | Mock Test, animated layoutId pill) wired into page.tsx. Exam conditions: 10/15/20-question presets, 1 min/question countdown that turns red <60 s and AUTO-SUBMITS at zero, no feedback during the run, question palette (answered=green, current=cyan, marked=amber dot), mark-for-review toggle, prev/next navigation, submit-confirm dialog that counts unanswered, sequential /api/attempts submission (knowledge engine still updates) + session log ("Mock test"/"auto-submitted"), then a full report: animated score ring with verdict copy, correct/wrong/skipped badges, per-subject breakdown bars, and a review list (per-question expandable: your answer vs correct, full explanation, 🎯 teaching line, skipped counted as "the clock won").
+- STYLING: light-mode contrast pass — :root:not(.dark) .warm-card gets stronger amber tint/border/shadow; warm-scene border strengthened in light mode. Verified visually (cream/rose struggle cards pop on white).
+- QA (agent-browser): lab tabs render + animate; mock config → run (countdown ticking 09:58, palette, mark-for-review) → answered Q1 correctly, marked it, navigated, answered Q4 → submit dialog ("8 of 10 unanswered") → graded in ~2 s → report shows 1/2 with verdict, BIOCH 1/1 vs OBGY 0/1 bars, review expands with explanation ✓. Theme toggled back to dark after light QA. lint 0 errors, tsc 0 errors, dev.log clean.
+
+Stage Summary:
+- Question Lab is now two modes: Practice (instant feedback) + Mock Test (exam conditions) — first exam-simulation surface in the product, feeding the same knowledge engine.
+- Every struggle zone now has direct practice content (22 Qs, 19 flashcards, 4 confusion pairs) — the home "Practice" CTA no longer falls back to unrelated topics.
+- NEXT ROUND PRIORITIES: (1) internship-mode dashboard (§44 — rotation plan for year-5 profiles), (2) map guided tour (auto-walk struggle zone → next best action → hub concepts), (3) galaxy branch mini-panel (subject drill-down without leaving home), (4) mock test difficulty/subject-mix presets (e.g. "high-yield mix" weighting neetWeight), (5) exam-mode planner in Roadmap (§42/43).

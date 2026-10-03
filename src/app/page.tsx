@@ -9,7 +9,7 @@ import { OnboardingWizard } from '@/components/onboarding/onboarding-wizard'
 import { DashboardView } from '@/components/dashboard/dashboard-view'
 import { MedicalMapView } from '@/components/map/medical-map-view'
 import { LearnView } from '@/components/learn/learn-view'
-import { QuizView } from '@/components/questions/quiz-view'
+import { QuestionsIndex } from '@/components/questions/questions-index'
 import { CasesView } from '@/components/cases/cases-view'
 import { ReviseView } from '@/components/revise/revise-view'
 import { TutorView } from '@/components/tutor/tutor-view'
@@ -71,7 +71,7 @@ export default function Home() {
       {view === 'home' && <DashboardView />}
       {view === 'map' && <MedicalMapView />}
       {view === 'learn' && <LearnView />}
-      {view === 'questions' && <QuizView />}
+      {view === 'questions' && <QuestionsIndex />}
       {view === 'cases' && <CasesView />}
       {view === 'revise' && <ReviseView />}
       {view === 'tutor' && <TutorView />}

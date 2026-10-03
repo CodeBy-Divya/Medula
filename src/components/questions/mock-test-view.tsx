@@ -1,0 +1,584 @@
+'use client'
+
+// ─── MOCK TEST (spec §46-lite) ───
+// Exam-condition simulation: countdown timer, no immediate feedback,
+// question palette + mark-for-review, auto-submit at 0, full review report.
+// Attempts feed the same knowledge engine as practice (via /api/attempts).
+
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
+import {
+  AlertTriangle,
+  ArrowLeft,
+  ArrowRight,
+  Bookmark,
+  BookmarkCheck,
+  CheckCircle2,
+  ChevronDown,
+  GraduationCap,
+  Loader2,
+  Play,
+  RotateCcw,
+  Send,
+  Timer,
+  XCircle,
+} from 'lucide-react'
+
+import { api } from '@/lib/api'
+import { useAppStore } from '@/lib/store'
+import type { QuestionClient } from '@/lib/types'
+import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { cn } from '@/lib/utils'
+
+const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1]
+
+type Phase = 'config' | 'run' | 'submitting' | 'results'
+
+interface MockAnswer {
+  questionId: string
+  selected: string
+  timeMs: number
+  correct?: boolean
+  answer?: string
+  explanation?: string
+  teaching?: string
+}
+
+const SIZES = [10, 15, 20] as const
+const SEC_PER_Q = 60 // NEET-PG pace: ~1 min per question
+
+function fmtTime(totalSec: number): string {
+  const m = Math.floor(totalSec / 60)
+  const s = totalSec % 60
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
+
+function resolveAnswerText(q: QuestionClient, answerId: string): string {
+  return q.options.find((o) => o.id === answerId)?.text ?? answerId
+}
+
+export function MockTestView() {
+  const reduce = useReducedMotion()
+  const logSession = useCallback(() => {}, [])
+  void logSession
+
+  const [phase, setPhase] = useState<Phase>('config')
+  const [size, setSize] = useState<(typeof SIZES)[number]>(10)
+  const [questions, setQuestions] = useState<QuestionClient[]>([])
+  const [answers, setAnswers] = useState<Record<string, MockAnswer>>({})
+  const [qIndex, setQIndex] = useState(0)
+  const [marked, setMarked] = useState<Set<string>>(new Set())
+  const [secondsLeft, setSecondsLeft] = useState(0)
+  const [submitOpen, setSubmitOpen] = useState(false)
+  const [loadState, setLoadState] = useState<'idle' | 'loading' | 'error'>('idle')
+
+  const timerRef = useRef<number | null>(null)
+  const questionStartRef = useRef<number>(0)
+  const submittingRef = useRef(false)
+
+  const q = questions[qIndex]
+  const currentAnswer = q ? answers[q.id]?.selected ?? null : null
+  const answeredCount = Object.keys(answers).length
+
+  // ── Countdown + auto-submit ──
+  const submitAll = useCallback(
+    async (auto = false) => {
+      if (submittingRef.current) return
+      submittingRef.current = true
+      if (timerRef.current) {
+        window.clearInterval(timerRef.current)
+        timerRef.current = null
+      }
+      setSubmitOpen(false)
+      setPhase('submitting')
+      const totalSec = size * SEC_PER_Q - secondsLeft
+      // Post every attempt (sequential — engine updates knowledge states)
+      const entries = Object.values(answers)
+      for (const a of entries) {
+        try {
+          const res = await api.attempt({ questionId: a.questionId, selected: a.selected, timeMs: a.timeMs, confidence: 3 })
+          a.correct = res.correct
+          a.answer = res.answer
+          a.explanation = res.explanation
+          a.teaching = res.teaching
+        } catch {
+          /* keep the mock result local even if the engine fails */
+          a.correct = false
+        }
+      }
+      api.logSession({ minutes: Math.max(1, Math.round(totalSec / 60)), kind: 'questions', label: auto ? 'Mock test (auto-submitted)' : 'Mock test' }).catch(() => {})
+      setPhase('results')
+      submittingRef.current = false
+    },
+    [answers, secondsLeft, size],
+  )
+
+  useEffect(() => {
+    if (phase !== 'run') return
+    timerRef.current = window.setInterval(() => {
+      setSecondsLeft((s) => {
+        if (s <= 1) {
+          void submitAll(true)
+          return 0
+        }
+        return s - 1
+      })
+    }, 1000)
+    return () => {
+      if (timerRef.current) window.clearInterval(timerRef.current)
+      timerRef.current = null
+    }
+  }, [phase, submitAll])
+
+  const startTest = () => {
+    setLoadState('loading')
+    api
+      .questions({ count: size })
+      .then((res) => {
+        if (!res.questions.length) {
+          setLoadState('error')
+          return
+        }
+        setQuestions(res.questions)
+        setAnswers({})
+        setMarked(new Set())
+        setQIndex(0)
+        setSecondsLeft(res.questions.length * SEC_PER_Q)
+        questionStartRef.current = Date.now()
+        setLoadState('idle')
+        setPhase('run')
+      })
+      .catch(() => setLoadState('error'))
+  }
+
+  const pick = (optionId: string) => {
+    if (!q) return
+    setAnswers((prev) => ({
+      ...prev,
+      [q.id]: {
+        ...prev[q.id],
+        questionId: q.id,
+        selected: optionId,
+        timeMs: prev[q.id]?.timeMs ?? Date.now() - questionStartRef.current,
+      },
+    }))
+  }
+
+  const goTo = (i: number) => {
+    if (i < 0 || i >= questions.length) return
+    setQIndex(i)
+    questionStartRef.current = Date.now()
+  }
+
+  const toggleMark = () => {
+    if (!q) return
+    setMarked((prev) => {
+      const next = new Set(prev)
+      if (next.has(q.id)) next.delete(q.id)
+      else next.add(q.id)
+      return next
+    })
+  }
+
+  // ── Results derivation ──
+  const results = useMemo(() => {
+    const rows = questions.map((qq) => {
+      const a = answers[qq.id]
+      return { q: qq, a }
+    })
+    return rows
+  }, [questions, answers])
+
+  const graded = results.filter((r) => r.a?.correct !== undefined)
+  const correctCount = graded.filter((r) => r.a?.correct).length
+  const accuracy = graded.length ? Math.round((correctCount / graded.length) * 100) : 0
+
+  const bySubject = useMemo(() => {
+    const m = new Map<string, { total: number; correct: number }>()
+    for (const r of graded) {
+      const key = r.q.subjectCode
+      const e = m.get(key) ?? { total: 0, correct: 0 }
+      e.total++
+      if (r.a?.correct) e.correct++
+      m.set(key, e)
+    }
+    return [...m.entries()].sort((a, b) => b[1].total - a[1].total)
+  }, [graded])
+
+  // ─── RENDER ────────────────────────────────────────────────────────────────
+  if (phase === 'config') {
+    return (
+      <div className="mx-auto max-w-3xl space-y-6 p-4 md:p-6">
+        <header className="space-y-2">
+          <div className="flex items-center gap-2.5">
+            <span className="grid size-10 place-items-center rounded-xl bg-sev-warn/10">
+              <GraduationCap className="size-5 text-sev-warn" />
+            </span>
+            <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">MOCK TEST</h1>
+          </div>
+          <p className="text-sm text-ink-soft md:text-base">
+            Exam conditions: a countdown clock, no answers revealed until you submit, and a full review report.
+          </p>
+        </header>
+
+        <section className="glass space-y-6 rounded-2xl p-5 md:p-7">
+          <div className="space-y-3">
+            <label className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-soft">Test length</label>
+            <div className="flex flex-wrap gap-2">
+              {SIZES.map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setSize(n)}
+                  className={cn(
+                    'min-h-11 rounded-full border px-5 py-2 text-sm font-medium transition-colors',
+                    size === n
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-line bg-surface-2/50 text-ink-soft hover:border-primary/50 hover:text-foreground',
+                  )}
+                >
+                  {n} questions · {n} min
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <ul className="space-y-2 rounded-xl border border-line bg-surface-2/50 p-4 text-sm text-ink-soft">
+            <li className="flex items-center gap-2">⏱️ <span><strong className="text-foreground">1 minute per question</strong> — the clock auto-submits when it hits zero.</span></li>
+            <li className="flex items-center gap-2">🙈 <span><strong className="text-foreground">No feedback during the test</strong> — just like the real NEET-PG hall.</span></li>
+            <li className="flex items-center gap-2">🔖 <span>Mark questions for review and jump around with the palette.</span></li>
+            <li className="flex items-center gap-2">🧠 <span>Every attempt still updates your knowledge map and spaced-repetition schedule.</span></li>
+          </ul>
+
+          <Button size="lg" className="min-h-12 w-full text-base font-semibold" onClick={startTest} disabled={loadState === 'loading'}>
+            {loadState === 'loading' ? <Loader2 className="size-5 animate-spin" /> : <Play className="size-5" />}
+            BEGIN MOCK TEST
+          </Button>
+          {loadState === 'error' && (
+            <p className="text-center text-sm text-sev-crit">Couldn&apos;t load questions — check your connection and try again.</p>
+          )}
+        </section>
+      </div>
+    )
+  }
+
+  if (phase === 'submitting') {
+    return (
+      <div className="mx-auto flex max-w-3xl flex-col items-center gap-4 p-4 py-24 text-center md:p-6">
+        <Loader2 className="size-8 animate-spin text-primary" />
+        <h2 className="text-lg font-semibold tracking-tight">Grading your paper…</h2>
+        <p className="text-sm text-ink-soft">Updating your knowledge map with every answer.</p>
+      </div>
+    )
+  }
+
+  if (phase === 'run' && q) {
+    const urgent = secondsLeft <= 60
+    return (
+      <div className="mx-auto max-w-3xl space-y-4 p-4 md:p-6">
+        {/* Exam top bar */}
+        <div className="glass sticky top-16 z-20 flex items-center gap-3 rounded-2xl px-4 py-3">
+          <span
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold tabular-nums',
+              urgent ? 'animate-pulse bg-sev-crit/15 text-sev-crit' : 'bg-primary/10 text-primary',
+            )}
+            role="timer"
+            aria-label={`Time remaining ${fmtTime(secondsLeft)}`}
+          >
+            <Timer className="size-4" />
+            {fmtTime(secondsLeft)}
+          </span>
+          <div className="flex min-w-0 flex-1 items-center gap-1" aria-hidden>
+            {questions.map((qq, i) => {
+              const answered = !!answers[qq.id]
+              const isMarked = marked.has(qq.id)
+              return (
+                <button
+                  key={qq.id}
+                  type="button"
+                  onClick={() => goTo(i)}
+                  aria-label={`Question ${i + 1}${answered ? ' — answered' : ''}${isMarked ? ' — marked for review' : ''}`}
+                  className={cn(
+                    'relative h-6 min-w-0 flex-1 rounded-md border text-[9px] font-semibold transition-colors',
+                    i === qIndex
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : answered
+                        ? 'border-sev-ok/50 bg-sev-ok/15 text-sev-ok'
+                        : 'border-line bg-surface-2 text-ink-soft hover:border-primary/40',
+                  )}
+                >
+                  {i + 1}
+                  {isMarked && <span className="absolute -right-0.5 -top-0.5 size-1.5 rounded-full bg-sev-warn" />}
+                </button>
+              )
+            })}
+          </div>
+          <Button size="sm" className="min-h-9 shrink-0 gap-1" onClick={() => setSubmitOpen(true)}>
+            <Send className="size-3.5" /> Submit
+          </Button>
+        </div>
+
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={q.id}
+            initial={reduce ? false : { opacity: 0, x: 24 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={reduce ? undefined : { opacity: 0, x: -24 }}
+            transition={{ duration: 0.25, ease: EASE }}
+          >
+            <section className="glass space-y-5 rounded-2xl p-5 md:p-7">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary">
+                    Q{qIndex + 1}/{questions.length}
+                  </span>
+                  <span className="rounded-full border border-line px-2.5 py-1 text-[11px] font-medium text-ink-soft">{q.subjectCode}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={toggleMark}
+                  aria-pressed={marked.has(q.id)}
+                  className={cn(
+                    'inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors',
+                    marked.has(q.id)
+                      ? 'border-sev-warn/50 bg-sev-warn/10 text-sev-warn'
+                      : 'border-line text-ink-soft hover:text-foreground',
+                  )}
+                >
+                  {marked.has(q.id) ? <BookmarkCheck className="size-3.5" /> : <Bookmark className="size-3.5" />}
+                  {marked.has(q.id) ? 'Marked' : 'Mark for review'}
+                </button>
+              </div>
+
+              <p className="text-base font-medium leading-relaxed md:text-lg">{q.stem}</p>
+
+              <div className="space-y-2.5" role="radiogroup" aria-label="Answer options">
+                {q.options.map((o, i) => {
+                  const active = currentAnswer === o.id
+                  return (
+                    <button
+                      key={o.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={active}
+                      onClick={() => pick(o.id)}
+                      className={cn(
+                        'flex min-h-11 w-full items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm transition-all',
+                        active
+                          ? 'border-primary bg-primary/10 shadow-sm'
+                          : 'border-line bg-surface-2/40 hover:border-primary/40',
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          'grid size-7 shrink-0 place-items-center rounded-full border text-xs font-bold',
+                          active ? 'border-primary bg-primary text-primary-foreground' : 'border-line text-ink-soft',
+                        )}
+                      >
+                        {String.fromCharCode(65 + i)}
+                      </span>
+                      <span className="leading-snug">{o.text}</span>
+                    </button>
+                  )
+                })}
+              </div>
+
+              <div className="flex items-center justify-between gap-2 pt-1">
+                <Button variant="outline" className="min-h-11" disabled={qIndex === 0} onClick={() => goTo(qIndex - 1)}>
+                  <ArrowLeft className="size-4" /> Prev
+                </Button>
+                <span className="text-xs text-ink-soft">
+                  {answeredCount}/{questions.length} answered
+                </span>
+                {qIndex + 1 < questions.length ? (
+                  <Button className="min-h-11" onClick={() => goTo(qIndex + 1)}>
+                    Next <ArrowRight className="size-4" />
+                  </Button>
+                ) : (
+                  <Button className="min-h-11 gap-1" onClick={() => setSubmitOpen(true)}>
+                    <Send className="size-4" /> Submit test
+                  </Button>
+                )}
+              </div>
+            </section>
+          </motion.div>
+        </AnimatePresence>
+
+        <p className="text-center text-[11px] text-muted-foreground">
+          Answers stay hidden until submission · marked questions show an amber dot · the clock never pauses
+        </p>
+
+        <AlertDialog open={submitOpen} onOpenChange={setSubmitOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Submit the mock test?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {questions.length - answeredCount} of {questions.length} questions are unanswered — unanswered questions score zero.
+                Explanations reveal immediately after grading.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Keep working</AlertDialogCancel>
+              <AlertDialogAction onClick={() => void submitAll(false)}>Submit &amp; grade</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    )
+  }
+
+  if (phase === 'results') {
+    const scorePct = accuracy
+    const verdict =
+      scorePct >= 80 ? 'Outstanding — exam-ready pace 🏆' : scorePct >= 60 ? 'Solid — polish the misses and it clicks 💪' : scorePct >= 40 ? 'Building — review the explanations below 🌱' : 'Early days — this is exactly what mocks are for 🌤️'
+    return (
+      <div className="mx-auto max-w-3xl space-y-5 p-4 md:p-6">
+        <header className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <span className="grid size-10 place-items-center rounded-xl bg-sev-warn/10">
+              <GraduationCap className="size-5 text-sev-warn" />
+            </span>
+            <div>
+              <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">Mock report</h1>
+              <p className="text-xs text-ink-soft">{questions.length} questions · {fmtTime(size * SEC_PER_Q - secondsLeft)} used</p>
+            </div>
+          </div>
+          <Button variant="outline" className="min-h-11 gap-2" onClick={startTest}>
+            <RotateCcw className="size-4" /> New mock
+          </Button>
+        </header>
+
+        {/* Score card */}
+        <section className="glass flex flex-col items-center gap-4 rounded-2xl p-6 sm:flex-row sm:gap-8">
+          <div className="relative grid size-32 shrink-0 place-items-center">
+            <svg viewBox="0 0 128 128" className="absolute inset-0 -rotate-90">
+              <circle cx="64" cy="64" r="56" fill="none" strokeWidth="10" className="stroke-surface-2" />
+              <motion.circle
+                cx="64" cy="64" r="56" fill="none" strokeWidth="10" strokeLinecap="round"
+                stroke={accuracy >= 60 ? 'var(--sev-ok)' : accuracy >= 40 ? 'var(--sev-warn)' : 'var(--sev-crit)'}
+                strokeDasharray={2 * Math.PI * 56}
+                initial={reduce ? false : { strokeDashoffset: 2 * Math.PI * 56 }}
+                animate={{ strokeDashoffset: 2 * Math.PI * 56 * (1 - scorePct / 100) }}
+                transition={{ duration: 1.4, ease: 'easeOut' }}
+              />
+            </svg>
+            <div className="text-center">
+              <p className="text-3xl font-semibold tabular-nums tracking-tight">{correctCount}<span className="text-lg text-ink-soft">/{graded.length}</span></p>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">score</p>
+            </div>
+          </div>
+          <div className="flex-1 space-y-3 text-center sm:text-left">
+            <p className="text-sm font-medium">{verdict}</p>
+            <div className="flex flex-wrap justify-center gap-2 sm:justify-start">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-sev-ok/10 px-3 py-1 text-xs font-semibold text-sev-ok">
+                <CheckCircle2 className="size-3.5" /> {correctCount} correct
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-sev-crit/10 px-3 py-1 text-xs font-semibold text-sev-crit">
+                <XCircle className="size-3.5" /> {graded.length - correctCount} wrong
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-2 px-3 py-1 text-xs font-medium text-ink-soft">
+                <AlertTriangle className="size-3.5" /> {questions.length - answeredCount} skipped
+              </span>
+            </div>
+          </div>
+        </section>
+
+        {/* Per-subject breakdown */}
+        {bySubject.length > 0 && (
+          <section className="glass rounded-2xl p-5 md:p-6">
+            <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-ink-soft">Subject breakdown</h2>
+            <ul className="mt-3 space-y-2.5">
+              {bySubject.map(([code, s]) => (
+                <li key={code} className="flex items-center gap-3">
+                  <span className="w-14 shrink-0 text-xs font-semibold">{code}</span>
+                  <span className="h-2 flex-1 overflow-hidden rounded-full bg-surface-2">
+                    <motion.span
+                      className={cn('block h-full rounded-full', s.correct / s.total >= 0.6 ? 'bg-sev-ok' : s.correct / s.total >= 0.4 ? 'bg-sev-warn' : 'bg-sev-crit')}
+                      initial={reduce ? false : { width: 0 }}
+                      animate={{ width: `${Math.round((s.correct / s.total) * 100)}%` }}
+                      transition={{ duration: 1, ease: EASE, delay: 0.2 }}
+                    />
+                  </span>
+                  <span className="w-12 shrink-0 text-right text-xs tabular-nums text-ink-soft">
+                    {s.correct}/{s.total}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {/* Review list */}
+        <section className="glass rounded-2xl p-4 md:p-6">
+          <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-ink-soft">Review every question</h2>
+          <div className="mt-3 space-y-2">
+            {results.map(({ q: qq, a }, i) => {
+              const unanswered = !a
+              const correct = a?.correct
+              return (
+                <details
+                  key={qq.id}
+                  className={cn(
+                    'group rounded-xl border transition-colors',
+                    unanswered ? 'border-line bg-surface-2/40' : correct ? 'border-sev-ok/30 bg-sev-ok/5' : 'border-sev-crit/30 bg-sev-crit/5',
+                  )}
+                >
+                  <summary className="flex cursor-pointer list-none items-center gap-3 p-3.5 [&::-webkit-details-marker]:hidden">
+                    <span
+                      className={cn(
+                        'grid size-7 shrink-0 place-items-center rounded-full text-xs font-bold',
+                        unanswered ? 'bg-surface-2 text-ink-soft' : correct ? 'bg-sev-ok/15 text-sev-ok' : 'bg-sev-crit/15 text-sev-crit',
+                      )}
+                    >
+                      {unanswered ? '—' : correct ? '✓' : '✕'}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-sm font-medium">{qq.stem}</span>
+                    <span className="hidden shrink-0 rounded-full border border-line px-2 py-0.5 text-[10px] font-semibold text-ink-soft sm:block">{qq.subjectCode}</span>
+                    <ChevronDown className="size-4 shrink-0 text-ink-soft transition-transform group-open:rotate-180" />
+                  </summary>
+                  <div className="space-y-2.5 border-t border-line/60 p-4 pt-3 text-sm">
+                    <p className="font-medium leading-snug">{qq.stem}</p>
+                    <p className={cn('text-xs', correct ? 'text-sev-ok' : unanswered ? 'text-ink-soft' : 'text-sev-crit')}>
+                      {unanswered
+                        ? 'Not attempted — the clock won.'
+                        : `You chose: ${resolveAnswerText(qq, a.selected)}`}
+                      {!unanswered && !correct && ` · Correct: ${resolveAnswerText(qq, a.answer ?? '')}`}
+                    </p>
+                    {a?.explanation && <p className="text-xs leading-relaxed text-ink-soft">{a.explanation}</p>}
+                    {a?.teaching && (
+                      <p className="rounded-lg border border-primary/25 bg-primary/5 px-3 py-2 text-xs font-medium leading-snug text-primary">
+                        🎯 {a.teaching}
+                      </p>
+                    )}
+                  </div>
+                </details>
+              )
+            })}
+          </div>
+        </section>
+
+        <p className="text-center text-[11px] text-muted-foreground">
+          Every attempt — even skipped-to-submit — feeds your spaced repetition schedule on the Revise tab.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mx-auto max-w-3xl space-y-4 p-4 md:p-6">
+      <Skeleton className="shimmer h-64 rounded-2xl" />
+    </div>
+  )
+}
