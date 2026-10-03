@@ -1,14 +1,15 @@
 'use client'
 
 // ─── MEDICAL MAP — "Google Maps for medicine" ───
-// Interactive SVG knowledge graph: pan, zoom, scoped views, drill into concepts.
+// Interactive SVG knowledge graph: pan, zoom, scoped views, struggle-zone
+// highlighting, kind emojis, and a warm scenic variant for the dashboard hero.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import {
-  Bone, Brain, Bug, Droplet, Droplets, Focus, HeartPulse, RotateCcw, Sparkles,
-  TriangleAlert, Utensils, Waypoints, Wind, X, type LucideIcon,
+  Bone, Brain, Bug, Droplet, Droplets, Filter, Focus, HeartPulse, Maximize2, Mountain, RotateCcw, Sparkles,
+  TriangleAlert, Utensils, Waypoints, Wind, X, Zap, type LucideIcon,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -20,13 +21,21 @@ import { useAppStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
 type MapNode = GraphPayload['nodes'][number]
-type LaidNode = { node: MapNode; x: number; y: number }
+type StatusFilter = 'all' | 'attention' | 'unlearned' | 'struggle'
+type LaidNode = { node: MapNode; x: number; y: number; labelAbove: boolean }
 
 const VIEW_W = 1000
 const VIEW_H = 640
 const SEED = 42 // fixed → deterministic layout between renders
 const MIN_ZOOM = 0.6
 const MAX_ZOOM = 2.5
+const LABEL_MIN_ZOOM = 1.15 // below this zoom, only "major" nodes keep labels
+// NOTE: spec said radius >= 17, but on this dataset every node is r >= 20
+// (examRelevance 3..5 × mastery bonus), which would make ALL nodes major.
+// 26 selects the visually larger upper band (~half the graph).
+const MAJOR_RADIUS = 26
+const LABEL_MAX_CHARS = 16
+const LABEL_COLLIDE_Y = 14 // layout-px y-band in which labels count as stacked
 
 const SYSTEM_ICONS: Record<string, LucideIcon> = {
   HeartPulse, Wind, Droplets, Utensils, Sparkles, Brain, Droplet, Bug, Bone,
@@ -44,6 +53,19 @@ const STATUS_LABELS: Record<string, string> = {
 }
 
 const STATUS_ORDER = ['strong', 'unstable', 'weak', 'new'] as const
+
+// Friendly emoji living inside each node circle (kind-based)
+const KIND_EMOJI: Record<string, string> = {
+  concept: '💡', disease: '🩺', drug: '💊', investigation: '🔬',
+  physiology: '⚡', anatomy: '🦴', pathology: '🧫', pharmacology: '💉',
+  microbiology: '🦠', clinical_skill: '🤲',
+}
+
+const STRUGGLE_EMOJI = '⚠️'
+
+function isStruggle(n: MapNode): boolean {
+  return n.difficulty >= 4 && n.mastery < 45
+}
 
 interface EdgeVisual { stroke: string; dasharray?: string; opacity: number; width: number }
 
@@ -68,8 +90,20 @@ function radiusOf(n: MapNode): number {
   return 14 + n.examRelevance * 2 + n.mastery * 0.08
 }
 
-function truncate18(s: string): string {
-  return s.length > 18 ? `${s.slice(0, 17)}…` : s
+/**
+ * Word-boundary truncation: never cuts mid-word ("Acute Kidney Inju…" →
+ * "Acute Kidney…"), prefers a space, falls back to a hyphen boundary
+ * ("Renin-Angiotensin…" → "Renin-…"), and strips dangling separators from
+ * names like "Heart Failure (HF)" → "Heart Failure…".
+ */
+function truncateLabel(s: string, max: number = LABEL_MAX_CHARS): string {
+  if (s.length <= max) return s
+  const head = s.slice(0, max)
+  const space = head.lastIndexOf(' ')
+  if (space > 3) return `${head.slice(0, space).replace(/[\s(—/:;,&]+$/, '')}…`
+  const hyphen = head.lastIndexOf('-')
+  if (hyphen > 2) return `${head.slice(0, hyphen + 1)}…`
+  return `${head.trimEnd()}…`
 }
 
 function clamp(v: number, min: number, max: number): number {
@@ -83,7 +117,8 @@ function ScopeChip({ active, onClick, children }: { active: boolean; onClick: ()
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
+        'inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
         active
           ? 'border-primary bg-primary text-primary-foreground shadow-sm'
           : 'border-line bg-surface text-ink-soft hover:border-primary/40 hover:text-foreground',
@@ -94,7 +129,44 @@ function ScopeChip({ active, onClick, children }: { active: boolean; onClick: ()
   )
 }
 
-export function MedicalMapView() {
+// Drifting nature friends for the warm scenic backdrop (decorative)
+const SCENE_EMOJI = ['🍃', '☁️', '🌿', '🌤️', '🦋', '☁️', '🍀', '☀️']
+
+function SceneBackdrop() {
+  const reduce = useReducedMotion()
+  return (
+    <div aria-hidden className="map-scene-dawn pointer-events-none absolute inset-0 overflow-hidden rounded-3xl">
+      {/* floating nature emoji — slow, calm drift */}
+      {SCENE_EMOJI.map((e, i) => (
+        <span
+          key={i}
+          className={cn('absolute select-none opacity-40', !reduce && 'animate-leaf-drift')}
+          style={{
+            left: `${(i * 13 + 6) % 92}%`,
+            top: `${(i * 31 + 10) % 78}%`,
+            fontSize: `${12 + ((i * 7) % 10)}px`,
+            animationDelay: `${(i * 1.3) % 6}s`,
+            animationDuration: `${9 + (i % 4) * 3}s`,
+            filter: 'saturate(0.9)',
+          }}
+        >
+          {e}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+export function MedicalMapCanvas({
+  variant = 'full',
+  className,
+}: {
+  variant?: 'full' | 'hero'
+  className?: string
+}) {
+  const hero = variant === 'hero'
+  const mapScope = useAppStore(s => s.mapScope)
+  const setMapScope = useAppStore(s => s.setMapScope)
   const conceptFocus = useAppStore(s => s.conceptFocus)
   const openConcept = useAppStore(s => s.openConcept)
   const reduceMotion = useReducedMotion()
@@ -108,6 +180,9 @@ export function MedicalMapView() {
   const [hover, setHover] = useState<{ node: MapNode; left: number; top: number; containerW: number } | null>(null)
   const [dragging, setDragging] = useState(false)
   const [view, setView] = useState({ k: 1, x: 0, y: 0 })
+  // Client-side status quick-filter — 'attention' = weak/unstable, 'unlearned' = new,
+  // 'struggle' = the hardest topics (difficulty ≥ 4 AND mastery < 45)
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
 
   const containerRef = useRef<HTMLDivElement>(null)
   const svgRef = useRef<SVGSVGElement>(null)
@@ -130,6 +205,13 @@ export function MedicalMapView() {
   }, [])
 
   useEffect(() => { void load(scope) }, [scope, load])
+
+  // Pending scope handed over from the dashboard Branch Galaxy
+  useEffect(() => {
+    if (!mapScope) return
+    setScope(mapScope)
+    setMapScope(null)
+  }, [mapScope, setMapScope])
 
   // Reset viewport whenever the scope changes
   useEffect(() => {
@@ -235,18 +317,43 @@ export function MedicalMapView() {
     )
   }, [data])
 
+  // Layout positions are computed for the full payload (so toggling filters never
+  // reflows the graph), then the status filter hides nodes + touching edges.
   const nodes: LaidNode[] = useMemo(() => {
     if (!data || !layout) return []
-    return data.nodes
-      .map(n => {
-        const pos = layout.get(n.id)
-        return pos ? { node: n, x: pos.x, y: pos.y } : null
-      })
-      .filter((n): n is LaidNode => n !== null)
-  }, [data, layout])
+    const laid = data.nodes.flatMap(n => {
+      const pos = layout.get(n.id)
+      return pos ? [{ node: n, x: pos.x, y: pos.y }] : []
+    })
+    const visible = laid.filter(n =>
+      statusFilter === 'all'
+        ? true
+        : statusFilter === 'attention'
+          ? n.node.status === 'weak' || n.node.status === 'unstable'
+          : statusFilter === 'unlearned'
+            ? n.node.status === 'new'
+            : isStruggle(n.node),
+    )
+    // Label collision softening (deterministic, no mutation): among visible nodes
+    // sharing a y-band, alternate the label above/below by parity of preceding
+    // collisions. Edge-of-canvas nodes flip toward the safe side.
+    return visible.map((n, i) => {
+      const stacked = visible.reduce(
+        (cnt, p, j) => (j < i && Math.abs(p.y - n.y) < LABEL_COLLIDE_Y ? cnt + 1 : cnt),
+        0,
+      )
+      const nearTop = n.y < 34
+      const nearBottom = n.y > VIEW_H - 26
+      return {
+        ...n,
+        labelAbove: nearTop ? false : nearBottom ? true : stacked % 2 === 0,
+      }
+    })
+  }, [data, layout, statusFilter])
 
   const edges = useMemo(() => {
     if (!data || !layout) return []
+    const visibleIds = new Set(nodes.map(n => n.node.id))
     return data.edges
       .map((e, i) => {
         const a = layout.get(e.from)
@@ -254,25 +361,37 @@ export function MedicalMapView() {
         if (!a || !b) return null
         return { key: `${e.from}-${e.to}-${e.type}-${i}`, ...e, x1: a.x, y1: a.y, x2: b.x, y2: b.y }
       })
-      .filter((e): e is NonNullable<typeof e> => e !== null)
-  }, [data, layout])
+      .filter((e): e is NonNullable<typeof e> => e !== null && visibleIds.has(e.from) && visibleIds.has(e.to))
+  }, [data, layout, nodes])
+
+  const struggleCount = useMemo(
+    () => (data ? data.nodes.filter(isStruggle).length : 0),
+    [data],
+  )
 
   const centerId = scope.startsWith('concept:') ? scope.slice(8) : null
   const centerName = centerId ? data?.nodes.find(n => n.id === centerId)?.name ?? 'Focused concept' : null
   const subjectSel = scope.startsWith('subject:') ? scope.slice(8) : '__all__'
 
+  // Zoom-aware label decluttering: zoomed out, only major nodes keep labels.
+  const showAllLabels = view.k >= LABEL_MIN_ZOOM
+  const isMajorNode = (n: MapNode) =>
+    radiusOf(n) >= MAJOR_RADIUS || n.status === 'weak' || n.status === 'unstable' || isStruggle(n) || n.id === centerId
+
   return (
-    <div className="space-y-4">
-      {/* ── Header ── */}
-      <header className="flex items-start gap-3">
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-line bg-surface-2 text-primary md:size-11">
-          <Waypoints className="size-5" />
-        </div>
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight md:text-2xl">MEDICAL MAP</h1>
-          <p className="text-xs text-ink-soft md:text-sm">Travel the connections between concepts, diseases and drugs.</p>
-        </div>
-      </header>
+    <div className={cn('space-y-3', className)}>
+      {/* ── Header (full variant only) ── */}
+      {!hero && (
+        <header className="flex items-start gap-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-line bg-surface-2 text-primary md:size-11">
+            <Waypoints className="size-5" />
+          </div>
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight md:text-2xl">MEDICAL MAP</h1>
+            <p className="text-xs text-ink-soft md:text-sm">Travel the connections between concepts, diseases and drugs.</p>
+          </div>
+        </header>
+      )}
 
       {/* ── Scope bar ── */}
       <div className="flex flex-wrap items-center gap-2">
@@ -287,6 +406,24 @@ export function MedicalMapView() {
             </ScopeChip>
           )
         })}
+        {/* status quick-filter chips (client-side only) */}
+        <span aria-hidden className="mx-1 hidden h-6 w-px shrink-0 bg-line md:block" />
+        <ScopeChip active={statusFilter === 'all'} onClick={() => setStatusFilter('all')}>ALL</ScopeChip>
+        <ScopeChip active={statusFilter === 'struggle'} onClick={() => setStatusFilter(statusFilter === 'struggle' ? 'all' : 'struggle')}>
+          <Zap className="size-3.5 text-sev-warn" />
+          STRUGGLE ZONES
+          {struggleCount > 0 && (
+            <span className="ml-0.5 rounded-full bg-sev-crit/15 px-1.5 text-[10px] font-bold text-sev-crit">{struggleCount}</span>
+          )}
+        </ScopeChip>
+        <ScopeChip active={statusFilter === 'attention'} onClick={() => setStatusFilter('attention')}>
+          <span aria-hidden className="size-2 rounded-full" style={{ backgroundColor: 'var(--sev-warn)' }} />
+          NEEDS WORK
+        </ScopeChip>
+        <ScopeChip active={statusFilter === 'unlearned'} onClick={() => setStatusFilter('unlearned')}>
+          <span aria-hidden className="size-2 rounded-full" style={{ backgroundColor: 'var(--muted-foreground)' }} />
+          NOT YET LEARNED
+        </ScopeChip>
         <div className="ml-auto">
           <Select
             value={subjectSel}
@@ -310,7 +447,7 @@ export function MedicalMapView() {
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           {Object.entries(KIND_META).map(([kind, meta]) => (
             <span key={kind} className="inline-flex items-center gap-1">
-              <span className="size-2 rounded-full" style={{ backgroundColor: meta.color }} />
+              <span aria-hidden className="text-[11px]">{KIND_EMOJI[kind]}</span>
               {meta.label}
             </span>
           ))}
@@ -322,10 +459,15 @@ export function MedicalMapView() {
               {STATUS_LABELS[s]}
             </span>
           ))}
+          <span className="inline-flex items-center gap-1">
+            <Mountain className="size-3 text-sev-crit" /> Struggle zone
+          </span>
         </span>
         {data && !loading && (
           <span className="ml-auto font-medium text-foreground/75">
-            {data.nodes.length} nodes · {data.edges.length} links
+            {statusFilter === 'all'
+              ? `${nodes.length} nodes · ${edges.length} links`
+              : `${nodes.length} shown · ${data.nodes.length} mapped`}
           </span>
         )}
       </div>
@@ -333,15 +475,19 @@ export function MedicalMapView() {
       {/* ── Graph canvas ── */}
       <div
         ref={containerRef}
-        className="relative h-[520px] overflow-hidden rounded-3xl border border-line bg-surface-2 med-grid md:h-[640px]"
+        className={cn(
+          'relative overflow-hidden rounded-3xl border border-line bg-surface-2 med-grid',
+          hero ? 'h-[420px] md:h-[560px]' : 'h-[520px] md:h-[640px]',
+        )}
         onDoubleClick={() => setView({ k: 1, x: 0, y: 0 })}
       >
+        {hero && <SceneBackdrop />}
         <svg
           ref={svgRef}
           viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
           role="img"
           aria-label="Medical knowledge graph"
-          className={cn('h-full w-full select-none touch-none', dragging ? 'cursor-grabbing' : 'cursor-grab active:cursor-grabbing')}
+          className={cn('relative h-full w-full select-none touch-none', dragging ? 'cursor-grabbing' : 'cursor-grab active:cursor-grabbing')}
           onPointerDown={onPointerDown}
         >
           <g ref={gRef} transform={`translate(${view.x} ${view.y}) scale(${view.k})`}>
@@ -369,7 +515,9 @@ export function MedicalMapView() {
               const statusColor = STATUS_COLORS[n.node.status] ?? 'var(--muted-foreground)'
               const kindColor = KIND_META[n.node.kind]?.color ?? 'var(--muted-foreground)'
               const isCenter = n.node.id === centerId
-              const pulse = !reduceMotion && (n.node.status === 'weak' || n.node.status === 'unstable') && n.node.mastery > 0
+              const struggle = isStruggle(n.node)
+              const pulse = !reduceMotion && (struggle || ((n.node.status === 'weak' || n.node.status === 'unstable') && n.node.mastery > 0))
+              const emoji = KIND_EMOJI[n.node.kind] ?? ''
               return (
                 <g key={n.node.id} transform={`translate(${n.x} ${n.y})`}>
                   <motion.g
@@ -386,28 +534,71 @@ export function MedicalMapView() {
                       <motion.circle
                         r={r + 9}
                         fill="none"
-                        stroke={statusColor}
+                        stroke={struggle ? 'var(--sev-crit)' : statusColor}
                         strokeWidth={1.5}
                         initial={{ opacity: 0.55 }}
                         animate={{ opacity: [0.55, 0.05] }}
                         transition={{ duration: 1.9, repeat: Infinity, ease: 'easeOut' }}
                       />
                     )}
+                    {struggle && (
+                      <circle
+                        r={r + 5}
+                        fill="none"
+                        stroke="var(--sev-crit)"
+                        strokeWidth={2}
+                        strokeDasharray="5 4"
+                        opacity={0.85}
+                      />
+                    )}
                     {isCenter && (
                       <circle r={r + 7} fill="none" stroke="var(--primary)" strokeWidth={2.5} strokeDasharray="4 4" opacity={0.9} />
                     )}
                     <circle r={r} fill={n.node.subjectColor} fillOpacity={0.85} stroke={statusColor} strokeWidth={2.5} />
-                    <circle r={Math.max(3.5, r * 0.24)} fill={kindColor} opacity={0.9} style={{ pointerEvents: 'none' }} />
-                    <text
-                      y={r + 15}
+                    {emoji && r >= 20 ? (
+                      <text
+                        textAnchor="middle"
+                        y={r * 0.32}
+                        fontSize={r * 0.78}
+                        style={{ pointerEvents: 'none' }}
+                        aria-hidden
+                      >
+                        {emoji}
+                      </text>
+                    ) : (
+                      <circle r={Math.max(3.5, r * 0.24)} fill={kindColor} opacity={0.9} style={{ pointerEvents: 'none' }} />
+                    )}
+                    {struggle && (
+                      <text
+                        x={r * 0.62}
+                        y={-r * 0.62}
+                        textAnchor="middle"
+                        fontSize={12}
+                        style={{ pointerEvents: 'none' }}
+                        aria-hidden
+                      >
+                        {STRUGGLE_EMOJI}
+                      </text>
+                    )}
+                    <motion.text
+                      y={n.labelAbove ? -(r + 8) : r + 15}
                       textAnchor="middle"
                       fontSize={11}
                       fill="var(--foreground)"
                       fillOpacity={0.8}
+                      // legibility halo — opaque in dark AND light mode, sits under
+                      // the glyphs via paint-order so edges crossing beneath stay muted
+                      stroke="var(--background)"
+                      strokeWidth={3}
+                      strokeLinejoin="round"
+                      paintOrder="stroke"
                       style={{ pointerEvents: 'none' }}
+                      initial={false}
+                      animate={{ opacity: showAllLabels || isMajorNode(n.node) ? 1 : 0 }}
+                      transition={{ duration: reduceMotion ? 0 : 0.18, ease: 'easeOut' }}
                     >
-                      {truncate18(n.node.name)}
-                    </text>
+                      {truncateLabel(n.node.name)}
+                    </motion.text>
                   </motion.g>
                 </g>
               )
@@ -424,35 +615,67 @@ export function MedicalMapView() {
               type="button"
               onClick={() => setScope('all')}
               aria-label="Clear concept focus"
-              className="rounded-full p-1 text-ink-soft transition-colors hover:bg-accent hover:text-foreground"
+              className="inline-flex min-h-11 items-center justify-center rounded-full p-1 text-ink-soft transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <X className="size-3" />
             </button>
           </div>
         )}
 
+        {/* struggle-zone banner (hero) */}
+        {hero && struggleCount > 0 && (
+          <div className="absolute left-3 top-3 z-30 inline-flex items-center gap-1.5 rounded-full border border-sev-crit/30 bg-sev-crit/10 px-3 py-1.5 text-[11px] font-semibold text-sev-crit shadow-sm backdrop-blur">
+            <TriangleAlert className="size-3.5" />
+            {struggleCount} struggle zones on your map
+          </div>
+        )}
+
+        {/* zoom indicator — doubles as click-to-reset */}
+        <button
+          type="button"
+          onClick={() => setView({ k: 1, x: 0, y: 0 })}
+          aria-label={`Zoom level ×${view.k.toFixed(1)} — click to reset view`}
+          className="absolute bottom-3 right-3 z-30 inline-flex min-h-11 items-center gap-1.5 rounded-full border border-line bg-card/90 px-3.5 py-1.5 text-xs font-medium tabular-nums text-ink-soft shadow-sm backdrop-blur transition-colors hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        >
+          <Maximize2 className="size-3.5" />
+          ×{view.k.toFixed(1)}
+        </button>
+
         {/* tooltip */}
         {hover && (
           <div
-            className="pointer-events-none absolute z-10 w-max max-w-[250px] rounded-xl border border-line bg-card/95 p-3 shadow-xl backdrop-blur"
+            className="pointer-events-none absolute z-10 w-max max-w-[250px]"
             style={{
               left: clamp(hover.left, 130, Math.max(hover.containerW - 130, 130)),
               top: hover.top,
               transform: hover.top < 140 ? 'translate(-50%, 20px)' : 'translate(-50%, calc(-100% - 16px))',
             }}
           >
-            <p className="text-sm font-medium leading-snug">{hover.node.name}</p>
-            <div className="mt-1 flex items-center gap-1.5 text-[11px] text-ink-soft">
-              <span className="size-2 rounded-full" style={{ backgroundColor: KIND_META[hover.node.kind]?.color ?? 'var(--muted-foreground)' }} />
-              {KIND_META[hover.node.kind]?.label ?? hover.node.kind} · {hover.node.subjectCode}
-            </div>
-            <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-muted-foreground">{hover.node.summary}</p>
-            <div className="mt-1.5 flex items-center gap-2 text-[11px]">
-              <span className="font-medium" style={{ color: STATUS_COLORS[hover.node.status] ?? 'var(--muted-foreground)' }}>
-                Mastery {hover.node.mastery}%
-              </span>
-              <span className="text-muted-foreground">{STATUS_LABELS[hover.node.status] ?? hover.node.status}</span>
-            </div>
+            <motion.div
+              initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.94 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: reduceMotion ? 0 : 0.16, ease: 'easeOut' }}
+              style={{ transformOrigin: hover.top < 140 ? '50% 0%' : '50% 100%' }}
+              className="rounded-xl border border-line bg-card/95 p-3 shadow-xl backdrop-blur"
+            >
+              <p className="text-sm font-medium leading-snug">{hover.node.name}</p>
+              <div className="mt-1 flex items-center gap-1.5 text-[11px] text-ink-soft">
+                <span aria-hidden>{KIND_EMOJI[hover.node.kind] ?? '•'}</span>
+                {KIND_META[hover.node.kind]?.label ?? hover.node.kind} · {hover.node.subjectCode}
+                {hover.node.difficulty >= 4 && (
+                  <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-sev-crit/10 px-1.5 py-0.5 font-semibold text-sev-crit">
+                    <Mountain className="size-2.5" /> difficulty {hover.node.difficulty}/5
+                  </span>
+                )}
+              </div>
+              <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-muted-foreground">{hover.node.summary}</p>
+              <div className="mt-1.5 flex items-center gap-2 text-[11px]">
+                <span className="font-medium" style={{ color: STATUS_COLORS[hover.node.status] ?? 'var(--muted-foreground)' }}>
+                  Mastery {hover.node.mastery}%
+                </span>
+                <span className="text-muted-foreground">{STATUS_LABELS[hover.node.status] ?? hover.node.status}</span>
+              </div>
+            </motion.div>
           </div>
         )}
 
@@ -477,7 +700,7 @@ export function MedicalMapView() {
             <TriangleAlert className="size-8 text-sev-crit" />
             <p className="text-sm font-medium">The map could not be charted</p>
             <p className="max-w-sm truncate text-xs text-muted-foreground">{error}</p>
-            <Button variant="outline" size="sm" onClick={() => void load(scope)}>
+            <Button variant="outline" size="sm" className="min-h-11" onClick={() => void load(scope)}>
               <RotateCcw className="size-4" /> Retry
             </Button>
           </div>
@@ -493,12 +716,32 @@ export function MedicalMapView() {
             </p>
           </div>
         )}
+
+        {/* status filter emptied the view (scope itself is untouched) */}
+        {!loading && !error && data && data.nodes.length > 0 && nodes.length === 0 && (
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 p-6 text-center">
+            <Filter className="size-7 text-muted-foreground" />
+            <p className="text-sm font-medium">Nothing matches this filter</p>
+            <p className="max-w-xs text-xs text-muted-foreground">
+              {statusFilter === 'struggle'
+                ? 'Great news — no struggle zones in this scope. Clear the filter to see the full map.'
+                : 'No concepts in this scope have that learning status. Clear the filter to see the full map.'}
+            </p>
+            <Button variant="outline" size="sm" className="min-h-11" onClick={() => setStatusFilter('all')}>
+              <RotateCcw className="size-4" /> Show all
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* ── Footer hint ── */}
       <p className="text-[11px] text-muted-foreground">
-        Click a node to open its explorer · Drag to pan · Scroll to zoom · Dashed = prerequisite
+        Click a node to open its explorer · Drag to pan · Scroll to zoom · ⚠️ = struggle zone (hard &amp; unmastered)
       </p>
     </div>
   )
+}
+
+export function MedicalMapView() {
+  return <MedicalMapCanvas variant="full" />
 }

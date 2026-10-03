@@ -79,6 +79,20 @@ export const topics: SeedTopic[] = [
   // Peds / OBGY
   { id: 't-peds-nephro', subjectId: 'peds', name: 'Paediatric Nephrology', system: 'renal', importance: 3 },
   { id: 't-obgy-preec', subjectId: 'obgy', name: 'Hypertensive Disorders of Pregnancy', system: 'cardiovascular', importance: 5 },
+  // ─── CLINICAL SUBJECT EXPANSION (surgery, OBGY, peds, orth, ENT, ophtha, psychiatry, derm) ───
+  { id: 't-surg-appendix', subjectId: 'surgery', name: 'Acute Abdomen & Appendicitis', system: 'gastrointestinal', importance: 5, description: 'The classic surgical emergency — migration of pain, Alvarado scoring and its mimics.' },
+  { id: 't-surg-biliary', subjectId: 'surgery', name: 'Biliary Disease', system: 'gastrointestinal', importance: 4, description: 'Murphy sign, sonographic criteria and the fat-fertile-forty narrative.' },
+  { id: 't-surg-thybreast', subjectId: 'surgery', name: 'Thyroid & Breast Lumps', importance: 4, description: 'Structured lump workup — history, FNAC-first logic, red flags.' },
+  { id: 't-obgy-antenatal', subjectId: 'obgy', name: 'Antenatal Care & APH', importance: 5, description: 'Painless vs painful bleeding after 20 weeks — previa and abruption.' },
+  { id: 't-obgy-labour', subjectId: 'obgy', name: 'Labour Progress & PPH', importance: 5, description: 'Partograph vigilance and the four Ts of postpartum haemorrhage.' },
+  { id: 't-peds-growth', subjectId: 'peds', name: 'Growth, Development & Nutrition', importance: 4, description: 'Milestones, malnutrition grading and IMNCI danger signs.' },
+  { id: 't-peds-cardio', subjectId: 'peds', name: 'Paediatric Cardiology', system: 'cardiovascular', importance: 4, description: 'Cyanotic and acyanotic lesions — the tet spell is the exam classic.' },
+  { id: 't-orth-fractures', subjectId: 'orth', name: 'Fractures & Complications', system: 'musculoskeletal', importance: 5, description: 'Colles to compartment syndrome — deformity, neurology and the 5 Ps.' },
+  { id: 't-ent-vertigo', subjectId: 'ent', name: 'Vertigo & Otitis Media', importance: 4, description: 'Dizzy vs deaf — peripheral causes and the Dix-Hallpike pivot.' },
+  { id: 't-opht-redeye', subjectId: 'opht', name: 'Red Eye & Glaucoma', importance: 4, description: 'Sight-threatening discrimination: conjunctival, corneal, uveal, pressure.' },
+  { id: 't-psy-mood', subjectId: 'psy', name: 'Mood & Psychotic Disorders', importance: 4, description: 'Depressive criteria, first-rank symptoms and the safety questions.' },
+  { id: 't-derm-psoriasis', subjectId: 'derm', name: 'Papulosquamous & Eczema', importance: 3, description: 'Psoriasis vs atopic dermatitis — morphology first, therapy second.' },
+  { id: 't-med-shock', subjectId: 'medicine', name: 'Shock & Sepsis', system: 'cardiovascular', importance: 5, description: 'Haemodynamic profiles and the hour-1 bundle — resuscitation as a timed skill.' },
 ]
 
 const T = {
@@ -93,6 +107,15 @@ const T = {
   hernia: 't-surg-hernia', trauma: 't-surg-trauma',
   deaf: 't-ent-deaf', retina: 't-opht-retina', pedsNephro: 't-peds-nephro', preec: 't-obgy-preec',
   inflamm: 't-patho-inflamm', neoplasia: 't-patho-neoplasia',
+}
+
+// Aliases for the clinical expansion topics
+const T2 = {
+  appendix: 't-surg-appendix', biliary: 't-surg-biliary', thyBreast: 't-surg-thybreast',
+  antenatal: 't-obgy-antenatal', labour: 't-obgy-labour',
+  growth: 't-peds-growth', pedsCardio: 't-peds-cardio',
+  fractures: 't-orth-fractures', vertigo: 't-ent-vertigo', redEye: 't-opht-redeye',
+  mood: 't-psy-mood', psoriasis: 't-derm-psoriasis', shock: 't-med-shock',
 }
 
 export const concepts: SeedConcept[] = [
@@ -513,8 +536,6 @@ export const conceptsExtra: SeedConcept[] = [
     detail: [{ h: 'Facts', body: ['Duodenal: pain relieved by food, H. pylori in 90%. Gastric: pain worsens with food, weight loss — always biopsy (malignancy).', 'Perforation: pneumoperitoneum (free air under diaphragm), "notched diaphragm" on CXR — surgery after resuscitation.'] }] },
 ]
 
-export const allEdges = edges.filter(e => !e.to.includes('none'))
-
 // ─── Coverage polish: light concepts for skeleton topics ───
 export const conceptsCoverage: SeedConcept[] = [
   { id: 'c-cvpath-athero', topicId: 't-patho-cvpath', name: 'Atherosclerosis', kind: 'pathology', summary: 'Endothelial injury → lipid core → fibrous cap; the substrate of every acute coronary event.', whyMatters: 'The single upstream lesion behind MI, stroke and PAD — risk factors, stable vs unstable plaque, and complication timeline are repeated NEET-PG marks.', difficulty: 2, examRelevance: 5, clinicalRelevance: 5,
@@ -527,4 +548,613 @@ export const conceptsCoverage: SeedConcept[] = [
     detail: [{ h: 'Priorities', body: ['A: airway + C-spine immobilization. B: breathing — tension pneumothorax kills fastest (needle decompression). C: circulation — 2 wide-bore IVs, control external hemorrhage.', 'D: GCS, pupils. E: expose/log-roll, prevent hypothermia.', 'Lethal six of chest trauma: airway obstruction, tension pneumothorax, open pneumothorax, massive hemothorax, flail chest, cardiac tamponade.'] }] },
 ]
 
-export const allConcepts = [...concepts, ...conceptsExtra, ...conceptsCoverage]
+// ─── CLINICAL SUBJECTS EXPANSION ───
+// Original content for Surgery, OBGY, Paediatrics, Orthopaedics, ENT, Ophthalmology, Psychiatry, Dermatology + shock/sepsis bridge.
+export const conceptsClinical: SeedConcept[] = [
+  // ─── SURGERY: ACUTE ABDOMEN ───
+  {
+    id: 'c-appendicitis', topicId: T2.appendix, name: 'Acute Appendicitis', kind: 'disease',
+    summary: 'Obstructed, inflamed appendix: periumbilical pain migrating to the right iliac fossa — the most common acute surgical abdomen.',
+    whyMatters: 'The single most-tested surgical emergency: it integrates referred-visceral-pain physiology, peritoneal signs, Alvarado scoring, imaging choices and the complication timeline (perforation, abscess, portal pyaemia). NEET-PG asks it as classic vignettes and as discriminator questions against mesenteric adenitis, torsion and ectopic.',
+    mnemonic: 'MANTRELS — Migration, Anorexia, Nausea, Tenderness RIF, Rebound, Elevated temp, Leukocytosis, Shift of pain.',
+    difficulty: 1, examRelevance: 5, clinicalRelevance: 5,
+    detail: [
+      { h: 'Pathophysiology & pain migration', body: ['Obstruction (faecolith, lymphoid hyperplasia after viral illness, worms) → distension → visceral afferent T10 pain felt PERIUMBILICAL.', 'As inflammation translocates to the parietal peritoneum, pain localises to the RIGHT ILIAC FOSSA and worsens with movement — the migration is the diagnostic signature.', 'Anorexia is nearly universal; vomiting follows pain (inverse of gastroenteritis).'] },
+      { h: 'Signs & the Alvarado score', body: ['McBurney point tenderness (junction of lateral 1/3 and medial 2/3 of the ASIS–umbilicus line), rebound (Blumberg), Rovsing, psoas and obturator signs.', 'Alvarado 1–10: migration + anorexia + nausea (1 each), RIF tenderness (2), rebound (1), fever ≥37.3 (1), leukocytosis >10k (1), left shift (1) — ≥7 = high probability → surgeon; 4–6 → imaging/observation.'] },
+      { h: 'Investigation & management', body: ['Clinical diagnosis first; USG first-line in children/pregnancy (non-compressible blind-ending tube >6 mm); CT highest accuracy in equivocal adults; pregnancy → MRI.', 'Appendicectomy (laparoscopic preferred) after resuscitation + prophylactic antibiotics; antibiotics-only is not standard for uncomplicated exams.', 'Retrocecal position (~65%) blunts anterior signs → psoas stretch positive; pelvic appendix → urinary frequency/diarrhoea mimic.'] },
+      { h: 'Complications timeline', body: ['Perforation (~30%, highest in children/elderly — atypical presentations) → localised peritonitis → appendicular mass (Ochsner–Sherren regimen) → appendicular abscess.', 'Portal pyaemia (pylephlebitis) with jaundice and swinging fever is the classic late killer.', 'Mass resolving silently → plan interval appendicectomy.'] },
+      { h: 'Score anchor', table: { headers: ['Component', 'Points'], rows: [['Pain migration to RIF', '1'], ['Anorexia', '1'], ['Nausea/vomiting', '1'], ['RIF tenderness', '2'], ['Rebound tenderness', '1'], ['Fever ≥37.3°C', '1'], ['Leukocytosis >10,000', '1'], ['Left shift >75%', '1']] } },
+    ],
+  },
+  {
+    id: 'c-int-obstruction', topicId: T2.appendix, name: 'Intestinal Obstruction', kind: 'disease',
+    summary: 'Adhesions and hernias obstruct the small bowel; distension + absolute constipation + faeculent vomiting define the picture.',
+    whyMatters: 'A "drip and suck" resuscitation question with high-yield discriminators: small vs large bowel radiology, strangulation red flags, and causes by age (adhesions in adults, intussusception in toddlers, hernia everywhere). Links fluid physiology, radiology and emergency surgery.',
+    mnemonic: 'Distension + Obstipation + Vomiting + Pain = the DOVP quartet; "vomiting early = high, late & faeculent = low".',
+    difficulty: 2, examRelevance: 4, clinicalRelevance: 5,
+    detail: [
+      { h: 'Causes by context', body: ['Adults: postoperative ADHESIONS (most common) and hernias (most common external cause).', 'Neonates: atresia, meconium ileus, Hirschsprung, anorectal malformation. Toddlers: intussusception (red-currant jelly stool). Elderly: malignancy, sigmoid volvulus (coffee-bean sign).'] },
+      { h: 'Small vs large bowel', table: { headers: ['Feature', 'Small bowel', 'Large bowel'], rows: [['Onset', 'Rapid, colicky central pain', 'Slower, distension dominates'], ['Vomiting', 'Early; faeculent if low ileal', 'Late'], ['Distension', 'Central ladder', 'Peripheral, gross'], ['X-ray', 'Central valvulae conniventes (cross full width)', 'Peripheral haustra (partial width)'], ['Common cause', 'Adhesions/hernia', 'Carcinoma/volvulus']] } },
+      { h: 'Strangulation red flags & management', body: ['Constant pain, localised tenderness/guarding, fever, tachycardia, rigid hernia — strangulation until proven otherwise → emergency laparotomy.', 'Drip and suck: IV isotonic correction (often 3–5 L deficit), nasogastric decompression, catheter + fluid balance, serial abdominal X-rays.', 'Never reduce a tense, tender hernia forcefully (reduction en masse).'] },
+    ],
+  },
+  {
+    id: 'c-cholecystitis', topicId: T2.biliary, name: 'Acute Cholecystitis', kind: 'disease',
+    summary: 'Cystic duct obstruction by a stone → bile-induced mucosal inflammation: RUQ pain, Murphy sign, stone on sonography.',
+    whyMatters: 'The classic RUQ emergency: distinguishes biliary colic (no wall inflammation, no fever) from cholecystitis (Murphy + wall thickening), flags empyema/empysematous change in diabetics, and anchors the cholangitisCharcot triad. Sonographic criteria are direct NEET-PG marks.',
+    mnemonic: 'COURVOISIER law for the palpable non-tender gallbladder with jaundice — "a palpable GB with jaundice is probably NOT stones".',
+    difficulty: 2, examRelevance: 4, clinicalRelevance: 5,
+    detail: [
+      { h: 'Clinical picture', body: ['Right hypochondrial pain radiating to the right shoulder/inter-scapular region after fatty meals, with fever and vomiting.', 'Murphy sign: inspiratory arrest on palpating the RUQ as the inflamed gallbladder descends against the fingers.', 'Acalculus cholecystitis (10%): critically ill, burns, TPN, diabetes — same danger, no stone.'] },
+      { h: 'Diagnosis', body: ['USG first-line: stones + wall thickening >3 mm + pericholecystic fluid + sonographic Murphy — sensitivity ~95%.', 'HIDA scan is the gold standard when USG equivocal (non-visualisation of gallbladder).', 'Labs: leukocytosis, mild bilirubin/alkaline phosphatase rise (watch for choledocholithiasis).'] },
+      { h: 'Management ladder', body: ['NBM, IV fluids, analgesia (NSAID/opioid), antibiotics (gram-negative + anaerobe cover).', 'Early laparoscopic cholecystectomy within 72 h (or after 6 weeks if delayed) — same outcomes, shorter stay.', 'Empysematous cholecystitis (diabetics, gas in wall) → emergency surgery; high perforation risk.'] },
+      { h: 'Biliary cousins', body: ['Cholangitis: Charcot triad (fever + jaundice + RUQ pain); Reynolds pentad adds hypotension + confusion → emergency biliary drainage (ERCP).', 'Gallstone ileus: elderly female, recurrent subacute obstruction, aerobilia + ectopic gallstone (Rigler triad).'] },
+    ],
+  },
+  {
+    id: 'c-thyroidnodule', topicId: T2.thyBreast, name: 'Thyroid Nodule Workup', kind: 'concept',
+    summary: 'TSH → ultrasound → FNAC: the structured ladder that finds the 5–10% malignant nodule.',
+    whyMatters: 'A favourite "next step" question family: it forces you to sequence tests correctly (function before structure, FNAC as the decisive test) and to spot red flags. Also integrates endocrine physiology (hot vs cold nodules) with surgical pathology.',
+    mnemonic: 'Red flags: "Hard, Hoarse, Hurried, His-story" — hard fixed lump, hoarseness (RLN), rapid growth, young male/irradiation history.',
+    difficulty: 2, examRelevance: 4, clinicalRelevance: 4,
+    detail: [
+      { h: 'The ladder', body: ['TSH first: low TSH → radioiodine uptake scan (hot nodule rarely malignant); normal/high TSH → ultrasound.', 'Ultrasound: size, position, microcalcifications, hypoechoic irregular margins, abnormal cervical nodes (TI-RADS risk stratification).', 'FNAC (fine-needle aspiration cytology) is the investigation of CHOICE for a euthyroid solitary nodule — cheap, outpatient, decisions made on cytology (Bethesda categories).'] },
+      { h: 'Benign vs malignant tilt', table: { headers: ['Favours benign', 'Favours malignant'], rows: [['Family history of benign goitre', 'Family history of medullary/MEN2, papillary cancer'], ['Hot on uptake scan', 'Cold nodule (esp. male <30 or >60)'], ['Soft, smooth, mobile, multi-nodular', 'Hard, fixed, rapidly enlarging'], ['No nodes', 'Cervical nodes, hoarseness, stridor'], ['Hashimoto thyroiditis background', 'Prior neck irradiation, PLA2R—MEN2 RET mutation']] } },
+      { h: 'Exam anchors', body: ['Papillary carcinoma: most common, lymphatic spread, Orphan-Annie nuclei, excellent prognosis.', 'Follicular: haematogenous spread — FNAC cannot distinguish follicular adenoma from carcinoma (needs capsular/vascular invasion on histology).', 'Medullary: calcitonin, C-cells, associated with MEN2 → prophylactic thyroidectomy; amyloid stroma.', 'Anaplastic: elderly, rapidly enlarging hard mass, dreadful prognosis.'] },
+    ],
+  },
+  {
+    id: 'c-torsion', topicId: T2.appendix, name: 'Acute Scrotum & Testicular Torsion', kind: 'disease',
+    summary: 'Sudden severe scrotal pain + absent cremasteric reflex = torsion: 6 golden hours before the testis is lost.',
+    whyMatters: 'A classic surgical emergency where DELAY to image costs the organ: NEET-PG rewards the safe answer (immediate exploration without waiting for Doppler) and the discriminator table vs epididymo-orchitis and appendicitis (RIF pain in males is never complete without a scrotal check).',
+    mnemonic: 'CREMASTER ABSENT + HIGH-RIDING TRANSVERSE testis = TORSION. "Prehn sign" relieves epididymitis, NOT torsion.',
+    difficulty: 2, examRelevance: 4, clinicalRelevance: 5,
+    detail: [
+      { h: 'Recognition', body: ['Adolescent boy: abrupt lower abdominal/scrotal pain with vomiting; testis high-riding, horizontal (bell-clapper deformity), exquisitely tender; cremasteric reflex ABSENT.', 'Epididymo-orchitis: more gradual, fever + urinary symptoms, cremasteric intact, Prehn RELIEF, epididymis tender first.', 'Torsion of the appendix testis: "blue dot sign", prepubertal — managed conservatively.'] },
+      { h: 'Management', body: ['Clinical diagnosis → immediate scrotal exploration (detorsion + bilateral orchidopexy) within 6 h for best salvage; do not delay for imaging in high suspicion.', 'Colour Doppler may be done ONLY when suspicion is low; a negative Doppler never trumps a strong clinical picture.', 'Manual detorsion (lateral-to-medial usually) only as a bridge to theatre.'] },
+    ],
+  },
+  // ─── SHOCK & SEPSIS (bridge) ───
+  {
+    id: 'c-shock', topicId: T2.shock, name: 'Shock: Types & Recognition', kind: 'concept',
+    summary: 'Inadequate tissue perfusion with four haemodynamic signatures — hypovolaemic, cardiogenic, obstructive, distributive.',
+    whyMatters: 'The resuscitation spine of medicine and surgery: CVP/CO/SVR profiles separate the four types, and every postpartum haemorrhage, MI, PE and sepsis vignette tests whether you can match profile → cause → fluid/vasopressor logic.',
+    mnemonic: 'TMAP per type — think Tone (SVR), Pump (CO), and Filling (CVP/PCWP); "warm shock = distributive, cold shock = the rest".',
+    difficulty: 2, examRelevance: 5, clinicalRelevance: 5,
+    detail: [
+      { h: 'The four profiles', table: { headers: ['Parameter', 'Hypovolaemic', 'Cardiogenic', 'Obstructive', 'Distributive'], rows: [['CVP/filling', 'Low', 'High', 'High (tamponade/PE)', 'Low/normal'], ['Cardiac output', 'Low', 'Low', 'Low', 'High (early)'], ['SVR', 'High', 'High', 'High', 'Low'], ['Skin', 'Cold, clammy', 'Cold, mottled', 'Cold', 'WARM, flushed'], ['Pulse pressure', 'Narrow', 'Narrow', 'Narrow', 'WIDE'], ['Prototype', 'Haemorrhage, PPH, burns', 'Large MI, arrhythmia', 'Tension pneumothorax, tamponade, massive PE', 'Sepsis, anaphylaxis, neurogenic']] } },
+      { h: 'Management logic', body: ['Hypovolaemic: control the source + crystalloid/blood (1:1:1 for trauma).', 'Cardiogenic: cautious fluids, inotropes (dobutamine), early revascularisation — avoid fluid flooding.', 'Obstructive: decompress the pneumothorax, pericardiocentesis, thrombolysis/EMBOLECTOMY — treat the obstruction, fluids are second.', 'Distributive: fluids + norepinephrine first-line, source control, antibiotics if septic.', 'Lactate clearance and urine output track response better than a single BP reading.'] },
+      { h: 'Lethal teaching point', body: ['Vasopressor choice: norepinephrine is first-line in septic and most undifferentiated shock; epinephrine in anaphylaxis (IM, anterolateral thigh).', 'Beware the WARM hypotensive patient — normal-looking peripheries hide profound hypoperfusion.'] },
+    ],
+  },
+  {
+    id: 'c-sepsis', topicId: T2.shock, name: 'Sepsis & the Hour-1 Bundle', kind: 'clinical_skill',
+    summary: 'Life-threatening organ dysfunction from dysregulated infection: qSOFA screening, SOFA scoring, and timed resuscitation.',
+    whyMatters: 'Sepsis is the most common pathway into ICU and a fixture of exam bundles: define it (infection + organ dysfunction), score it (qSOFA at bedside), and act inside hour 1 (cultures → broad-spectrum antibiotics → 30 mL/kg crystalloid for hypotension/lactate ≥4). Sequencing questions are free marks if rehearsed.',
+    mnemonic: 'qSOFA: RR ≥22, altered mentation, SBP ≤100 → 2 of 3 raises alarm. Hour-1: CULTURE, ANTIBIOTIC, FLUID, LACTATE, SOURCE.',
+    difficulty: 2, examRelevance: 5, clinicalRelevance: 5,
+    detail: [
+      { h: 'Definitions that get asked', body: ['Sepsis = suspected/documented infection + acute rise in SOFA ≥2 (mortality ~10%).', 'Septic shock = sepsis + vasopressor need to keep MAP ≥65 + lactate >2 despite adequate fluids (mortality ~40%).', 'SIRS is obsolete for diagnosis but still quoted: ≥2 of temp >38/<36, HR >90, RR >20, WBC >12k/<4k.'] },
+      { h: 'Hour-1 bundle (in order)', body: ['1) Measure lactate (repeat if >2). 2) Blood cultures BEFORE antibiotics (never delay antibiotics >45 min for cultures). 3) Broad-spectrum IV antibiotics. 4) 30 mL/kg balanced crystalloid for hypotension or lactate ≥4. 5) Vasopressors (norepinephrine) if MAP <65 during/after fluids.', 'SOURCE CONTROL within 6–12 h: drain the abscess, remove the line, debride.'] },
+      { h: 'India-specific anchors', body: ['Common sources: urosepsis, pneumonia, abdominal (perforation — link to appendicitis/typhoid), neonatal sepsis, melioidosis in pockets.', 'Septic AKI is the most common hospital AKI — euglycaemia does not exclude severe infection in diabetics.'] },
+    ],
+  },
+  // ─── OBGY ───
+  {
+    id: 'c-previa', topicId: T2.antenatal, name: 'Placenta Previa', kind: 'disease',
+    summary: 'Placenta over the lower segment: painless, bright-red APH after 20 weeks — and a vagina you must NOT examine.',
+    whyMatters: 'One half of the classic APH pair (with abruption). The exam tests the safe behaviour: painless bleeding → USG first, no vaginal examination, expectant vs delivery decisions by gestational age, and the maternal/fetal risk list (accreta, PPH, malpresentation).',
+    mnemonic: 'PREVIA = PAinless, PINK-red, PLacenta low — "no per vagina fingers".',
+    difficulty: 2, examRelevance: 5, clinicalRelevance: 5,
+    detail: [
+      { h: 'Types & natural history', body: ['Low-lying (edge <2 cm from os) may migrate upward with lower-segment formation; major degrees (partial/complete) persist.', 'Risk factors: previous caesarean/uterine scar, multiparity, smoking, multiple gestation, prior previa.'] },
+      { h: 'Diagnosis & management', body: ['Painless recurrent bright-red bleeding; uterus soft and non-tender; malpresentation common; FHR usually normal (vs abruption distress).', 'Transabdominal then transvaginal USG (safe, above the bleeding) localises the placenta — NEVER digital vaginal examination.', '<37 wks, stable: expectant (steroids 24–34 wks, anti-D if Rh-negative, blood on standby); ≥37 or uncontrolled bleeding: delivery by caesarean.'] },
+      { h: 'Dangers', body: ['Massive PPH (lower segment cannot contract), morbidly adherent placenta (accreta — esp. placenta previa over a caesarean scar), fetal malpresentation/preterm birth.', 'Postpartum: high hysterectomy risk — consent, cross-match 4 units, senior obstetrician.'] },
+    ],
+  },
+  {
+    id: 'c-abruptio', topicId: T2.antenatal, name: 'Abruptio Placentae', kind: 'disease',
+    summary: 'Premature separation of a normally-placed placenta: painful, tense woody uterus, fetal distress, DIC risk.',
+    whyMatters: 'The dangerous twin of previa: concealed bleeding can kill the fetus while vital signs lie (relative anaemia, normotension until decompensation). Tested as the painful-APH vignette, the DIC/causes table, and the Couvelaire uterus finding at caesarean.',
+    mnemonic: 'ABRUPTIO = ABRupt pain, Board-like uterus, RUpture of vessels, DIC threat — "painful previa is a lie: it is abruption".',
+    difficulty: 2, examRelevance: 5, clinicalRelevance: 5,
+    detail: [
+      { h: 'Risk factors & types', body: ['Hypertension/preeclampsia (top), trauma, smoking, cocaine, sudden decompression (polyhydramnios rupture), previous abruption.', 'Concealed vs revealed; grades I–IV (Sher) — grade III with fetal death and coagulopathy.'] },
+      { h: 'Recognition & complications', body: ['Dark venous bleeding WITH continuous abdominal pain; uterus tense, tender, "woody"; fetal parts hard to palpate; FHR abnormalities early.', 'Complications: DIC (tissue thromboplastin release), acute renal failure (cortical necrosis), Couvelaire uterus (blood infiltrating myometrium), PPH after delivery, fetal death (in severe).'] },
+      { h: 'Management', body: ['Resuscitate (2 large-bore IVs, cross-match, anti-D if Rh-negative), watch urine output (renal failure triad).', 'Fetus alive + mother stable → expedite delivery (vaginal if imminent, caesarean for distress). Fetus dead → vaginal delivery with analgesia, correct coagulopathy (FFP/cryoprecipitate/platelets).', 'Never tocolyse; monitor for PPH after delivery (atonic over-distended uterus).'] },
+    ],
+  },
+  {
+    id: 'c-pph', topicId: T2.labour, name: 'Postpartum Haemorrhage (PPH)', kind: 'disease',
+    summary: '>500 mL loss after delivery (vaginal) — Tone, Trauma, Tissue, Thrombin: find the T, treat in order.',
+    whyMatters: 'The leading cause of maternal death worldwide and the highest-yield OBGY management-sequence question: uterine massage + uterotonics → bimanual compression → prostaglandins → balloon/surgery. Each step has a memorised order that examiners (and real life) demand.',
+    mnemonic: 'The FOUR Ts — Tone (70%), Trauma (20%), Tissue (10%), Thrombin (1%). "MOTIVATE your uterus: Massage, Oxytocin, then escalate."',
+    difficulty: 2, examRelevance: 5, clinicalRelevance: 5,
+    detail: [
+      { h: 'Definition & the 4 Ts', table: { headers: ['Cause', 'Frequency', 'Key clue', 'First move'], rows: [['Tone (uterine atony)', '~70%', 'Boggy, soft uterus', 'Massage + oxytocin'], ['Trauma (tears, incisions)', '~20%', 'Bleeding with well-contracted uterus', 'Inspect and repair'], ['Tissue (retained placenta/cotyledon)', '~10%', 'Incomplete placenta/membranes', 'Manual removal'], ['Thrombin (coagulopathy)', '~1%', 'Oozing from raw surfaces, DIC labs', 'Blood products/FFP']] } },
+      { h: 'Stepwise management', body: ['1) Call for help, ABC, 2 wide-bore IVs, cross-match, empty the bladder.', '2) UTERINE MASSAGE + IV OXYTOCIN (first-line uterotonic).', '3) Second-line uterotonics: methyl ergometrine (not in HTN/preeclampsia), carboprost PGF2α (NOT in asthma), misoprostol.', '4) Bimanual compression / aortic compression while escalating.', '5) Balloon tamponade (Bakri), then uterine artery ligation, B-Lynch brace suture, stepwise devascularisation; hysterectomy as the terminal step.', 'Primary vs secondary: primary <24 h (6 wks for some definitions); secondary = retained tissue/endometritis → antibiotics + evacuation.'] },
+      { h: 'Prevention (active management of third stage)', body: ['Prophylactic oxytocin 10 IU IM with delivery of the anterior shoulder (or after delivery) is the single best reducer of PPH; controlled cord traction + uterine massage complete the triad.', 'Risk score mothers antenatally: previous PPH, over-distension (twins, polyhydramnios), anaemia, prolonged labour.'] },
+    ],
+  },
+  {
+    id: 'c-oxytocin', topicId: T2.labour, name: 'Oxytocin & Uterotonics', kind: 'drug',
+    summary: 'Oxytocin = first-line for PPH and induction; the uterotonic family has organ-specific contraindications that exams love.',
+    whyMatters: 'A pure pharmacology-surgery crossover: oxytocin (V1/V2 receptor —antidiuretic water retention), ergometrine (hypertension → forbidden in preeclampsia), carboprost (bronchospasm → forbidden in asthma), misoprostol (shelf-stable, the community answer). Matching drug to comorbidity is a guaranteed mark.',
+    mnemonic: 'No ASTHMA for carboprost, no BLOOD-PRESSURE for ergometrine; oxytocin is the friend of all.',
+    difficulty: 1, examRelevance: 4, clinicalRelevance: 5,
+    detail: [
+      { h: 'The family', body: ['Oxytocin: IV infusion for induction/augmentation (hypotension with rapid push) and PPH prophylaxis/first-line; continuous infusion risks water intoxication at high doses.', 'Ergometrine/methylergometrine: sustained tetanic contraction — contraindicated in hypertension, preeclampsia, cardiac disease; causes vomiting and rises BP.', 'Carboprost (PGF2α): for atony refractory to oxytocin — contraindicated in ASTHMA (bronchospasm); diarrhoea/flushing.', 'Misoprostol (PGE1): sublingual/rectal, heat-stable — the community/remote-area workhorse; shivering and fever.'] },
+      { h: 'Anti-dote context', body: ['Uterotonic failure → mechanical escalation (balloon, B-Lynch, hysterectomy) — drugs cannot fix trauma or retained tissue.', 'Oxytocin +重复 dosing: down-regulation with prolonged high-dose infusion — note tachyphylaxis.'] },
+    ],
+  },
+  {
+    id: 'c-eclampsia-mgmt', topicId: T.preec, name: 'Eclampsia Management', kind: 'clinical_skill',
+    summary: 'Seizure in a preeclamptic woman: left-lateral, oxygen, MgSO4 loading — delivery is the only cure.',
+    whyMatters: 'An emergency sequence question with zero tolerance for improvisation: MgSO4 is the anticonvulsant (not diazepam for maintenance), the Pritchard regimen has memorised doses, and the three safety monitors (knee jerks, respiration, urine output) with calcium gluconate as antidote are direct marks.',
+    mnemonic: 'LMNOP — Left lateral, Magnesium, Nurture airway/O2, Prevent injury, Order delivery. Monitor: Jerks, Respiration, Urine.',
+    difficulty: 3, examRelevance: 5, clinicalRelevance: 5,
+    detail: [
+      { h: 'During the seizure', body: ['Do NOT restrain or force the mouth open. Left-lateral tilt (relieves aortocaval compression), suction airway, O2 by mask, protect from injury.', 'Give MgSO4 if not already loaded — it terminates and prevents seizures; diazepam/lorazepam only if MgSO4 unavailable or seizures persist.'] },
+      { h: 'MgSO4 regimens (Pritchard)', body: ['Loading: 4 g IV (20% slowly over 5–10 min) + 10 g IM (5 g each buttock, 50% with lignocaine). Maintenance: 5 g IM 4-hourly alternating buttocks.', 'Continue 24 h after last seizure/delivery.', 'Toxicity ladder (assess BEFORE every dose): knee jerks present → respiration ≥12–16/min → urine output ≥25–30 mL/h. Antidote: IV calcium gluconate 10%.'] },
+      { h: 'Around the seizure', body: ['Control BP (IV labetalol or nifedipine; hydralazine alternatives) targeting 130–150/80–100 — do not crash-restore to normal.', 'Definitive treatment = STABILISE then DELIVER (vaginal if favourable, caesarean for obstetric indications); at ≥34 weeks / severe features do not delay for steroid benefit.', 'Post-partum vigilance: seizures can occur up to 48+ h after delivery; fluid restrict to ~80 mL/h to avoid pulmonary oedema.'] },
+    ],
+  },
+  {
+    id: 'c-partograph', topicId: T2.labour, name: 'Partograph & Labour Progress', kind: 'investigation',
+    summary: 'One graph: cervical dilatation (alert/action lines), descent, and fetal-maternal wellbeing — the early-warning system of labour.',
+    whyMatters: 'WHO partograph logic answers "prolonged labour" MCQs: alert line crossing (4 h behind) → action line (4 h later) → intervene (augmentation with oxytocin / caesarean). Also integrates moulding, caput, liquor and FHR plotting as the composite fetal-maternal monitor.',
+    mnemonic: 'ALERT at the line, ACT at the action line — "dilatation, descent, distress: watch all three Ds".',
+    difficulty: 2, examRelevance: 3, clinicalRelevance: 4,
+    detail: [
+      { h: 'Components', body: ['Left panel: labour progress — cervical dilatation (latent then active phase ≥1 cm/h in active phase), fetal head descent (fifths palpable), contractions (number per 10 min).', 'Right panel: fetal — FHR, membranes/liquor (intact/C/C+S), moulding (0 to +++), caput; maternal — BP, pulse, temperature, urine (protein, acetone, volume).'] },
+      { h: 'The two lines', body: ['ALERT line: expected progress slope starting at active phase (4 cm). If the curve crosses to its right → transfer/augment.', 'ACTION line: 4 h to the right of alert — crossing it mandates intervention (ARM + oxytocin, reassess, deliver by caesarean if failure to progress).', 'Uses: reduces prolonged labour, intra-uterine sepsis and unnecessary caesareans when used with a humanitarian policy ( WHO 30-cm simplified partograph).'] },
+    ],
+  },
+  // ─── PAEDIATRICS ───
+  {
+    id: 'c-milestones', topicId: T2.growth, name: 'Growth & Developmental Milestones', kind: 'concept',
+    summary: '3-6-9-12 anchors: social smile, sitting, pincer, walking — plotted against weight/height/head-circumference charts.',
+    whyMatters: 'The most reliable marks in Paediatrics: milestone-by-age tables, the primitive reflex disappearance schedule, and growth-chart interpretation (weight-for-age faltering). Also the backbone of developmental delay triage in OPD.',
+    mnemonic: '3-month social smile, 6 sits, 9 stands, 12 walks — "smile-sit-stand-step". Head control 3 m, pincer 9–10 m, 2-word sentences 2 y.',
+    difficulty: 1, examRelevance: 4, clinicalRelevance: 4,
+    detail: [
+      { h: 'The core table', table: { headers: ['Age (median)', 'Gross motor', 'Fine motor / social'], rows: [['2 months', 'Lifts head prone', 'Social smile'], ['4–5 months', 'Rolls over', 'Reaches for objects'], ['6 months', 'Sits with support → alone by 6–8 m', 'Transfers objects hand-to-hand'], ['9 months', 'Sits without support, stands holding', 'Immature pincer grasp, waves bye-bye'], ['12 months', 'Stands alone, walks with support → alone by 12–15 m', 'Mature pincer; 1–2 words; object permanence'], ['18 months', 'Runs, climbs stairs', 'Tower of 3–4 cubes; points to needs'], ['24 months', 'Kicks ball, up-down stairs', '2-word sentences; parallel play']] } },
+      { h: 'Primitive reflexes (appear → vanish)', body: ['Moro and grasp: birth → 3–4 months. Rooting: birth → 3–4 months. ATNR (fencing): 2 → 6 months. Parachute appears 6–8 months and persists — its absence signals motor delay.', 'Red flags: no social smile by 3 m, not sitting by 9 m, not walking by 18 m, no words by 16–18 m, hand dominance before 12 m (suggests hemiparesis).'] },
+      { h: 'Growth monitoring', body: ['Weigh at every immunisation visit; plot on WHO z-score charts. Crossing ≥2 z-score lines down = growth faltering → dietary history, illness screen, treat the cause (link to kwashiorkor/marasmus).', 'Head circumference: microcephaly <−3 SD; rising too fast → hydrocephalus (bulging fontanelle, sunset eyes).'] },
+    ],
+  },
+  {
+    id: 'c-kwashmaras', topicId: T2.growth, name: 'Kwashiorkor vs Marasmus', kind: 'disease',
+    summary: 'Protein-dominant deficiency with oedema vs calorie-dominant deficiency with wasted "old-man" facies and no oedema.',
+    whyMatters: 'The flagship Paediatrics confusion pair: weight-for-height percentages, oedema as the great divider, flaky-paint dermatosis, hair flag-sign, and WHO classification thresholds are asked in every Pediatrics paper — and integrate biochemistry (fatty liver, hypoalbumin) and community medicine (IMNCI nutrition counselling).',
+    mnemonic: 'KWASH = Kwashiorkor Has AnaSArcal Oedema (protein lack); MARASMUS = Muscle & Subcutis melt (calorie lack).',
+    difficulty: 1, examRelevance: 4, clinicalRelevance: 5,
+    detail: [
+      { h: 'Side-by-side', table: { headers: ['Feature', 'Kwashiorkor', 'Marasmus'], rows: [['Deficiency', 'Protein (with some calories)', 'Total calories (protein-energy both low)'], ['Weight', '60–80% of expected', '<60% of expected'], ['Oedema', 'PRESENT (starts feet → anasarca)', 'Absent'], ['Subcutaneous fat', 'Preserved over trunk', 'Grossly lost, "baggy pants"'], ['Face', 'Moon-face (pathognomonic)', 'Old-man facies'], ['Skin/hair', 'Flaky-paint dermatosis, flag-sign hair', 'Dry, wrinkled, atrophic skin'], ['Liver', 'Fatty infiltration (hepatomegaly)', 'Atrophic'], ['Mood', 'Apathetic, miserable', 'Alert, irritable "hungry"']] } },
+      { h: 'Management principles (WHO 10 steps)', body: ['Phase 1 (stabilisation): treat/prevent hypoglycaemia, hypothermia, dehydration (ReSoMal, NOT standard ORS), electrolytes (K, Mg), infection cover, micronutrients WITHOUT iron initially, cautious feeding (F-75).', 'Phase 2 (rehabilitation): catch-up growth F-100, iron after oedema resolves, sensory stimulation.', 'The most lethal moments are the first days — refeeding syndrome (watch phosphate), and never rapid volume loads (heart failure risk).'] },
+    ],
+  },
+  {
+    id: 'c-imnci', topicId: T2.growth, name: 'IMNCI Danger Signs', kind: 'clinical_skill',
+    summary: 'Any general danger sign in a sick child = urgent referral: lethargy, unable to feed, vomiting everything, convulsions, stridor at rest.',
+    whyMatters: 'IMNCI is India\'s frontline child-health algorithm and a Community Medicine + Paediatrics double subject: the color-coded triage (pink = urgent referral, yellow = outpatient treatment, green = home care) converts exam questions into real triage skills.',
+    mnemonic: 'The 5 pink flags: "Very LUCV" — Lethargic/unconscious, Unable to Can-feed (not able to feed), Vomits everything, Convulsions, Stridor at rest (or severe chest indrawing).',
+    difficulty: 1, examRelevance: 3, clinicalRelevance: 5,
+    detail: [
+      { h: 'General danger signs (any one = pink)', body: ['Unable to drink/breastfeed. Vomits everything. Convulsions (current illness). Lethargic or unconscious. Stridor in a calm child.', 'Fast breathing thresholds: <2 m ≥60, 2–12 m ≥50, 1–5 y ≥40. Chest indrawing or grunting escalates pneumonia classification.'] },
+      { h: 'Colour triage', body: ['PINK (urgent pre-referral: O2, first-dose antibiotics/antimalarial, ORS sip, keep warm, glucose) → REFER.', 'YELLOW: treat at health facility (dysentery, non-severe pneumonia, dehydration without danger signs).', 'GREEN: home care + follow-up schedule (2 days for antibiotics, 5 days for fever, 30 days growth check).'] },
+    ],
+  },
+  {
+    id: 'c-tof', topicId: T2.pedsCardio, name: 'Tetralogy of Fallot (TOF)', kind: 'disease',
+    summary: 'Four defects, one embryology (anterosuperior VSD malalignment): VSD + overriding aorta + RVOT obstruction + RVH — spells relieved by squatting.',
+    whyMatters: 'The most common CYANOTIC congenital heart disease beyond infancy and a guaranteed question: tet-spell physiology (infundibular spasm, R→L shunt worsening) and knee-chest/salbutamol/morphine-phenylephrine management are the highest-yield clinical hooks.',
+    mnemonic: 'PROVe: Pulmonary stenosis, Right ventricular hypertrophy, Overriding aorta, VSD — and Spells need SQUAT (↑SVR).',
+    difficulty: 2, examRelevance: 5, clinicalRelevance: 5,
+    detail: [
+      { h: 'Anatomy & physiology', body: ['Anterosuperior deviation of the outlet septum creates all four defects; degree of RVOT (infundibular/pulmonary) obstruction sets cyanosis severity.', 'X-ray: boot-shaped heart (RVH, concave PA segment). ECG: RAD + RVH. Echo establishes; single LV?→ check aortic arch side (left arch common, right arch ~25%).'] },
+      { h: 'The tet spell (hypercyanotic attack)', body: ['Trigger: crying/feeding/defecation (infancy) — infundibular spasm → more R→L shunt → deeper cyanosis, syncope, seizures.', 'MANAGEMENT: knee-chest position (↑SVR, ↓venous return to the right heart) + high-flow O2 + morphine (calms, relaxes infundibulum) + IV fluid; refractory → phenylephrine (↑SVR) or esmolol; surgical source (BT shunt/complete repair).'] },
+      { h: 'Exam anchors', body: ['TOF is the most common cyanotic CHD after infancy; TGA is most common in the first week of life (needs PGE1).', 'Natural history: squatting by toddlers, clubbing, brain abscess and stroke risk from R→L shunts (paradoxical emboli, polycythaemia).', 'Pulmonary atresia/VSD = extreme TOF; TOF with absent pulmonary valve → bronchial compression.'] },
+    ],
+  },
+  // ─── ENT ───
+  {
+    id: 'c-bppv-meniere', topicId: T2.vertigo, name: "BPPV vs Meniere's Disease", kind: 'disease',
+    summary: 'Seconds-long positional vertigo with a normal ear (canalithiasis) vs hours-long vertigo with fluctuating sensorineural hearing loss and tinnitus.',
+    whyMatters: 'The most examined vestibular pair: duration + hearing + trigger triad separates BPPV (Dix-Hallpike positive, Epley cures), Meniere (low-salt, betahistine), vestibular neuritis (days, after URTI) and acoustic neuroma (asymmetric SNHL). One table = repeated marks across ENT, Medicine and Neurology.',
+    mnemonic: 'BPPV = Brief (seconds) + Positional +Provoked (head movement). Meniere = Mile-long (hours) + Malady of the Membranous labyrinth ( hearing drops, ears ring).',
+    difficulty: 2, examRelevance: 4, clinicalRelevance: 4,
+    detail: [
+      { h: 'Discriminator table', table: { headers: ['Feature', 'BPPV', "Meniere's"], rows: [['Duration', 'Seconds (<1 min)', '20 min – hours'], ['Hearing loss', 'None', 'Fluctuating, progressive SNHL (low-frequency first)'], ['Tinnitus/ear fullness', 'No', 'Yes (attacks)'], ['Trigger', 'Rolling in bed, looking up (posterior canal most)', 'Spontaneous attacks; salt/stress'], ['Test', 'Dix-Hallpike: rotatory nystagmus with latency & fatiguability', 'Audiometry; glycerol test historical'], ['Treatment', 'Epley/Brandt-Daroff repositioning (cure)', 'Low-salt diet, betahistine, diuretics; intratympanic gentamicin/steroi​d for refractory']] } },
+      { h: 'The wider vestibular map', body: ['Vestibular neuritis: severe constant vertigo for DAYS, single episode, no hearing loss (viral, after URTI) — treat with vestibular suppressants briefly then mobilise.', 'Vestibular migraine: variable, headache link, personal/family migraine history.', 'Central red flags: vertical or direction-changing nystagmus, gait ataxia out of proportion, focal neurology, "worst headache" — think stroke (posterior circulation).', 'Acoustic neuroma: unilateral progressive SNHL + tinnitus, absent corneal reflex (CN V), treat/watch by size.'] },
+    ],
+  },
+  {
+    id: 'c-otitis-media', topicId: T2.vertigo, name: 'Acute Otitis Media', kind: 'disease',
+    summary: 'Bulging, erythematous tympanic membrane with earache and fever in a small child — pneumococcus tops the organism list.',
+    whyMatters: 'The commonest reason for paediatric antibiotics and a favourite organism/discrimination question: AOM vs OME (glue ear, no fever), the complication ladder (mastoiditis — post-auricular swelling, TM perforation, facial palsy, meningitis), and first-line amoxicillin dosing logic.',
+    mnemonic: 'Bulging TM + fever + pain = AOM; effusion without inflammation = OME ("glue ear": retracted TM, air-fluid level, no fever).',
+    difficulty: 1, examRelevance: 3, clinicalRelevance: 5,
+    detail: [
+      { h: 'Recognition & organisms', body: ['Pneumococcus (most common), H. influenzae (non-typeable), Moraxella (β-lactamase). Risk: daycare, passive smoke, bottle-feeding supine, cleft palate, adenoid hypertrophy.', 'Examination: bulging TM with lost landmarks/light reflex; perforation → discharge with relief of pain.'] },
+      { h: 'Management', body: ['Analgesia; antibiotics if <2 y, bilateral, severe (fever ≥39, ≥48 h), or otorrhoea — amoxicillin first-line (watch resistance → amoxiclav).', 'Watchful waiting 48–72 h acceptable in mild unilateral disease >2 y.', 'Complication alarm: MASTOIDITIS — post-auricular swelling pushing the pinna forward/down, tender mastoid → IV antibiotics ± cortical mastoidectomy. Facial palsy, vertigo, meningitis → urgent ENT.'] },
+    ],
+  },
+  // ─── OPHTHALMOLOGY ───
+  {
+    id: 'c-red-eye', topicId: T2.redEye, name: 'The Acute Red Eye', kind: 'concept',
+    summary: 'One sign, four threats: conjunctivitis, keratitis, uveitis and acute angle-closure glaucoma — vision, pain pattern and pupil sort them.',
+    whyMatters: 'A triage skill that prevents blindness: conjunctival discharge + normal vision = safe; ciliary flush + photophobia + small pupil (uveitis) or corneal opacity (keratitis) or mid-dilated fixed pupil + halos (angle closure) = refer urgently. NEET-PG presents exactly this discrimination table.',
+    mnemonic: 'DISCHARGE safe, CILIARY flush not; "photophobia + small pupil = uveitis; halos + stone pupil = angle closure; white light on white eye = keratitis rules out".',
+    difficulty: 2, examRelevance: 4, clinicalRelevance: 5,
+    detail: [
+      { h: 'The discrimination table', table: { headers: ['Feature', 'Conjunctivitis', 'Keratitis (corneal ulcer)', 'Acute anterior uveitis', 'Acute angle-closure glaucoma'], rows: [['Vision', 'Normal', 'Reduced if central/opacity', 'Reduced', 'Markedly reduced'], ['Pain', 'Gritty, mild', 'Foreign-body, severe', 'Aching, photophobia', 'Severe + headache, vomiting'], ['Injection', 'Diffuse conjunctival', 'Ciliary flush', 'Ciliary flush', 'Ciliary + conjunctival'], ['Pupil', 'Normal', 'Normal ± white ulcer', 'Small, irregular', 'Mid-dilated, FIXED, oval'], ['Discharge', 'Yes (watery/purulent)', 'Watery/reflective tears', 'No', 'No (epiphora)'], ['Cornea', 'Clear', 'Ulcer/opacity, fluorescein-positive', 'KPs (keratic precipitates)', 'Hazy/steamy, epithelial oedema'], ['Pressure', 'Normal', 'Normal/↑', 'Usually normal', 'Rock-hard, very high']] } },
+      { h: 'Never-miss rules', body: ['Any red eye with VISION LOSS, severe pain, photophobia, corneal opacity, or an abnormal pupil is NOT conjunctivitis — refer.', 'Contact lens + red eye = keratitis (Pseudomonas risk) until proven otherwise; STOP lens wear, urgent ophthalmology.', 'Viral conjunctivitis: adenovirus, highly contagious, pre-auricular node; bacterial: purulent; chlamydial in neonates (treat systemically).', 'Never steroid drops for an undiagnosed red eye — herpes keratitis can melt the cornea.'] },
+    ],
+  },
+  {
+    id: 'c-poag', topicId: T2.redEye, name: 'Primary Open-Angle Glaucoma', kind: 'disease',
+    summary: 'The "silent thief of sight": painless, open angles, raised IOP → cupping and progressive field loss from the periphery inward.',
+    whyMatters: 'Contrasted against angle-closure, POAG teaches chronic glaucoma logic: risk factors (age, family history, myopia, steroid response, race), signs (C:D ratio >0.6, focal notching, nasal field defects, arcuate scotoma), and the drug ladder whose systemic side-effects (timolol asthma, brimonidine fatigue, acetazolamide stones) are cross-subject pharmacology marks.',
+    mnemonic: 'POAG = Painless, Open angle, Asymptomatic Progression — fields go Nasal before you notice; "cup > disc = suspect".',
+    difficulty: 2, examRelevance: 4, clinicalRelevance: 5,
+    detail: [
+      { h: 'Diagnosis', body: ['IOP >21 mmHg is typical but NORMAL-TENSION glaucoma exists — diagnose by optic nerve + visual fields together.', 'Disc: cup:disc ratio ≥0.6 or asymmetry >0.2, focal notching, disc haemorrhage, RNFL defect.', 'Fields: nasal step, arcuate (Bjerrum) scotoma; central vision preserved till late.', 'Gonioscopy confirms OPEN angle (vs closed in AACG); pachymetry for thin corneas (falsely low IOP readings).'] },
+      { h: 'Management ladder', body: ['Topical first: prostaglandin analogues (latanoprost — first-line, ↑uveitis/herpes caution) → beta-blockers (timolol — ask about asthma/heart block) → alpha-2 agonists (brimonidine) → carbonic anhydrase inhibitors (dorzolamide; acetazolamide for short-term/oral).', 'Laser trabeculoplasty; trabeculectomy (± MMC) when medical fails.', 'Never chronic oral acetazolamide without monitoring (metabolic acidosis, paraesthesia, renal stones).'] },
+    ],
+  },
+  // ─── PSYCHIATRY ───
+  {
+    id: 'c-mdd', topicId: T2.mood, name: 'Major Depressive Disorder', kind: 'disease',
+    summary: '≥5 depressive symptoms for ≥2 weeks with functional loss — and a suicide risk assessment you must never skip.',
+    whyMatters: 'Among the most common disorders psychiatry exams test: the two-week/five-symptom rule, core vs somatic features, melancholic and atypical profiles, SSRI first-line logic with the 2-week onset and activation trap, and the risk ladder that makes "ask about suicidal ideation" the always-safe answer.',
+    mnemonic: 'SIGECAPS (Sleep, Interest, Guilt, Energy, Concentration, Appetite, Psychomotor, Suicidality) — ≥5 for ≥2 weeks, one must be mood/anhedonia.',
+    difficulty: 1, examRelevance: 4, clinicalRelevance: 5,
+    detail: [
+      { h: 'Diagnosis & specifiers', body: ['≥5 of 9 symptoms (depressed mood, anhedonia, weight/appetite change, sleep disturbance, psychomotor change, fatigue, guilt/worthlessness, poor concentration, suicidal thoughts) for ≥2 weeks; at least one is mood or anhedonia; causes distress/impairment; not substance/medical/grief-only.', 'Melancholic: profound anhedonia, early-morning waking, weight loss, diurnal variation (worse morning). Atypical: mood reactivity, hypersomnia, hyperphagia, leaden paralysis.', 'Postpartum onset: distinguish baby blues (days 3–7, self-limited) from PPD (≥2 wks) and puerperal psychosis (emergency).'] },
+      { h: 'Management', body: ['First-line: SSRIs (fluoxetine/sertraline/escitalopram) — effect at 2–4 wks, start low, no abrupt stop (discontinuation syndrome); early activation/switch risk in bipolar diathesis → always screen for past mania.', 'Severe/psychotic/refractory: combination therapy, ECT (fastest, safest in pregnancy with psychotic depression/catatonia).', 'Safety: every depressed patient gets a direct, non-judgemental suicidal-ideation + plan/means enquiry; means restriction saves lives.'] },
+    ],
+  },
+  {
+    id: 'c-schizo-frs', topicId: T2.mood, name: 'Schizophrenia & First-Rank Symptoms', kind: 'disease',
+    summary: 'Schneiderian first-rank symptoms (thought interference, 3rd-person voices, delusional perception) with >6 months duration for diagnosis.',
+    whyMatters: 'The exam tests the symptom LIST and the timeline: FRS are specific-but-not-sensitive, ≥1 month active symptoms + 6 months disturbance defines schizophrenia, and negative symptoms (blunt affect, avolition) drive disability and predict antipsychotic response worse than positive symptoms.',
+    mnemonic: 'The FRS quartet: THOUGHT (insertion/withdrawal/broadcast), VOICES (3rd person, running commentary), CONTROL (passive), PERCEPTION (delusional).',
+    difficulty: 2, examRelevance: 4, clinicalRelevance: 4,
+    detail: [
+      { h: 'Diagnosis & discrimination', body: ['Duration: ≥1 month active-phase symptoms (≥2, one core: delusions/hallucinations/disorganised speech) + 6 months overall disturbance; functioning decline.', 'FRS (Schneider): thought alienation (insertion/withdrawal/broadcast), hearing thoughts aloud, 3rd-person or running-commentary auditory hallucinations, delusional perception, passivity phenomena.', 'Schizoaffective: mood episodes + ≥2 weeks psychosis WITHOUT mood; brief psychotic disorder <1 month; delusional disorder ≥1 month with functioning preserved.'] },
+      { h: 'Treatment anchors', body: ['First-line atypicals (risperidone, olanzapine, aripiprazole); clozapine for treatment-resistance (≥2 adequate trials) — watch agranulocytosis, myocarditis, seizures, metabolic syndrome.', 'EPS ladder: acute dystonia (anticholinergic), akathisia (propranolol/cyproheptadine), parkinsonism, tardive dyskinesia (late; VMAT2 inhibitors).', 'Depression + negative symptoms dominate outcomes; psychosocial rehabilitation is inseparable from drugs.'] },
+    ],
+  },
+  // ─── DERMATOLOGY ───
+  {
+    id: 'c-psoriasis', topicId: T2.psoriasis, name: 'Psoriasis', kind: 'disease',
+    summary: 'Well-demarcated silvery plaques on extensors with Auspitz bleeding, nail pitting and the Koebner phenomenon.',
+    whyMatters: 'The classic papulosquamous exam: morphology → Auspitz sign, candle-grease and Grattat tests; nail and joint (psoriatic arthritis — pencil-in-cup) systemic hooks; and the therapy ladder (emollients → steroids/vit D analogues → phototherapy → methotrexate/biologics) including the paradoxical-beta-blocker and antimalarial flares.',
+    mnemonic: 'AUSPITZ: pin-point bleeding after scale lift. Koebner = lesions at trauma lines; Candle grease sign + Grattat = scraping triad.',
+    difficulty: 1, examRelevance: 4, clinicalRelevance: 4,
+    detail: [
+      { h: 'Clinical spectrum', body: ['Plaque (chronic plaque/psoriasis vulgaris) — extensors (knees, elbows), scalp, sacrum; bilateral symmetric.', 'Guttate (drop lesions after streptococcal sore throat — children/young adults), pustular (generalised = emergency with fever; palmoplantar), erythrodermic (life-threatening heat loss).', 'Nails: pitting (most common), oil-drop/oncholysis, subungual hyperkeratosis. Joints: DIP-predominant asymmetric oligoarthritis, dactylitis, pencil-in-cup on X-ray.'] },
+      { h: 'Pathogenesis & triggers', body: ['Th17/IL-23/IL-17 driven keratinocyte hyperproliferation (acanthosis, parakeratosis, Munro microabscesses, elongated rete ridges, suprapapillary thinning).', 'Triggers: streptococcal infection, trauma (Koebner), drugs (beta-blockers, lithium, antimalarials, NSAIDs, steroid WITHDRAWAL), smoking, alcohol, stress, obesity.'] },
+      { h: 'Treatment ladder', body: ['Topical: emollients base + potent corticosteroid with vitamin D3 analogue (calcipotriol) for plaque disease; tar/anthralin for scalp.', 'Phototherapy: narrow-band UVB; PUVA for palmoplantar/thick plaques.', 'Systemic: methotrexate (monitor CBC/LFT — folate cover; contraindicated pregnancy), acitretin, cyclosporine; biologics (TNF-α, IL-17, IL-23 inhibitors) for severe/arthritic disease.'] },
+    ],
+  },
+  {
+    id: 'c-atopic-derm', topicId: T2.psoriasis, name: 'Atopic Dermatitis', kind: 'disease',
+    summary: 'The itch that rashes: flexural, age-staged eczema in an atopic child — barrier repair and steroid ladders over antibiotics.',
+    whyMatters: 'The commonest paediatric dermatosis and the other half of the papulosquamous pair: pruritus-first morphology, distribution by age (face/extensor in infancy → flexural in childhood → lichenification in adults), the atopic triad (asthma, allergic rhinitis, AD), food-allergy logic and the moisturiser-first therapy message that examiners emphasise.',
+    mnemonic: 'ATOPIC: Asthma + rhinitis/Th2 skew + Oozing (infant face) + Pruritus + Ichthyosis/palmar hyperlinearity + Chronic flexural course.',
+    difficulty: 1, examRelevance: 3, clinicalRelevance: 5,
+    detail: [
+      { h: 'Morphology by age', body: ['Infancy (<2 y): acute, weeping facial and extensor eczema; spares the nappy area.', 'Childhood (2–12): flexural (antecubital/popliteal fossae), lichenified plaques, Dennie-Morgan infraorbital folds, dry ichthyotic skin.', 'Adults: hand eczema, lichen simplex chronicus; pruritus is universal and worsens at night.'] },
+      { h: 'Management ladder', body: ['1) Emollients liberally (the foundation — bath-avoid soap), trigger avoidance (wool, detergents, sweat).', '2) Topical corticosteroids (short courses, right potency for site) ± topical calcineurin inhibitors (tacrolimus/pimecrolimus) for face/folds and steroid-sparing maintenance.', '3) Flares with honey-crusted weeping → impetiginisation (S. aureus) — antiseptic washes, antibiotics if genuine infection; eczema herpeticum (punched-out monomorphic vesicles + fever) = emergency aciclovir.', 'Severe refractory: phototherapy, systemic (cyclosporine, dupilumab IL-4/13).'] },
+    ],
+  },
+  // ─── ORTHOPAEDICS ───
+  {
+    id: 'c-colles', topicId: T2.fractures, name: 'Colles Fracture', kind: 'disease',
+    summary: 'Extra-articular distal-radius fracture with DORSAL displacement/tilt after a fall on the outstretched hand — dinner-fork deformity.',
+    whyMatters: 'The most common adult forearm fracture and the standard "FOOSH" vignette: deformity naming (dinner-fork vs Smith reverse), the median-nerve/carpal-tunnel and extensor-pollicis-longus rupture complications, radial-shortening mechanics, and the osteoporosis flag it raises in elderly women.',
+    mnemonic: 'COLLES = Classic Old Lady, Low-Energy fracture, Extra-articular, Silver fork/dinner-fork deformity (dorsal tilt). Smith = Spade (volar, reverse).',
+    difficulty: 1, examRelevance: 4, clinicalRelevance: 4,
+    detail: [
+      { h: 'Recognition & imaging', body: ['Elderly woman, fall on outstretched hand (supinated wrist extended); dinner-fork (apex volar, dorsal distal fragment) + radial shortening; ulnar styloid may fracture.', 'X-ray: distal radius within 2 cm of the wrist, dorsal tilt >11° normal lost, intra-articular extension defines the Frykman/ABC complexity.'] },
+      { h: 'Management & complications', body: ['Closed reduction + below-elbow cast (volar/neutral flexion) for typical fractures; K-wire/external fixation/volar plating for unstable, intra-articular or comminuted.', 'Early: median nerve compression (paraesthesia in the median territory — acute carpal tunnel, consider urgent release), compartment syndrome (rare).', 'Late: malunion with stiffness, EPL tendon rupture (attrition 4–8 weeks), CRPS (Sudeck osteodystrophy), post-traumatic arthritis; osteoporosis workup (DEXA, calcium/vitamin D) is part of the treatment.'] },
+    ],
+  },
+  {
+    id: 'c-compartment', topicId: T2.fractures, name: 'Compartment Syndrome', kind: 'disease',
+    summary: 'Rising pressure in a closed fascial space: pain OUT OF PROPORTION + pain on passive stretch — fasciotomy before 6 hours or Volkmann follows.',
+    whyMatters: 'The diagnosis that separates good interns from disasters: analgesia-resistant pain is the earliest sign; pulselessness is LATE (by then muscle is dead). Exams love the 5 Ps, the tight-cast trap, the supracondylar-fracture-in-children context, and the Volkmann ischaemic contracture endgame.',
+    mnemonic: 'The 5 Ps are LATE except PAIN: Pain (earliest, on passive stretch), Pressure/tense compartment, Paresthesia, then Pallor, Pulselessness, Paralysis = already necrotic.',
+    difficulty: 2, examRelevance: 4, clinicalRelevance: 5,
+    detail: [
+      { h: 'Aetiology & diagnosis', body: ['Fractures (supracondylar humerus in children, tibial shaft, forearm both-bones), crush, tight casts/dressings, burns, reperfusion, anticoagulation bleeds.', 'Diagnosis is CLINICAL: increasing analgesic requirement, pain on passive stretch (hallmark), tense swollen compartment, paraesthesia in the distal nerves.', 'Intra-compartmental pressure: within 30 mmHg of diastolic (or absolute >30–45 mmHg) supports fasciotomy; normotensive children with growing anxiety + analgesia escalation = treat, do not wait.'] },
+      { h: 'Management & sequelae', body: ['Split/remove the cast immediately (first step even before imaging), elevate to heart level only, reassess within 30–60 min → emergency fasciotomy (two-incision four-compartment leg; volar/dorsal forearm).', 'After 6–8 hours of ischaemia: muscle necrosis → Volkmann ischaemic contracture (flexion deformity, claw hand in forearm), rhabdomyolysis → myoglobinuric renal failure (aggressive fluids, monitor K+).', 'NEVER: tight circumferential dressings over a swelling limb; ice does not treat compartment syndrome.'] },
+    ],
+  },
+]
+
+export const edgesExpanded: SeedEdge[] = [
+  // Surgery links
+  { from: 'c-inflamm', to: 'c-appendicitis', type: 'prerequisite_of', label: 'acute inflammation in action' },
+  { from: 'c-ulcer', to: 'c-appendicitis', type: 'commonly_tested_with', label: 'epigastric-pain phase overlap' },
+  { from: 'c-appendicitis', to: 'c-torsion', type: 'differential_of', label: 'RIF pain mimic in adolescent males' },
+  { from: 'c-hernia', to: 'c-int-obstruction', type: 'causes', label: 'strangulated hernia' },
+  { from: 'c-int-obstruction', to: 'c-shock', type: 'causes', label: 'fluid third-spacing' },
+  { from: 'c-cholecystitis', to: 'c-ulcer', type: 'commonly_tested_with', label: 'RUQ vs epigastric pain maps' },
+  { from: 'c-cholecystitis', to: 'c-shock', type: 'causes', label: 'cholangitis → septic shock' },
+  { from: 'c-torsion', to: 'c-hernia', type: 'commonly_tested_with', label: 'acute inguinoscrotal swelling' },
+  // Thyroid nodule links
+  { from: 'c-thyroidphys', to: 'c-thyroidnodule', type: 'prerequisite_of', label: 'TSH-first logic' },
+  { from: 'c-graves', to: 'c-thyroidnodule', type: 'commonly_tested_with', label: 'diffuse vs solitary swelling' },
+  { from: 'c-thyroidnodule', to: 'c-neoplasia', type: 'related_to', label: 'malignancy red flags' },
+  // Shock / sepsis web
+  { from: 'c-sepsis', to: 'c-shock', type: 'causes', label: 'distributive shock' },
+  { from: 'c-sepsis', to: 'c-aki', type: 'causes', label: 'septic AKI — commonest hospital cause' },
+  { from: 'c-shock', to: 'c-trauma-primary', type: 'related_to', label: 'Circulation step of the primary survey' },
+  { from: 'c-appendicitis', to: 'c-sepsis', type: 'causes', label: 'perforation → peritonitis' },
+  // OBGY links
+  { from: 'c-preec', to: 'c-eclampsia-mgmt', type: 'prerequisite_of', label: 'severe features → seizure protocol' },
+  { from: 'c-preec', to: 'c-abruptio', type: 'causes', label: 'risk factor' },
+  { from: 'c-previa', to: 'c-abruptio', type: 'differential_of', label: 'THE APH pair' },
+  { from: 'c-previa', to: 'c-pph', type: 'causes', label: 'lower segment cannot contract' },
+  { from: 'c-abruptio', to: 'c-shock', type: 'causes', label: 'hypovolemia + DIC' },
+  { from: 'c-oxytocin', to: 'c-pph', type: 'treated_by', label: 'first-line uterotonic' },
+  { from: 'c-partograph', to: 'c-pph', type: 'related_to', label: 'prolonged labour → atony' },
+  { from: 'c-htn', to: 'c-eclampsia-mgmt', type: 'related_to', label: 'BP control in pregnancy' },
+  // Paediatrics links
+  { from: 'c-milestones', to: 'c-vaccines', type: 'related_to', label: 'well-child visit alignment' },
+  { from: 'c-kwashmaras', to: 'c-milestones', type: 'causes', label: 'developmental delay' },
+  { from: 'c-vaccines', to: 'c-imnci', type: 'related_to', label: 'child-survival programs' },
+  { from: 'c-tof', to: 'c-ecg', type: 'diagnosed_by', label: 'RAD + RVH' },
+  { from: 'c-tof', to: 'c-cardcycle', type: 'prerequisite_of', label: 'shunt & murmur physics' },
+  // ENT / Ophtha links
+  { from: 'c-bppv-meniere', to: 'c-ent-conductive', type: 'related_to', label: 'ENT localisation logic' },
+  { from: 'c-otitis-media', to: 'c-ent-conductive', type: 'causes', label: 'conductive hearing loss' },
+  { from: 'c-poag', to: 'c-betablock', type: 'treated_by', label: 'topical timolol' },
+  { from: 'c-poag', to: 'c-diabretino', type: 'commonly_tested_with', label: 'silent causes of blindness' },
+  { from: 'c-red-eye', to: 'c-poag', type: 'differential_of', label: 'congestive vs silent glaucoma' },
+  // Psychiatry / Dermatology / Ortho links
+  { from: 'c-schizo-frs', to: 'c-mdd', type: 'commonly_tested_with', label: 'psychosis vs mood discrimination' },
+  { from: 'c-psoriasis', to: 'c-atopic-derm', type: 'differential_of', label: 'THE skin pair' },
+  { from: 'c-psoriasis', to: 'c-inflamm', type: 'related_to', label: 'Th17/TNF chronic inflammation' },
+  { from: 'c-compartment', to: 'c-colles', type: 'complication_of', label: 'forearm compartment (both-bones)' },
+]
+
+// ─── UNIVERSE EXPANSION (struggle-zone topics: the classic "most difficult" list) ───
+export const topicsUniverse: SeedTopic[] = [
+  { id: 't-phys-acidbase', subjectId: 'physiology', name: 'Acid-Base Balance', system: 'renal', importance: 5, description: 'pH defence lines, ABG interpretation — the single most feared physiology topic.' },
+  { id: 't-bioch-glyco', subjectId: 'biochemistry', name: 'Glycogen Storage Diseases', importance: 4, description: 'Von Gierke to McArdle — enzymes, organs, lactic acidosis fingerprints.' },
+  { id: 't-anat-brachial', subjectId: 'anatomy', name: 'Brachial Plexus', system: 'musculoskeletal', importance: 4, description: 'Roots-trunks-divisions-cords-branches — every exam favourite nerve map.' },
+  { id: 't-anat-cranial', subjectId: 'anatomy', name: 'Cranial Nerve Nuclei & Lesions', system: 'neurology', importance: 4, description: 'Twelve nerves, their nuclei and the pupil/eye/gaze lesion vignettes.' },
+  { id: 't-patho-coag', subjectId: 'pathology', name: 'Coagulation Cascade', system: 'hematology', importance: 5, description: 'Intrinsic vs extrinsic, PT/aPTT logic, anticoagulant targets.' },
+  { id: 't-patho-immuno', subjectId: 'pathology', name: 'Immunodeficiency & Hypersensitivity', importance: 4, description: 'Types I–IV, B/T-cell defects, the classic infection-pattern clues.' },
+  { id: 't-pharm-steroids', subjectId: 'pharmacology', name: 'Corticosteroids & Immunosuppressants', importance: 4, description: 'Potency ladder, steroid rules, calcineurin inhibitors, rejection.' },
+  { id: 't-micro-immuno', subjectId: 'microbiology', name: 'Immunology Applied', system: 'infectious', importance: 4, description: 'Antibody classes, ELISA/Western logic, vaccine platform types.' },
+  { id: 't-cm-biostat', subjectId: 'cm', name: 'Biostatistics Tests & Screening', importance: 5, description: 'Test selection grids, sensitivity/specificity, bias — the classic weak spot.' },
+  { id: 't-fmt-toxicology', subjectId: 'fmt', name: 'Toxicology & Antidotes', importance: 4, description: 'Organophosphates, snake bite, heavy metals — the antidote ladder.' },
+  { id: 't-rad-chestxray', subjectId: 'rad', name: 'Chest X-Ray & CT Patterns', system: 'respiratory', importance: 4, description: 'Silhouette sign, air-bronchogram, the 10 classic shadows.' },
+  { id: 't-anes-crit', subjectId: 'anes', name: 'Airway, Relaxants & Malignant Hyperthermia', importance: 3, description: 'Depolarising vs non-depolarising, suxamethonium traps, MH crisis.' },
+]
+
+export const conceptsUniverse: SeedConcept[] = [
+  {
+    id: 'c-acidbase', topicId: 't-phys-acidbase', name: 'Acid-Base Disorders & ABG', kind: 'physiology',
+    summary: 'pH 7.35–7.45 defended by buffers, lungs (minutes) and kidneys (days) — decode any gas in 5 steps.',
+    whyMatters: 'Universally ranked the most difficult physiology topic because it cross-links renal physiology, pulmonology, medicine ICU care and pharmacology (diuretics, salicylates). NEET-PG asks mixed-gap vignettes every year, and ABG fluency is assumed in every ICU posting.',
+    mnemonic: 'ROME: Respiratory Opposite, Metabolic Equal (pH vs pCO₂). Winters formula for metabolic acidosis compensation: expected pCO₂ = 1.5 × HCO₃⁻ + 8 ± 2.',
+    difficulty: 5, examRelevance: 5, clinicalRelevance: 5,
+    detail: [
+      { h: 'The 5-step ABG walk', body: ['1) pH: acidemia (<7.35) or alkalemia (>7.45)?', '2) Primary disorder: pCO₂ moves opposite pH → respiratory; HCO₃⁻ moves with pH → metabolic.', '3) Compensation: acute vs chronic respiratory (HCO₃⁻ +1/−2 per 10 mmHg acute; +4 chronic), metabolic → Winters.', '4) Anion gap = Na⁺ − (Cl⁻ + HCO₃⁻): normal 8–12; elevated → MUDPILES.', '5) Delta-delta: ΔAG vs ΔHCO₃⁻ exposes a second metabolic disorder.'] },
+      { h: 'Classic fingerprints', body: ['Vomiting → hypochloremic hypokalemic metabolic ALKALOSIS (urine Cl⁻ low).', 'Diarrhoea → normal-AG hyperchloremic metabolic acidosis.', 'Type 1 RTA (distal): urine pH >5.5, stones; Type 2 (proximal): bicarbonaturia, Fanconi; Type 4: hyperkalemic, hypoaldosteronism — commonest.', 'Salicylates: respiratory alkalosis first, then high-AG acidosis.', 'Sepsis/shock: lactic (high-AG) acidosis — perfusion first, pH second.'] },
+      { h: 'High-yield traps', body: ['Compensation never over-corrects — if pH is normal with abnormal gases, think mixed disorder.', 'Henderson-Hasselbalch mental check: pH 7.4 ⇒ HCO₃⁻ × pCO₂ ratio 20:1.', 'Diuretics: loops → metabolic alkalosis; acetazolamide → metabolic acidosis; spironolactone → hyperkalemic acidosis.'] },
+    ],
+  },
+  {
+    id: 'c-rta', topicId: 't-phys-acidbase', name: 'Renal Tubular Acidosis', kind: 'disease',
+    summary: 'Three flavours of non-anion-gap acidosis — the urine pH and K⁺ separate them.',
+    whyMatters: 'The classic "hard renal vignette": nephrolithiasis + alkaline urine (Type 1), Fanconi growth failure (Type 2), hyperkalemia + diabetic nephropathy (Type 4). Distinguishing them integrates GFR physiology, acid-base and drug effects.',
+    mnemonic: 'Type 1 = Stones (distal, pH >5.5). Type 2 = proximal "two low" (HCO₃⁻, growth). Type 4 = Four K⁺ (hyperkalemia).',
+    difficulty: 5, examRelevance: 4, clinicalRelevance: 4,
+    detail: [
+      { h: 'Discriminator table', body: ['Type 1 (distal): cannot secrete H⁺; urine pH >5.5, hypokalemia, calcium phosphate stones, associated Sjögren/SLE, amphotericin B.', 'Type 2 (proximal): cannot reabsorb HCO₃⁻; urine pH variable (<5.5 once plasma HCO₃⁻ falls), hypokalemia, Fanconi (glucosuria, aminoaciduria, phosphaturia → rickets), carbonic anhydrase inhibitors.', 'Type 4: hypoaldosteronism (diabetic nephropathy, ACEi/spironolactone, heparin); hyperkalemia, mild acidosis, urine pH <5.5.'] },
+    ],
+  },
+  {
+    id: 'c-glycogen', topicId: 't-bioch-glyco', name: 'Glycogen Storage Diseases', kind: 'disease',
+    summary: 'Twelve enzyme-deficiency syndromes — liver vs muscle vs heart maps the enzyme.',
+    whyMatters: 'A pure memorisation trap that exams soften with clinical clues: fasting hypoglycemia + hepatomegaly (Von Gierke), exercise intolerance + no lactate rise (McArdle), infantile cardiomegaly (Pompe). Biochemistry, paediatrics and neurology all test it.',
+    mnemonic: 'Very Apt Candidate Must Prepare Fors Exercise (types I–VI order) · McArdle = Muscle, myoglobinuria, lactate does NOT rise · Von Gierke = Glucose-6-phosphatase, Gout + hyperlipidemia.',
+    difficulty: 4, examRelevance: 4, clinicalRelevance: 3,
+    detail: [
+      { h: 'The exam five', body: ['Type I Von Gierke — G6Pase — severe fasting hypoglycemia, hepatomegaly, lactic acidosis, hyperuricemia (gout), hyperlipidemia; treat with cornstarch.', 'Type II Pompe — acid α-glucosidase (lysosomal) — cardiomegaly + hypotonia in infancy; enzyme replacement exists.', 'Type III Cori — debrancher — milder hepatomegaly, normal lactate.', 'Type V McArdle — muscle glycogen phosphorylase — exercise cramps, second-wind phenomenon, no lactate rise on ischaemic forearm test, myoglobinuria.', 'Type IV Andersen — branching enzyme — cirrhosis in infancy.'] },
+    ],
+  },
+  {
+    id: 'c-brachial', topicId: 't-anat-brachial', name: 'Brachial Plexus Lesions', kind: 'anatomy',
+    summary: 'C5–T1 mapped to five palsies — Erb, Klumpke, winging, claw, and the thoracic outlet trio.',
+    whyMatters: 'The highest-yield anatomy topic in NEET-PG because every lesion is a ready-made vignette: shoulder dystocia (Erb C5-6), abduction-traction injury (Klumpke C8-T1 + Horner), thoracic outlet syndrome (T1 + sympathetic), and the waiter-tip posture is a one-line giveaway.',
+    mnemonic: 'Randy Travis Drinks Cold Beer (Roots Trunks Divisions Cords Branches) · Erb = waiter-tip posture · Klumpke = claw hand + Horner · Long thoracic nerve → winged scapula (C5,6,7 raise your arm to heaven).',
+    difficulty: 4, examRelevance: 4, clinicalRelevance: 4,
+    detail: [
+      { h: 'Lesion atlas', body: ['Erb (upper, C5-C6): shoulder dystocia, waiter-tip posture — abduction/lateral rotation + flexion lost.', 'Klumpke (lower, C8-T1): upward traction (monkey grasp), intrinsic hand muscles; ± Horner (T1 preganglionic → refer for surgical exploration).', 'Thoracic outlet: lower trunk compressed by cervical rib — ulnar paraesthesia + Hand weakness + Horner variant.', 'Long thoracic (serratus anterior): mastectomy/post-op → winged scapula.', 'Axillary (surgical neck of humerus): deltoid + regimental badge anaesthesia.', 'Radial (midshaft humerus): wrist drop, triceps-sparing if below spiral groove? — triceps may be spared with distal lesions.'] },
+    ],
+  },
+  {
+    id: 'c-cranial', topicId: 't-anat-cranial', name: 'Cranial Nerve Lesions', kind: 'anatomy',
+    summary: 'Twelve nerves, five exam vignettes: pupil, gaze, face, swallow, voice.',
+    whyMatters: 'Neuroanatomy applied: III vs VI palsy localisation, Bell palsy (LMN — whole half of face) vs stroke (UMN — forehead spared), bulbar vs pseudobulbar palsy, and the Argyll Robertson vs Horner pupil table are repeat NEET-PG questions.',
+    mnemonic: 'Oh Oh Oh To Touch And Feel Very Good Velvet, AH · "Down and out" eye = III palsy (sparing pupil = diabetic/ischaemic; blown pupil = compressive PCom aneurysm).',
+    difficulty: 4, examRelevance: 4, clinicalRelevance: 5,
+    detail: [
+      { h: 'High-yield lesion logic', body: ['CN III: down-and-out eye, ptosis, pupil-involving = aneurysm (surgical), pupil-sparing = diabetic mononeuropathy.', 'CN VI: convergent squint — false localising sign (raised ICP).', 'CN VII: LMN (Bell) = forehead involved + hyperacusis + taste loss anterior two-thirds; UMN = forehead spared.', 'Bulbar (LMN IX-X-XII: fasciculating tongue) vs pseudobulbar (UMN: spastic tongue, emotional lability).', 'CN II fields: bitemporal hemianopia = chiasma (pituitary).', 'Argyll Robertson: accomodates, does not react (neurosyphilis); Adie: tonic, reacts to accommodation slowly.'] },
+    ],
+  },
+  {
+    id: 'c-coag', topicId: 't-patho-coag', name: 'Coagulation Cascade & Anticoagulants', kind: 'pathology',
+    summary: 'Intrinsic (aPTT) vs extrinsic (PT) — and exactly where each anticoagulant cuts the web.',
+    whyMatters: 'The highest-difficulty pathology topic: primary vs secondary haemostasis, PT/aPTT interpretation, mixing studies, and drug mechanisms (heparin-AT3, warfarin-vitamin K factors, DOACs) form one integrated exam question family — bleeding vignettes never stop appearing.',
+    mnemonic: 'Play Outside Then Inside (Platelets Outside → PT extrinsic/Tissue factor → aPTT Intrinsic) · Warfarin = II, VII, IX, X + C & S ("We Need Care For Protein C & S") · Heparin potentiates Antithrombin III (IIa + Xa).',
+    difficulty: 5, examRelevance: 5, clinicalRelevance: 5,
+    detail: [
+      { h: 'Cascade logic', body: ['Primary haemostasis: platelet plug (vWF adhesion → aggregation). Secondary: fibrin via coagulation factors.', 'Extrinsic (TF + VII) → PT/INR; Intrinsic (XII, XI, IX, VIII) → aPTT. Common path: X → II → fibrin.', 'PT only ↑ = extrinsic (VII def, warfarin, liver disease early); aPTT only ↑ = intrinsic (VIII/IX def — haemophilia, heparin, vWF, lupus anticoagulant); both ↑ = common path/liver failure/DIC.'] },
+      { h: 'Drug targets & traps', body: ['UFH: IIa=Xa ratio 1:1, aPTT-monitored, HIT (platelet fall >50% → stop, switch to argatroban/fondaparinux), protamine reverses.', 'LMWH: Xa-biased, anti-Xa assay, safer re HIT, still protamine partial.', 'Warfarin: II VII IX X + protein C/S; takes days (protein C half-life short → transient hypercoagulability → bridge with heparin); skin necrosis; INR targets 2–3 (mech valve mitral 2.5–3.5); reversal = vitamin K ± PCC.', 'DOACs: rivaroxaban/apixaban (Xa), dabigatran (IIa) — fixed dosing, idarucizumab reverses dabigatran.', 'DIC: both PT/aPTT ↑ + D-dimer ↑ + platelets ↓ + fibrinogen ↓ — microthrombi + bleeding simultaneously.'] },
+    ],
+  },
+  {
+    id: 'c-hypersensitivity', topicId: 't-patho-immuno', name: 'Hypersensitivity & Immunodeficiency', kind: 'pathology',
+    summary: 'Types I–IV reactions and the infection pattern that betrays each immunodeficiency.',
+    whyMatters: 'Bridges pathology, microbiology and medicine: anaphylaxis (I), Goodpasture (II), serum sickness (III), contact dermatitis (IV) — then SCID/CVID/DiGeorge/CGD each present with a signature infection (encapsulated, fungal, catalase-positive). High memorisation load, near-guaranteed questions.',
+    mnemonic: 'ACID: Allergy (I), Cytotoxic (II), Immune-complex (III), Delayed (IV) · CGD = Catalase-Glucose-Diatomic (S. aureus, Pseudomonas, Candida, Aspergillus — NBT test negative).',
+    difficulty: 4, examRelevance: 4, clinicalRelevance: 4,
+    detail: [
+      { h: 'Type I–IV map', body: ['I IgE mast-cell (anaphylaxis, asthma, P-K reaction) — allergen-specific IgE, treatment: avoid + adrenaline.', 'II IgG/IgM cytotoxic (Goodpasture α3(IV) collagen, autoimmune haemolysis, ITP).', 'III immune complex (SLE, serum sickness, Arthus, PSGN) — complement, neutrophils, low C3/C4.', 'IV T-cell delayed (TB PPD 48–72 h, contact dermatitis, graft rejection) — no antibody.'] },
+      { h: 'Deficiency fingerprints', body: ['Recurrent encapsulated (Pneumococcus) → asplenia/CVID/complement C3.', 'Recurrent Neisseria → terminal complement C5-9.', 'Recurrent catalase-positive (S. aureus, Aspergillus) → CGD.', 'T-cell defects (DiGeorge 22q11, SCID) → viral/fungal/protozoal (PCP).', 'X-linked bruton (BTK) — boys, after 6 months, no tonsils, no immunoglobulins.', 'IgA deficiency — commonest; transfusion anaphylaxis risk.'] },
+    ],
+  },
+  {
+    id: 'c-steroids', topicId: 't-pharm-steroids', name: 'Corticosteroid Pharmacology', kind: 'pharmacology',
+    summary: 'Mineralo- vs glucocorticoid potency ladder, stress dosing rules, and steroid withdrawal traps.',
+    whyMatters: 'Steroids touch every specialty — nephrotic syndrome, asthma, ITP, transplant, Addison — and exams test the relative potencies, the 5-R rules of tapering, and adrenal-crisis physiology. Wrong potency order = lost marks.',
+    mnemonic: 'Potency (gluco): Cortisol → Prednisolone (×4) → Methylpred (×5) → Dexamethasone (×25, no mineralo). "Sick day rule": double oral steroid during intercurrent illness.',
+    difficulty: 4, examRelevance: 4, clinicalRelevance: 5,
+    detail: [
+      { h: 'Core rules', body: ['Relative potencies: hydrocortisone 1 / prednisolone 4 / methylprednisolone 5 / dexamethasone 25–30; mineralocorticoid order: fludrocortisone > hydrocortisone > prednisolone ≫ dexamethasone (~0).', 'Adrenal suppression: >3 weeks or >prednisolone 7.5 mg/day → never stop abruptly; taper by disease activity, not formula.', 'Dexamethasone suppresses own ACTH → a single-dose DST tests Cushing; dexamethasone also crosses blood-brain barrier best (cerebral oedema).', 'Steroid triad of chronic toxicity: osteoporosis, hyperglycemia, infections + avascular necrosis, cataract, myopathy (proximal).', 'Addison crisis: hydrocortisone 100 mg IV + fluids; Addison maintenance: hydrocortisone + fludrocortisone.'] },
+    ],
+  },
+  {
+    id: 'c-biostat', topicId: 't-cm-biostat', name: 'Biostatistical Tests & Screening', kind: 'concept',
+    summary: 'Which test for which data, and why the 2×2 grid decides sensitivity vs specificity.',
+    whyMatters: 'The most-hated CM topic and a guaranteed 3–5 marks: t-test/ANOVA/chi-square selection, type I vs II error, power, sensitivity/specificity/PVV trade-offs with prevalence, and screening biases (lead-time, length). Fluency converts fear into free marks.',
+    mnemonic: 'SOFA for tests: (continuous, parametric, 2 groups) = t-test → 3+ groups ANOVA; categorical = chi-square; non-parametric = Mann-Whitney/Kruskal. SPin = Specific-Positive rules IN; SNout = Sensitive-Negative rules OUT.',
+    difficulty: 4, examRelevance: 5, clinicalRelevance: 3,
+    detail: [
+      { h: 'Test-selection grid', body: ['Two means (normal) → unpaired t-test; paired data → paired t-test; 3+ groups → ANOVA.', 'Two proportions → chi-square (small n → Fisher exact).', 'Non-normal/ordinal → Mann-Whitney U, Wilcoxon, Kruskal-Wallis.', 'Correlation Pearson (normal) vs Spearman; regression predicts.', 'Type I (α, false positive) vs Type II (β, false negative); Power = 1 − β (target 80–90%).'] },
+      { h: 'Screening mathematics', body: ['Sensitivity: detects disease when disease present (rule-out). Specificity: flags health when healthy (rule-in).', 'PPV rises with prevalence — low-prevalence screening → many false positives.', 'Lead-time bias: survival looks longer because detected earlier; length bias: indolent disease over-sampled; healthy-volunteer bias.'] },
+    ],
+  },
+  {
+    id: 'c-antidotes', topicId: 't-fmt-toxicology', name: 'Poisoning & Antidotes', kind: 'concept',
+    summary: 'Organophosphates, snakebite, paracetamol, lead — every antidote with its window.',
+    whyMatters: 'FMT highest-yield chapter AND an emergency skill: Indian tox wards run on organophosphate and snakebite protocols. Exams pair each poison with its antidote, decontamination window, and the empty-ventricle ECG of TCA overdose.',
+    mnemonic: 'PAM for organophosphates (before ageing), Atropine for the muscarinic storm, NAC for paracetamol, Naloxone for opioids, Flumazenil for benzos, Fomepizole for methanol/ethylene glycol, Deferoxamine for iron, DMSO(BAL/DMSA) for heavy metals.',
+    difficulty: 4, examRelevance: 4, clinicalRelevance: 5,
+    detail: [
+      { h: 'The exam antidote table', body: ['Organophosphate: atropine (2–5 mg IV doubling until drying) + pralidoxime (within hours, before AChE ageing); midriasic atropine never reversed by physostigmine in practice.', 'Snakebite: polyvalent ASV after 20WBCT confirms envenomation; neostigmine for neurotoxic ptosis; watch for ASV reactions; no tourniquet/no incision.', 'Paracetamol: N-acetylcysteine (Rumack-Matthew nomogram, 150 mg/kg load); biggest risk >150 mg/kg.', 'Opioid: naloxone (short t½ → re-sedation). Benzo: flumazenil (seizure risk in mixed/TCA).', 'Methanol: fomepizole ± ethanol + folate (formic acid → blindness).', 'Iron: deferoxamine (serum iron >500). Lead: BAL/DMSA/succimer; arsenic/mercury: BAL, DMSA.'] },
+      { h: 'Pattern recognition', body: ['TCAs: wide QRS → sodium bicarbonate.', 'Carbon monoxide: cherry-red skin, pulse oximetry normal but SpO₂ misleading → hyperbaric O₂.', 'Organochlorine: seizures; hydrocarbon: no gastric lavage (aspiration).', 'Cholinergic crisis Mnemonic SLUDGE/ killer Bs.'] },
+    ],
+  },
+  {
+    id: 'c-cxr', topicId: 't-rad-chestxray', name: 'Chest X-Ray Pattern Reading', kind: 'investigation',
+    summary: 'Silhouette sign, air bronchogram, and the ten shadows every viva expects.',
+    whyMatters: 'Radiology is new to many students but the CXR pattern list is pure yield: lobar vs whole-lung collapse, pleural vs parenchymal opacity, the "white-out with mediastinal shift" decision tree, and classic signs tested verbatim.',
+    mnemonic: 'ABCDE approach (Airway-Bones-Cardiac-Diaphragm-Everything) · Silhouette sign: loss of border = same plane (RML obscures right heart border; lingula also touches left heart border; lower lobe hides diaphragm but spares the heart border).',
+    difficulty: 3, examRelevance: 4, clinicalRelevance: 5,
+    detail: [
+      { h: 'Pattern table', body: ['Lobar consolidation: air bronchogram, no volume loss; may obscure heart border per lobar position.', 'Collapse: displacement — trachea/mediastinum TOWARD opacity; total lung collapse vs massive effusion (pushes AWAY) is the exam binary.', 'Pneumothorax: visceral pleural line + absent peripheral markings; tension = tracheal push + hemodynamic collapse → needle decompression.', 'Cavitation: TB (apical), squamous ca, abscess (air-fluid), Klebsiella, staph (children).', 'Miliary: 1–3 mm nodules — TB, metastases, silicosis.', 'Bat-wing perihilar oedema + Kerley B lines = pulmonary oedema (cardiomegaly).'] },
+    ],
+  },
+  {
+    id: 'c-airway', topicId: 't-anes-crit', name: 'Airway, Neuromuscular Blockade & MH', kind: 'clinical_skill',
+    summary: 'Rapid-sequence logic, suxamethonium traps, reversal agents, malignant hyperthermia.',
+    whyMatters: 'The anaesthesia content NEET-PG actually asks: depolarising vs non-depolarising relaxants, suxamethonium contraindications (hyperkalemia, burns, MH, myopathies), sugammadex reversal, and the dantrolene answer to malignant hyperthermia in the OT.',
+    mnemonic: 'Suxamethonium "4 no-s": No hyperK, No burns/ crush >48h, No MH history, No neuromuscular disease · Dantrolene for MH (ryanodine receptor).',
+    difficulty: 4, examRelevance: 3, clinicalRelevance: 5,
+    detail: [
+      { h: 'NMJ pharmacology', body: ['Depolarising: suxamethonium — phase I block (no fade, augmented by cholinesterase inhibitors), fasciculations, hyperkalemia, raised IOP, MH trigger.', 'Non-depolarising (curare, vec, roc, atracurium): competitive — fade on train-of-four, REVERSED by neostigmine (± glycopyrrolate) or sugammadex (roc/vec selective).', 'Atracurium: Hoffman elimination (pH/temperature) — safe in renal failure; laudanosine.', 'Malignant hyperthermia: autosomal dominant ryanodine/RYR1; rising ETCO₂ + tachycardia + rigidity + temp (late); stop volatile + sux, dantrolene 2.5 mg/kg + cooling.'] },
+      { h: 'RSI and airway', body: ['RSI: preoxygenation, cricoid pressure (Sellick), induction + sux; "empty stomach" assumptions; failed airway plan (LMA → FONA).', 'Mallampati class I–IV predicts difficulty; thyromental distance <6 cm hard airway.', 'Laryngospasm: 100% O₂ + CPAP ± sux 25 mg.'] },
+    ],
+  },
+  {
+    id: 'c-arrhythmia', topicId: T.acs, name: 'Arrhythmia Interpretation', kind: 'disease',
+    summary: 'Narrow vs wide, regular vs irregular — the four-grid route to any ECG rhythm strip.',
+    whyMatters: 'The most-difficult medicine skill on exams: AF vs flutter, SVT vs sinus tach, VT vs SVT-with-aberrancy, complete heart block degrees, and drug choices (adenosine, amiodarone, adenosine-first in stable SVT) are asked year after year.',
+    mnemonic: 'Irregular narrow = AF (or MAT) · Regular narrow = SVT (adenosine) · Wide + pulseless = VT → shock · Chaotic lines = VF → shock · "Atrial kick lost" → anticoagulate (CHADS-VASc).',
+    difficulty: 4, examRelevance: 5, clinicalRelevance: 5,
+    detail: [
+      { h: 'The 2×2 rhythm grid', body: ['Narrow-regular: sinus tach, SVT (AVNRT — P buried), atrial flutter (sawtooth 300/2 or 4).', 'Narrow-irregular: AF (no P, fibrillatory baseline), MAT (≥3 P morphologies — COPD).', 'Wide-regular: VT until proven otherwise (fusion/capture beats), SVT with BBB, hyperkalemia sine wave.', 'Wide-irregular: AF with aberrancy, polymorphic VT (torsades — QT-prolonging drugs, Mg²⁺ first).'] },
+      { h: 'Blocks & emergencies', body: ['AV block: Mobitz I (Wenckebach — PR stretch, usually benign) vs II (dropped without warning → pacemaker territory).', 'Complete: AV dissociation, cannon A waves, rate 30–45 → pacemaker.', 'Stable SVT: vagal → adenosine 6→12 mg; unstable: synchronised cardioversion.', 'AF: rate control (β-blocker/CCB, digoxin in HF), anticoagulation by CHA₂DS₂-VASc; >48 h uncontrolled → 3-week anticoagulation or TOE-guided cardioversion.'] },
+    ],
+  },
+  {
+    id: 'c-genetics', topicId: T.pedsNephro, name: 'Inheritance Patterns & Pedigrees', kind: 'concept',
+    summary: 'AD, AR, XLR, mitochondrial — read the pedigree, name the syndrome.',
+    whyMatters: 'A genetics question family that spans biochemistry, paediatrics, medicine and OBGY counselling: male-to-male transmission = AD; skipped generations = AR; no father-to-son = X-linked; mothers-only transmission = mitochondrial (MELAS, LHON).',
+    mnemonic: 'AD = "A Dominant family album" (Huntington, Marfan, NF, PKD-adult) · AR = "silent carriers" (CF, sickle, thalassemia, PKU) · XLR = "Knight moves" (DMD, haemophilia A/B, G6PD) · Mitochondrial = "motherline" + heteroplasmy.',
+    difficulty: 4, examRelevance: 4, clinicalRelevance: 3,
+    detail: [
+      { h: 'Pattern rules', body: ['AD: vertical, male-to-male possible, variable expressivity (NF-1), delayed age of onset (Huntington CAG — anticipation).', 'AR: horizontal, consanguinity flag, 25% recurrence; carriers unaffected.', 'X-linked recessive: sons of carrier 50%; no male-to-male; skewed severity (Lyonisation in females).', 'X-linked dominant: Rett, incontinentia pigmenti (male lethal).', 'Mitochondrial: maternal, variable heteroplasmy — MELAS, MERRF, LHON, aminoglycoside ototoxicity (12S rRNA).', 'Trinucleotide repeats: Huntington (CAG), Fragile X (CGG, anticipation through females), myotonic dystrophy (CTG).'] },
+    ],
+  },
+  {
+    id: 'c-fluids', topicId: T.pedsNephro, name: 'Paediatric Fluids & Dehydration', kind: 'clinical_skill',
+    summary: 'WHO plans A/B/C, deficit maths, and why hypo-osmolar ORS changed the game.',
+    whyMatters: 'The most-tested paediatrics practical topic: assessment of dehydration (% loss), WHO treatment plans, maintenance 4-2-1 vs Holiday-Segar, and ORS osmolarity trivia — asked as both calculations and vignettes.',
+    mnemonic: 'Some Dehydration (6–9%): Plan B 75 ml/kg over 4 h · Severe (≥10%): Plan C — 30 ml/kg in 1 h (infants) then 70 ml/kg in 2.5 h · Maintenance: 100/50/25 (Holiday-Segar per kg split).',
+    difficulty: 3, examRelevance: 4, clinicalRelevance: 5,
+    detail: [
+      { h: 'Assessment & plans', body: ['Signs: lethargy, sunken eyes, skin pinch (slow ≥2 s), absent tears, decreased urine — map to none/some/severe.', 'Plan C shock bolus: 20 ml/kg NS (or Ringer lactate), reassess; then deficit replacement per WHO table.', 'ORS low-osmolar (245 mOsm/L, Na 75) — reduces stool output & vomiting vs old 311.', 'Zinc 20 mg × 14 days reduces duration; continue feeding; no anti-motility in children.', 'Maintenance: 4 ml/kg/h first 10 kg + 2 next 10 + 1 each after (4-2-1 rule).'] },
+    ],
+  },
+]
+
+export const edgesUniverse: SeedEdge[] = [
+  // Acid-base web
+  { from: 'c-gfr', to: 'c-acidbase', type: 'prerequisite_of', label: 'filtrate → buffer logic' },
+  { from: 'c-acidbase', to: 'c-rta', type: 'prerequisite_of', label: 'non-gap acidosis family' },
+  { from: 'c-acidbase', to: 'c-aki', type: 'related_to', label: 'uraemic acidosis' },
+  { from: 'c-diuretics', to: 'c-acidbase', type: 'causes', label: 'alkalosis/acidosis by class' },
+  { from: 'c-acidbase', to: 'c-hyperk', type: 'causes', label: 'K⁺-pH see-saw' },
+  { from: 'c-dka', to: 'c-acidbase', type: 'causes', label: 'high-AG acidosis' },
+  { from: 'c-rta', to: 'c-nephrotic', type: 'commonly_tested_with', label: 'renal differential maps' },
+  // Coagulation web
+  { from: 'c-coag', to: 'c-acei', type: 'commonly_tested_with', label: 'drug safety monitoring pairs' },
+  { from: 'c-coag', to: 'c-leukemia', type: 'related_to', label: 'AML-DIC' },
+  { from: 'c-abruptio', to: 'c-coag', type: 'causes', label: 'obstetric DIC' },
+  { from: 'c-sepsis', to: 'c-coag', type: 'causes', label: 'sepsis-induced coagulopathy' },
+  // Immuno web
+  { from: 'c-hypersensitivity', to: 'c-inflamm', type: 'prerequisite_of', label: 'acute → immune-mediated' },
+  { from: 'c-hypersensitivity', to: 'c-psoriasis', type: 'related_to', label: 'Th17 chronic type IV-like' },
+  { from: 'c-hypersensitivity', to: 'c-nephritic', type: 'causes', label: 'type III PSGN' },
+  { from: 'c-vaccines', to: 'c-hypersensitivity', type: 'related_to', label: 'platform immunology' },
+  // Steroids
+  { from: 'c-steroids', to: 'c-nephrotic', type: 'treated_by', label: 'first-line steroid-sensitive' },
+  { from: 'c-steroids', to: 'c-asthma-copd', type: 'treated_by', label: 'ICS + exacerbations' },
+  { from: 'c-cushing', to: 'c-steroids', type: 'causes', label: 'iatrogenic Cushing' },
+  // Biostat + CM
+  { from: 'c-biostat', to: 'c-epidesign', type: 'prerequisite_of', label: 'design → analysis' },
+  { from: 'c-biostat', to: 'c-vaccines', type: 'related_to', label: 'program evaluation' },
+  // Toxicology
+  { from: 'c-antidotes', to: 'c-shock', type: 'related_to', label: 'toxic shock states' },
+  { from: 'c-antidotes', to: 'c-trauma-primary', type: 'related_to', label: 'ABCDE in poisoning' },
+  // Radiology + anaesthesia
+  { from: 'c-cxr', to: 'c-asthma-copd', type: 'diagnosed_by', label: 'hyperinflation' },
+  { from: 'c-cxr', to: 'c-tb', type: 'diagnosed_by', label: 'apical cavitary lesion' },
+  { from: 'c-cxr', to: 'c-heartfail', type: 'diagnosed_by', label: 'pulmonary oedema' },
+  { from: 'c-airway', to: 'c-shock', type: 'prerequisite_of', label: 'airway-before-circulation' },
+  { from: 'c-hyperk', to: 'c-airway', type: 'related_to', label: 'suxamethonium contraindication' },
+  // Arrhythmia + ECG
+  { from: 'c-ecg', to: 'c-arrhythmia', type: 'prerequisite_of', label: 'waves → rhythm reading' },
+  { from: 'c-arrhythmia', to: 'c-ami', type: 'commonly_tested_with', label: 'post-MI arrhythmia' },
+  { from: 'c-hyperk', to: 'c-arrhythmia', type: 'causes', label: 'wide-complex brady' },
+  { from: 'c-betablock', to: 'c-arrhythmia', type: 'treated_by', label: 'rate control' },
+  // Genetics + peds
+  { from: 'c-genetics', to: 'c-tof', type: 'related_to', label: '22q11 conotruncal link' },
+  { from: 'c-genetics', to: 'c-milestones', type: 'related_to', label: 'syndromic delay' },
+  { from: 'c-fluids', to: 'c-aki', type: 'causes', label: 'prerenal dehydration' },
+  { from: 'c-fluids', to: 'c-imnci', type: 'related_to', label: 'Plan A/B/C framework' },
+  // Anatomy struggle links
+  { from: 'c-brachial', to: 'c-colles', type: 'related_to', label: 'median nerve territory' },
+  { from: 'c-brachial', to: 'c-compartment', type: 'related_to', label: 'forearm nerve deficits' },
+  { from: 'c-cranial', to: 'c-bppv-meniere', type: 'related_to', label: 'vestibulocochlear territory' },
+  { from: 'c-cranial', to: 'c-red-eye', type: 'related_to', label: 'III/VI pupil & gaze' },
+  // Biochem link
+  { from: 'c-glycogen', to: 'c-insulin', type: 'related_to', label: 'glycogen ↔ glucose homeostasis' },
+]
+
+export const allConcepts = [...concepts, ...conceptsExtra, ...conceptsCoverage, ...conceptsClinical, ...conceptsUniverse]
+
+export const allEdges = [...edges, ...edgesExpanded, ...edgesUniverse].filter(
+  (e, i, arr) => !e.to.includes('none') && arr.findIndex(x => x.from === e.from && x.to === e.to) === i,
+)

@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 // ─── MEDOS SEED RUNNER ───
 import { PrismaClient } from '@prisma/client'
-import { subjects, topics, allConcepts, allEdges } from './seed-data'
+import { subjects, topics, topicsUniverse, allConcepts, allEdges } from './seed-data'
 import { questions, flashcards, confusions } from './seed-questions'
 import { cases } from './seed-cases'
 
@@ -25,7 +25,7 @@ async function main() {
 
   console.log('📚 Seeding subjects, topics, concepts…')
   for (const s of subjects) await db.subject.create({ data: { ...s } })
-  for (const t of topics) await db.topic.create({ data: { ...t } })
+  for (const t of [...topics, ...topicsUniverse]) await db.topic.create({ data: { ...t } })
   for (const c of allConcepts) {
     await db.concept.create({
       data: {
@@ -102,6 +102,12 @@ async function main() {
     ['c-femoral', 84, 32, 3, 5], ['c-hernia', 70, 16, 6, 6], ['c-preec', 45, 7, 16, 8],
     ['c-diabretino', 52, 8, 15, 5], ['c-inflamm', 78, 26, 6, 7], ['c-neoplasia', 66, 13, 9, 6],
     ['c-heartfail', 54, 9, 12, 9], ['c-hyperk', 48, 7, 14, 8], ['c-hba1c', 74, 20, 5, 5],
+    // ── Struggle-zone concepts: high difficulty, low mastery (the demo "hard list") ──
+    ['c-acidbase', 22, 3, 27, 5], ['c-rta', 12, 2, 999, 0], ['c-coag', 28, 4, 22, 6],
+    ['c-hypersensitivity', 24, 3, 25, 4], ['c-glycogen', 18, 2, 30, 3], ['c-brachial', 30, 5, 18, 4],
+    ['c-cranial', 25, 4, 20, 4], ['c-biostat', 20, 3, 26, 5], ['c-antidotes', 34, 5, 17, 4],
+    ['c-arrhythmia', 26, 3, 23, 6], ['c-steroids', 33, 5, 16, 4], ['c-cxr', 41, 6, 14, 3],
+    ['c-airway', 15, 2, 999, 0], ['c-genetics', 29, 4, 21, 3], ['c-fluids', 37, 6, 13, 3],
   ]
   for (const [conceptId, score, stability, daysAgo, attempts] of states) {
     const estRecall = Math.exp(-daysAgo / (stability * 1.6))

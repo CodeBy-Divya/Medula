@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
   const concepts = await db.concept.findMany({
     where: Object.keys(conceptFilter).length ? conceptFilter : undefined,
     include: { topic: { include: { subject: true } } },
-    take: 46,
+    take: 90,
   })
   const idSet = new Set(concepts.map(c => c.id))
   void conceptFilter

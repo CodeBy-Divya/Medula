@@ -3,12 +3,11 @@
 import { useEffect, useState } from 'react'
 import { useAppStore } from '@/lib/store'
 import { useTheme } from 'next-themes'
-import { api } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import {
   Home, Map as MapIcon, BookOpen, CircleHelp, Stethoscope, RefreshCcw,
-  Sparkles, LineChart, Route, UserRound, Search, Moon, SunMedium, Menu, X, Timer,
+  Sparkles, LineChart, Route, UserRound, Search, Moon, SunMedium, Menu, X,
 } from 'lucide-react'
 import type { View } from '@/lib/types'
 
@@ -67,7 +66,6 @@ function ThemeToggle() {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { view, setView, setSearchOpen, profile } = useAppStore()
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
-  const [clock, setClock] = useState<string | null>(null)
 
   // Cmd/Ctrl+K opens search
   useEffect(() => {
@@ -80,16 +78,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [setSearchOpen])
-
-  // NEET-PG clock chip (fetch dashboard lightly on mount)
-  useEffect(() => {
-    let ok = true
-    api.dashboard().then((d) => {
-      if (!ok) return
-      setClock(`${d.examClock.daysLeft}d to NEET-PG`)
-    }).catch(() => {})
-    return () => { ok = false }
-  }, [])
 
   const go = (v: View) => {
     setView(v)
@@ -174,16 +162,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             >
               <Search className="size-4" />
             </button>
-            {clock && (
-              <button
-                onClick={() => go('roadmap')}
-                className="hidden h-10 items-center gap-2 rounded-xl border border-primary/25 bg-primary/8 px-3 text-xs font-medium text-primary transition-colors hover:bg-primary/15 sm:flex"
-                title="Time to your estimated NEET-PG window"
-              >
-                <Timer className="size-3.5" />
-                {clock}
-              </button>
-            )}
             <ThemeToggle />
           </div>
         </header>

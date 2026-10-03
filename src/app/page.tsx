@@ -24,6 +24,11 @@ import { Loader2 } from 'lucide-react'
 export default function Home() {
   const { view, setView, profile, setProfile } = useAppStore()
 
+  // Reset scroll whenever the view changes (SPA views share one scroll context)
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
+  }, [view])
+
   // Hydrate profile once — decides landing vs app
   useEffect(() => {
     let ok = true

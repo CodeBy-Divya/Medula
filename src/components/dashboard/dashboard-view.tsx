@@ -12,8 +12,10 @@ import {
   GraduationCap,
   History,
   Map as MapIcon,
+  Mountain,
   Play,
   RefreshCw,
+  ShieldCheck,
   Target,
   Timer,
   TrendingDown,
@@ -21,6 +23,7 @@ import {
   Zap,
   ClipboardList,
   ScanSearch,
+  Compass,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -28,8 +31,11 @@ import { api } from '@/lib/api'
 import { useAppStore } from '@/lib/store'
 import { PREP_STAGE_LABELS } from '@/lib/types'
 import type { DashboardPayload, PlanSegment } from '@/lib/types'
+import type { MapInsights, StruggleZone } from '@/app/api/map-insights/route'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { MedicalMapCanvas } from '@/components/map/medical-map-view'
+import { BranchGalaxy } from '@/components/dashboard/branch-galaxy'
 import { cn } from '@/lib/utils'
 
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1]
@@ -92,8 +98,9 @@ function ProgressRing({
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
         <defs>
           <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#22d3ee" />
-            <stop offset="100%" stopColor="#0284c7" />
+            <stop offset="0%" stopColor="#f59e0b" />
+            <stop offset="45%" stopColor="#34d399" />
+            <stop offset="100%" stopColor="#22d3ee" />
           </linearGradient>
         </defs>
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke} className="stroke-surface-2" />
@@ -149,7 +156,7 @@ function StatTile({
 }) {
   const t = TONES[tone]
   return (
-    <div className="glass rounded-xl p-4">
+    <div className="glass rounded-xl p-4 transition-shadow hover:shadow-md">
       <span className={cn('inline-grid size-8 place-items-center rounded-lg', t.bg)}>
         <Icon className={cn('size-4', t.text)} />
       </span>
@@ -194,6 +201,88 @@ function masteryTone(m: number): string {
   return 'bg-sev-ok'
 }
 
+// Nature scene backdrop — soft decorative layer, hides itself if missing
+function SceneImage({ src, alt }: { src: string; alt: string }) {
+  const [ok, setOk] = useState(true)
+  if (!ok) return null
+  return (
+    <img
+      src={src}
+      alt={alt}
+      onError={() => setOk(false)}
+      className="absolute inset-0 size-full object-cover opacity-[0.16] mix-blend-luminosity"
+      loading="lazy"
+    />
+  )
+}
+
+// ─── Struggle zone card (the "hardest topics" highlight) ─────────────────────
+
+function DifficultyFlames({ n }: { n: number }) {
+  return (
+    <span className="inline-flex items-center gap-0.5" aria-label={`Difficulty ${n} of 5`}>
+      {Array.from({ length: 5 }).map((_, i) => (
+        <span key={i} className={cn('text-[10px] leading-none', i < n ? 'opacity-100' : 'opacity-25 grayscale')}>
+          🔥
+        </span>
+      ))}
+    </span>
+  )
+}
+
+function StruggleZoneCard({ zone, index }: { zone: StruggleZone; index: number }) {
+  const openConcept = useAppStore(s => s.openConcept)
+  const setQuizPreset = useAppStore(s => s.setQuizPreset)
+  const setView = useAppStore(s => s.setView)
+
+  const practice = () => {
+    setQuizPreset({ conceptId: zone.conceptId, count: 5 })
+    setView('questions')
+  }
+
+  return (
+    <motion.li
+      initial={false}
+      className="warm-card flex min-w-[240px] max-w-[260px] flex-col rounded-2xl p-3.5 sm:min-w-0"
+      style={{ animationDelay: `${index * 0.08}s` }}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <span className="inline-flex items-center gap-1 rounded-full bg-sev-crit/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sev-crit">
+          <Mountain className="size-2.5" /> Hard
+        </span>
+        <DifficultyFlames n={zone.difficulty} />
+      </div>
+      <h4 className="mt-2 line-clamp-2 text-sm font-semibold leading-snug">{zone.name}</h4>
+      <p className="mt-0.5 text-[11px] font-medium" style={{ color: zone.subjectColor }}>
+        {zone.subjectName}
+      </p>
+      <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-ink-soft">{zone.reason}</p>
+      <div className="mt-2">
+        <div className="flex items-center justify-between text-[10px] text-ink-soft">
+          <span>mastery</span>
+          <span className="font-semibold tabular-nums text-sev-crit">{zone.mastery}%</span>
+        </div>
+        <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-surface-2">
+          <Bar pct={zone.mastery} className="bg-sev-crit" delay={0.3 + index * 0.08} />
+        </div>
+      </div>
+      <div className="mt-3 flex items-center gap-1.5">
+        <Button size="sm" className="h-8 min-h-8 flex-1 gap-1 rounded-lg text-xs" onClick={practice}>
+          <Play className="size-3" /> Practice
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-8 min-h-8 flex-1 gap-1 rounded-lg text-xs"
+          onClick={() => openConcept(zone.conceptId)}
+        >
+          <MapIcon className="size-3" /> Explore
+        </Button>
+      </div>
+    </motion.li>
+  )
+}
+
 // ─── Loading / Error states ──────────────────────────────────────────────────
 
 function DashboardSkeleton() {
@@ -203,6 +292,7 @@ function DashboardSkeleton() {
         <Skeleton className="shimmer h-9 w-3/4 rounded-lg md:w-1/2" />
         <Skeleton className="shimmer h-4 w-2/3 rounded-md md:w-1/3" />
       </div>
+      <Skeleton className="shimmer h-[560px] rounded-3xl" />
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         {Array.from({ length: 5 }).map((_, i) => (
           <Skeleton key={i} className="shimmer h-24 rounded-xl" />
@@ -213,7 +303,6 @@ function DashboardSkeleton() {
         <Skeleton className="shimmer h-60 rounded-2xl md:col-span-2" />
       </div>
       <Skeleton className="shimmer h-72 rounded-2xl" />
-      <Skeleton className="shimmer h-56 rounded-2xl" />
       <div className="grid gap-4 md:grid-cols-2">
         <Skeleton className="shimmer h-44 rounded-2xl" />
         <Skeleton className="shimmer h-44 rounded-2xl" />
@@ -248,17 +337,20 @@ export function DashboardView() {
   const openConcept = useAppStore((s) => s.openConcept)
   const setQuizPreset = useAppStore((s) => s.setQuizPreset)
   const setAuditOpen = useAppStore((s) => s.setAuditOpen)
+  const reduceMotion = useReducedMotion()
 
   const [data, setData] = useState<DashboardPayload | null>(null)
+  const [insights, setInsights] = useState<MapInsights | null>(null)
   const [status, setStatus] = useState<LoadState>('loading')
   const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     let cancelled = false
-    api.dashboard().then(
-      (payload) => {
+    Promise.all([api.dashboard(), api.mapInsights().catch(() => null)]).then(
+      ([d, ins]) => {
         if (cancelled) return
-        setData(payload)
+        setData(d)
+        setInsights(ins)
         setStatus('ready')
       },
       () => {
@@ -292,7 +384,6 @@ export function DashboardView() {
     nextAction,
     todayPlan,
     weeklyDelta,
-    examClock,
     heatToday,
   } = data
 
@@ -304,6 +395,7 @@ export function DashboardView() {
   const splitPct = (n: number) => (splitTotal > 0 ? (n / splitTotal) * 100 : 0)
   const accuracyUp = weeklyDelta.thisWeek >= weeklyDelta.lastWeek
   const { strong, unstable, weak, new: newCount } = knowledgeSplit
+  const struggleZones = insights?.struggleZones ?? []
 
   const startNextAction = (count: number) => {
     if (!nextAction) return
@@ -318,33 +410,105 @@ export function DashboardView() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-6">
-      {/* 1 · Greeting header */}
-      <Reveal index={0} className="space-y-3">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+      {/* 1 · Warm greeting header */}
+      <Reveal index={0} className="space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
-            {greeting}, Dr. {name}.
+            {greeting}, Dr. {name}.{' '}
+            <motion.span
+              aria-hidden
+              className="inline-block"
+              animate={{ rotate: [0, 12, -8, 0] }}
+              transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              🌿
+            </motion.span>
           </h1>
           <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-line bg-surface px-3 py-1.5 text-xs font-medium text-ink-soft">
             <GraduationCap className="size-3.5 text-primary" />
             {stageLabel} · {stageLabelText}
           </span>
         </div>
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-soft">
-          <span className="inline-flex items-center gap-1.5 font-semibold tracking-wide">
-            <Timer className="size-3.5 text-info" />
-            NEET-PG CLOCK
-          </span>
-          <span>
-            Estimated exam window: June {examClock.examYear} · {examClock.daysLeft} days left · stage: {examClock.stage}
-          </span>
-          <span className="text-[11px] text-muted-foreground">
-            (estimate — verify via official NBEMS announcements)
-          </span>
-        </div>
+        <p className="flex flex-wrap items-center gap-2 text-sm text-ink-soft">
+          <span aria-hidden className="text-base">🌤️</span>
+          Your medical universe is mapped and calm — explore it below, one branch at a time.
+        </p>
       </Reveal>
 
-      {/* 2 · Daily intelligence strip */}
-      <Reveal index={1} className="space-y-3">
+      {/* 2 · THE MEDICAL UNIVERSE — map-first hero */}
+      <Reveal index={1}>
+        <section className="warm-scene relative overflow-hidden rounded-3xl p-4 md:p-5" aria-label="Your medical universe">
+          {/* warm scenic layers */}
+          <div aria-hidden className="pointer-events-none absolute inset-0">
+            <SceneImage src="/scenes/dawn-meadow.jpg" alt="" />
+            <div className="scene-dawn absolute inset-0" />
+            <div className="scene-float absolute -left-10 -top-12 size-56 rounded-full bg-amber-300/20 blur-3xl" />
+            <div className="scene-float absolute -right-16 top-24 size-64 rounded-full bg-emerald-300/20 blur-3xl" style={{ animationDelay: '2.5s' }} />
+            <div className="scene-float absolute bottom-0 left-1/3 size-52 rounded-full bg-rose-300/15 blur-3xl" style={{ animationDelay: '5s' }} />
+            {/* drifting nature friends */}
+            {['🍃', '☁️', '🌿', '🌤️', '🦋'].map((e, i) => (
+              <motion.span
+                key={i}
+                className="absolute select-none text-base opacity-50 md:text-lg"
+                animate={reduceMotion ? undefined : { y: [0, -14, 0, 10, 0], rotate: [0, 8, 0, -6, 0] }}
+                transition={reduceMotion ? undefined : { duration: 9 + i * 2, repeat: Infinity, ease: 'easeInOut', delay: i * 1.1 }}
+                style={{ left: `${8 + i * 21}%`, top: `${(i % 2 === 0 ? 4 : 62)}%` }}
+              >
+                {e}
+              </motion.span>
+            ))}
+          </div>
+
+          <div className="relative mb-3 flex flex-wrap items-end justify-between gap-2 px-1">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-soft">Your medical universe</p>
+              <h2 className="flex items-center gap-2 text-xl font-semibold tracking-tight md:text-2xl">
+                <Compass className="size-5 text-primary" /> The Medical Map
+                <motion.span aria-hidden animate={{ y: [0, -3, 0] }} transition={{ duration: 2.6, repeat: Infinity }}>🗺️</motion.span>
+              </h2>
+              <p className="mt-0.5 text-xs text-ink-soft md:text-sm">
+                Every concept is a place. Drag, zoom and wander — click any node to open its explorer.
+              </p>
+            </div>
+            <span className="hidden items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1 text-[11px] font-medium text-ink-soft sm:inline-flex">
+              🍃 take a slow breath — you&apos;re exactly where you need to be
+            </span>
+          </div>
+
+          <div className="relative">
+            <MedicalMapCanvas variant="hero" />
+          </div>
+
+          {/* Struggle zones — the topics students find hardest */}
+          {struggleZones.length > 0 && (
+            <div className="relative mt-4">
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2 px-1">
+                <h3 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.14em] text-ink-soft">
+                  <AlertTriangle className="size-4 text-sev-crit" />
+                  Struggle zones
+                  <span className="rounded-full bg-sev-crit/10 px-2 py-0.5 text-[10px] font-bold text-sev-crit">
+                    hardest topics nationwide
+                  </span>
+                </h3>
+                <p className="text-[11px] text-ink-soft">High difficulty × low mastery × high NEET-PG yield</p>
+              </div>
+              <ul className="grid max-h-96 grid-cols-1 gap-3 overflow-y-auto pb-1 pr-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 med-scroll">
+                {struggleZones.map((z, i) => (
+                  <StruggleZoneCard key={z.conceptId} zone={z} index={i} />
+                ))}
+              </ul>
+            </div>
+          )}
+        </section>
+      </Reveal>
+
+      {/* 3 · Branch galaxy */}
+      <Reveal index={2}>
+        <BranchGalaxy />
+      </Reveal>
+
+      {/* 4 · Daily intelligence strip */}
+      <Reveal index={3} className="space-y-3">
         <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-ink-soft">Your medical brain today</h2>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
           <StatTile icon={Flame} value={stats.topicsAtRisk} label="topics at risk of forgetting" tone="warn" />
@@ -372,8 +536,8 @@ export function DashboardView() {
         </div>
       </Reveal>
 
-      {/* 3 · Brain score + knowledge split */}
-      <Reveal index={2}>
+      {/* 5 · Brain score + knowledge split */}
+      <Reveal index={4}>
         <div className="grid gap-4 md:grid-cols-3">
           <section className="glass flex flex-col items-center rounded-2xl p-6">
             <h3 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-soft">
@@ -440,47 +604,53 @@ export function DashboardView() {
         </div>
       </Reveal>
 
-      {/* 4 · Today's mission */}
-      <Reveal index={3}>
-        <section className="glass rounded-2xl p-4 md:p-6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-soft">Today&apos;s Mission</p>
-              <h2 className="text-2xl font-semibold tracking-tight">TODAY</h2>
+      {/* 6 · Today's mission */}
+      <Reveal index={5}>
+        <section className="glass relative overflow-hidden rounded-2xl p-4 md:p-6">
+          <div aria-hidden className="pointer-events-none absolute inset-0">
+            <SceneImage src="/scenes/canopy-light.jpg" alt="" />
+            <div className="scene-canopy absolute inset-0" />
+          </div>
+          <div className="relative">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-soft">Today&apos;s Mission</p>
+                <h2 className="text-2xl font-semibold tracking-tight">TODAY 🌱</h2>
+              </div>
+              <span className="rounded-full bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary">
+                ≈ {missionTotal} min
+              </span>
             </div>
-            <span className="rounded-full bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary">
-              ≈ {missionTotal} min
-            </span>
-          </div>
 
-          <div className="mt-4">
-            <div className="h-2 w-full overflow-hidden rounded-full bg-surface-2">
-              <Bar pct={missionPct} className="bg-primary" delay={0.3} />
+            <div className="mt-4">
+              <div className="h-2 w-full overflow-hidden rounded-full bg-surface-2">
+                <Bar pct={missionPct} className="bg-primary" delay={0.3} />
+              </div>
+              <p className="mt-1.5 text-xs text-ink-soft">
+                {heatToday.minutes}/{stats.recommendedMinutes} min done
+              </p>
             </div>
-            <p className="mt-1.5 text-xs text-ink-soft">
-              {heatToday.minutes}/{stats.recommendedMinutes} min done
-            </p>
-          </div>
 
-          <div className="mt-3 space-y-1">
-            {todayPlan.map((seg, i) => (
-              <SegmentRow key={`${seg.activity}-${i}`} index={i} seg={seg} />
-            ))}
-          </div>
+            <div className="mt-3 space-y-1">
+              {todayPlan.map((seg, i) => (
+                <SegmentRow key={`${seg.activity}-${i}`} index={i} seg={seg} />
+              ))}
+            </div>
 
-          <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-            <Button size="lg" className="min-h-11 flex-1" onClick={startMission}>
-              <Play className="size-4" /> START TODAY&apos;S MISSION
-            </Button>
-            <Button size="lg" variant="outline" className="min-h-11 sm:flex-none" onClick={() => setView('revise')}>
-              OPEN IN REVISE
-            </Button>
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+              <Button size="lg" className="min-h-11 flex-1" onClick={startMission}>
+                <Play className="size-4" /> START TODAY&apos;S MISSION
+              </Button>
+              <Button size="lg" variant="outline" className="min-h-11 sm:flex-none" onClick={() => setView('revise')}>
+                OPEN IN REVISE
+              </Button>
+            </div>
           </div>
         </section>
       </Reveal>
 
-      {/* 5 · Next best action */}
-      <Reveal index={4}>
+      {/* 7 · Next best action */}
+      <Reveal index={6}>
         {nextAction ? (
           <section className="glass rounded-2xl border-l-4 border-l-primary p-4 md:p-6">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
@@ -540,8 +710,8 @@ export function DashboardView() {
         )}
       </Reveal>
 
-      {/* 6 · Revision debt + weaknesses */}
-      <Reveal index={5}>
+      {/* 8 · Revision debt + weaknesses */}
+      <Reveal index={7}>
         <div className="grid gap-4 md:grid-cols-2">
           <section className="glass flex h-full flex-col rounded-2xl p-6">
             <div className="flex items-center gap-2">
@@ -608,6 +778,29 @@ export function DashboardView() {
             </button>
           </section>
         </div>
+      </Reveal>
+
+      {/* 9 · Source trust strip — real, cross-verified data */}
+      <Reveal index={8}>
+        <section className="relative overflow-hidden rounded-2xl p-px" aria-label="Content sources">
+          <div aria-hidden className="pointer-events-none absolute inset-0">
+            <SceneImage src="/scenes/zen-lake.jpg" alt="" />
+            <div className="absolute inset-0 bg-background/88" />
+          </div>
+          <div className="glass relative rounded-2xl px-4 py-3.5 md:px-6">
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] text-ink-soft">
+              <span className="inline-flex items-center gap-1.5 font-semibold text-foreground">
+                <ShieldCheck className="size-4 text-sev-ok" />
+                Cross-verified content
+              </span>
+              <span className="inline-flex items-center gap-1.5">🏥 Curriculum aligned to <strong>NMC CBME 2024</strong></span>
+              <span className="inline-flex items-center gap-1.5">📋 Exam blueprint per <strong>NBEMS NEET-PG</strong></span>
+              <span className="inline-flex items-center gap-1.5">🌐 Terminology per <strong>WHO ICD-11</strong></span>
+              <span className="inline-flex items-center gap-1.5">🔬 Guidelines per <strong>ICMR / WHO</strong></span>
+              <span className="text-muted-foreground">All educational content is original — no commercial question banks are copied.</span>
+            </div>
+          </div>
+        </section>
       </Reveal>
     </div>
   )

@@ -60,5 +60,6 @@ export const api = {
   logbookDelete: (id: string) => fetch(`/api/logbook?id=${encodeURIComponent(id)}`, { method: 'DELETE' }).then(r => r.json()) as Promise<{ ok: boolean }>,
   roadmap: () => get<RoadmapPayload>('/api/roadmap'),
   progress: () => get<ProgressPayload>('/api/progress'),
+  mapInsights: () => get<import('@/app/api/map-insights/route').MapInsights>('/api/map-insights'),
   search: (q: string) => get<SearchResults>(`/api/search?q=${encodeURIComponent(q)}`),
 }
