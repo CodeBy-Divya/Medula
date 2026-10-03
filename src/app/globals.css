@@ -53,22 +53,22 @@
   --color-info: var(--info);
 }
 
-/* ── MEDOS Light (clinical daylight) ── */
+/* ── MEDOS Light (sky-warm daylight) ── */
 :root {
   --radius: 0.75rem;
-  --background: oklch(0.975 0.005 230);
+  --background: oklch(0.972 0.014 225); /* light sky-blue wash */
   --foreground: oklch(0.18 0.03 250);
-  --card: oklch(1 0 0);
+  --card: oklch(0.995 0.004 220);
   --card-foreground: oklch(0.18 0.03 250);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.18 0.03 250);
   --primary: oklch(0.55 0.13 232); /* deep medical blue */
   --primary-foreground: oklch(0.985 0.005 230);
-  --secondary: oklch(0.94 0.012 230);
+  --secondary: oklch(0.945 0.018 215);
   --secondary-foreground: oklch(0.25 0.04 250);
-  --muted: oklch(0.945 0.008 230);
+  --muted: oklch(0.95 0.012 225);
   --muted-foreground: oklch(0.48 0.02 250);
-  --accent: oklch(0.93 0.03 200);
+  --accent: oklch(0.93 0.03 205);
   --accent-foreground: oklch(0.25 0.05 240);
   --destructive: oklch(0.577 0.215 27.3);
   --border: oklch(0.90 0.01 230);
@@ -90,9 +90,13 @@
   /* semantic */
   --ink: oklch(0.18 0.03 250);
   --ink-soft: oklch(0.47 0.02 250);
-  --surface: oklch(1 0 0 / 72%);
-  --surface-2: oklch(0.96 0.008 230);
-  --line: oklch(0.90 0.01 230);
+  --surface: oklch(1 0 0 / 78%);
+  --surface-2: oklch(0.955 0.014 220);
+  --line: oklch(0.895 0.018 220);
+  /* claymorphism tokens (soft 3D clay) */
+  --clay-hi: oklch(1 0.01 220 / 92%);
+  --clay-lo: oklch(0.72 0.045 228 / 28%);
+  --clay-glow: oklch(0.85 0.06 210 / 45%);
   --sev-ok: oklch(0.63 0.15 152);
   --sev-warn: oklch(0.75 0.14 75);
   --sev-crit: oklch(0.58 0.21 25);
@@ -101,7 +105,7 @@
 
 /* ── MEDOS Dark (midnight medical) ── */
 .dark {
-  --background: oklch(0.16 0.022 255);
+  --background: oklch(0.16 0.026 248); /* midnight with a sky tint */
   --foreground: oklch(0.93 0.008 230);
   --card: oklch(0.20 0.026 255);
   --card-foreground: oklch(0.93 0.008 230);
@@ -138,6 +142,10 @@
   --surface: oklch(1 0 0 / 5.5%);
   --surface-2: oklch(1 0 0 / 3%);
   --line: oklch(1 0 0 / 9%);
+  /* claymorphism tokens (soft 3D clay, dark) */
+  --clay-hi: oklch(1 0 0 / 14%);
+  --clay-lo: oklch(0 0 0 / 38%);
+  --clay-glow: oklch(0.78 0.11 210 / 22%);
   --sev-ok: oklch(0.72 0.15 155);
   --sev-warn: oklch(0.79 0.14 78);
   --sev-crit: oklch(0.65 0.2 25);
@@ -163,6 +171,101 @@
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: oklch(0.5 0.02 240 / 30%); border-radius: 8px; }
 ::-webkit-scrollbar-thumb:hover { background: oklch(0.55 0.05 220 / 50%); }
+
+/* ── CLAYMORPHISM (soft 3D clay surfaces) ── */
+/* Cards & panels: puffy, pressed-in highlight top-left, soft sky shadow bottom-right */
+.clay {
+  background:
+    linear-gradient(145deg,
+      color-mix(in oklab, var(--clay-hi) 70%, transparent),
+      color-mix(in oklab, var(--surface-2) 55%, transparent) 55%,
+      color-mix(in oklab, var(--clay-glow) 24%, transparent));
+  border: 1px solid color-mix(in oklab, var(--clay-hi) 55%, var(--line));
+  box-shadow:
+    10px 12px 26px -12px var(--clay-lo),
+    -6px -6px 16px -8px var(--clay-hi),
+    inset 1.5px 2px 5px -1px var(--clay-hi),
+    inset -2px -3px 8px -2px var(--clay-lo);
+  backdrop-filter: blur(14px) saturate(1.3);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  transition: box-shadow 0.25s ease, transform 0.25s ease;
+}
+.clay-hover:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    14px 18px 34px -14px var(--clay-lo),
+    -8px -8px 20px -8px var(--clay-hi),
+    inset 1.5px 2px 5px -1px var(--clay-hi),
+    inset -2px -3px 8px -2px var(--clay-lo);
+}
+/* Pressed-in clay (chips, toggles, active filters) */
+.clay-in {
+  background: linear-gradient(145deg,
+    color-mix(in oklab, var(--clay-lo) 26%, transparent),
+    color-mix(in oklab, var(--clay-hi) 30%, transparent));
+  box-shadow:
+    inset 3px 4px 8px -2px var(--clay-lo),
+    inset -3px -3px 7px -2px var(--clay-hi);
+  border: 1px solid color-mix(in oklab, var(--line) 80%, transparent);
+}
+
+/* Clay buttons — puffy, squishy press */
+.clay-btn {
+  border-radius: calc(var(--radius) + 2px);
+  box-shadow:
+    0 10px 20px -8px var(--clay-lo),
+    0 -4px 10px -6px var(--clay-hi) inset,
+    0 5px 9px -5px var(--clay-lo) inset;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease;
+}
+.clay-btn:hover { filter: brightness(1.04); transform: translateY(-1px); }
+.clay-btn:active,
+.clay-btn[data-state="open"] {
+  transform: translateY(1px) scale(0.985);
+  box-shadow:
+    0 3px 8px -4px var(--clay-lo),
+    0 4px 8px -4px var(--clay-hi) inset,
+    0 -2px 6px -3px var(--clay-lo) inset;
+}
+/* Outline/ghost clay */
+.clay-btn-soft {
+  border-radius: calc(var(--radius) + 2px);
+  background:
+    linear-gradient(145deg,
+      color-mix(in oklab, var(--clay-hi) 55%, transparent),
+      color-mix(in oklab, var(--clay-glow) 16%, transparent));
+  border: 1px solid color-mix(in oklab, var(--clay-hi) 45%, var(--line));
+  box-shadow:
+    0 6px 14px -8px var(--clay-lo),
+    inset 0 2px 4px -2px var(--clay-hi),
+    inset 0 -3px 6px -3px var(--clay-lo);
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+}
+.clay-btn-soft:hover { transform: translateY(-1px); }
+.clay-btn-soft:active {
+  transform: translateY(1px) scale(0.985);
+  box-shadow: inset 2px 3px 7px -2px var(--clay-lo), inset -2px -2px 6px -2px var(--clay-hi);
+}
+
+/* Ambient page backdrop — sky-blue → warm dawn wash (light), deep sky aurora (dark) */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 60% 44% at 12% -4%, color-mix(in oklab, #7dd3fc 20%, transparent), transparent 62%),
+    radial-gradient(ellipse 52% 40% at 92% 4%, color-mix(in oklab, #fcd34d 14%, transparent), transparent 60%),
+    radial-gradient(ellipse 70% 46% at 50% 108%, color-mix(in oklab, #6ee7b7 13%, transparent), transparent 66%);
+  opacity: 0.85;
+}
+.dark body::before {
+  background:
+    radial-gradient(ellipse 60% 44% at 12% -4%, color-mix(in oklab, #0ea5e9 16%, transparent), transparent 62%),
+    radial-gradient(ellipse 52% 40% at 92% 4%, color-mix(in oklab, #f59e0b 7%, transparent), transparent 60%),
+    radial-gradient(ellipse 70% 46% at 50% 108%, color-mix(in oklab, #10b981 9%, transparent), transparent 66%);
+}
 
 /* ── Glass surfaces ── */
 .glass {
@@ -239,13 +342,14 @@
 
 /* ── WARM NATURE SCENES (calm-first design language) ── */
 
-/* Warm scene wrapper — soft sunrise glass card */
+/* Warm scene wrapper — sunrise + sky-blue glass card */
 .warm-scene {
   background:
     linear-gradient(160deg,
-      color-mix(in oklab, #fbbf24 9%, transparent) 0%,
-      color-mix(in oklab, #34d399 7%, transparent) 45%,
-      color-mix(in oklab, #38bdf8 6%, transparent) 100%),
+      color-mix(in oklab, #7dd3fc 10%, transparent) 0%,
+      color-mix(in oklab, #fbbf24 9%, transparent) 38%,
+      color-mix(in oklab, #34d399 7%, transparent) 70%,
+      color-mix(in oklab, #38bdf8 7%, transparent) 100%),
     var(--surface);
   backdrop-filter: blur(18px) saturate(1.35);
   -webkit-backdrop-filter: blur(18px) saturate(1.35);
@@ -376,4 +480,40 @@
 @media (prefers-reduced-motion: reduce) {
   .scene-float, .animate-leaf-drift, .animate-sphere-float, .sphere-pulse,
   .galaxy-aurora, .galaxy-core, .warm-card { animation: none !important; }
+}
+
+/* ═══ 3D VISUAL LEARNING (layered CSS-3D diagrams) ═══ */
+.stage3d {
+  perspective: 1100px;
+  perspective-origin: 50% 42%;
+}
+.scene3d-plane {
+  transform-style: preserve-3d;
+}
+.layer3d {
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+}
+.layer3d-card {
+  background: linear-gradient(150deg,
+    color-mix(in oklab, var(--clay-hi) 62%, transparent),
+    color-mix(in oklab, var(--surface) 82%, transparent) 60%,
+    color-mix(in oklab, var(--clay-glow) 20%, transparent));
+  border: 1px solid color-mix(in oklab, var(--clay-hi) 50%, var(--line));
+  box-shadow:
+    0 18px 32px -16px var(--clay-lo),
+    inset 0 1.5px 4px -1px var(--clay-hi),
+    inset 0 -3px 8px -3px var(--clay-lo);
+}
+@keyframes layer-float {
+  0%, 100% { transform: translateZ(var(--lz, 0px)) translateY(0); }
+  50% { transform: translateZ(var(--lz, 0px)) translateY(-6px); }
+}
+.layer3d-float { animation: layer-float 6s ease-in-out infinite; }
+@keyframes orbit-spin {
+  from { transform: rotateY(0deg); }
+  to { transform: rotateY(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .layer3d-float { animation: none !important; }
 }

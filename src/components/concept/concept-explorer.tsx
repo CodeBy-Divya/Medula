@@ -16,6 +16,7 @@ import { api } from '@/lib/api'
 import { KIND_META } from '@/lib/types'
 import type { ConceptDetail } from '@/lib/types'
 import { useAppStore } from '@/lib/store'
+import { Concept3D } from '@/components/concept/concept-3d'
 import { cn } from '@/lib/utils'
 
 const KIND_ICONS: Record<string, LucideIcon> = {
@@ -272,6 +273,7 @@ export function ConceptExplorer() {
   const [error, setError] = useState<string | null>(null)
   const [visited, setVisited] = useState<{ id: string; name: string }[]>([])
   const [flipped, setFlipped] = useState<Record<string, boolean>>({})
+  const [show3d, setShow3d] = useState(false)
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const navRef = useRef<{ mode: 'push'; from: { id: string; name: string } } | { mode: 'pop' } | null>(null)
@@ -287,6 +289,7 @@ export function ConceptExplorer() {
       else if (!nav) setVisited([])
       setDetail(d)
       setFlipped({})
+      setShow3d(false)
     } catch (e) {
       navRef.current = null
       setError(e instanceof Error ? e.message : 'Failed to load concept')
@@ -461,6 +464,37 @@ export function ConceptExplorer() {
                       <p className="mt-2 text-sm italic leading-relaxed text-muted-foreground">
                         Anchor concept of {detail.topic.name} — {detail.summary}
                       </p>
+                    )}
+                  </section>
+
+                  {/* 2b · 3D VISUAL — every topic as a layered 3D diagram */}
+                  <section className="overflow-hidden rounded-2xl border border-line bg-surface-2/60">
+                    <button
+                      type="button"
+                      onClick={() => setShow3d(v => !v)}
+                      aria-expanded={show3d}
+                      className="flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-accent/40 md:p-5"
+                    >
+                      <span aria-hidden className="clay-in grid size-11 shrink-0 place-items-center rounded-2xl text-xl">🧊</span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[11px] font-bold uppercase tracking-[0.2em] text-primary">3D visual</span>
+                        <span className="mt-0.5 block text-sm font-semibold">
+                          {show3d ? 'Hide the 3D diagram' : 'See this topic as a 3D diagram'}
+                        </span>
+                        <span className="mt-0.5 block text-xs text-ink-soft">
+                          Floating layers, simple one-line explanations — rotate and tap any layer.
+                        </span>
+                      </span>
+                      <ChevronDown className={cn('size-5 shrink-0 text-ink-soft transition-transform', show3d && 'rotate-180')} />
+                    </button>
+                    {show3d && detail && (
+                      <motion.div
+                        initial={false}
+                        animate={{ opacity: 1 }}
+                        className="border-t border-line p-4 md:p-5"
+                      >
+                        <Concept3D key={detail.id} detail={detail} />
+                      </motion.div>
                     )}
                   </section>
 

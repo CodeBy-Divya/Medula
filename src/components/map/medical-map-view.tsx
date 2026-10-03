@@ -6,19 +6,118 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react'
-import { motion, useReducedMotion } from 'framer-motion'
+import { animate, motion, useReducedMotion } from 'framer-motion'
 import {
-  Bone, Brain, Bug, Compass, Droplet, Droplets, Filter, Focus, HeartPulse, Maximize2, Mountain, RotateCcw, Sparkles,
-  TriangleAlert, Utensils, Waypoints, Wind, X, Zap, type LucideIcon,
+  Bone, Brain, Bug, Compass, Droplet, Droplets, Filter, Focus, HeartPulse, Map as MapIcon, Maximize2, Mountain, Play,
+  RotateCcw, Sparkles, TriangleAlert, Utensils, Waypoints, Wind, X, Zap, type LucideIcon,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { api } from '@/lib/api'
 import { KIND_META, SYSTEMS } from '@/lib/types'
 import type { GraphPayload, SubjectSummary } from '@/lib/types'
+import type { StruggleZone, MapInsights } from '@/app/api/map-insights/route'
 import { forceLayout } from '@/lib/graph-layout'
 import { useAppStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
+
+const EASE3D: [number, number, number, number] = [0.22, 1, 0.36, 1]
+
+// ─── Map-page shared pieces ──────────────────────────────────────────────────
+
+function MasteryBar({ pct, className, delay = 0 }: { pct: number; className?: string; delay?: number }) {
+  const reduce = useReducedMotion()
+  return (
+    <motion.div
+      className={cn('h-full shrink-0 rounded-full', className)}
+      initial={reduce ? false : { width: 0 }}
+      animate={{ width: `${Math.max(0, Math.min(100, pct))}%` }}
+      transition={{ duration: 1, delay: reduce ? 0 : delay, ease: EASE3D }}
+    />
+  )
+}
+
+function DifficultyFlames({ n }: { n: number }) {
+  return (
+    <span className="inline-flex items-center gap-0.5" aria-label={`Difficulty ${n} of 5`}>
+      {Array.from({ length: 5 }).map((_, i) => (
+        <span key={i} className={cn('text-[10px] leading-none', i < n ? 'opacity-100' : 'opacity-25 grayscale')}>
+          🔥
+        </span>
+      ))}
+    </span>
+  )
+}
+
+function StruggleZoneCard({ zone, index }: { zone: StruggleZone; index: number }) {
+  const openConcept = useAppStore(s => s.openConcept)
+  const setQuizPreset = useAppStore(s => s.setQuizPreset)
+  const setView = useAppStore(s => s.setView)
+
+  const practice = () => {
+    setQuizPreset({ conceptId: zone.conceptId, count: 5 })
+    setView('questions')
+  }
+
+  return (
+    <motion.li
+      initial={false}
+      whileHover={{ y: -3 }}
+      transition={{ duration: 0.2, ease: EASE3D }}
+      className="warm-card flex min-w-0 flex-col rounded-2xl p-3.5 transition-shadow hover:shadow-lg hover:shadow-rose-500/5"
+      style={{ animationDelay: `${index * 0.08}s` }}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <span className="inline-flex items-center gap-1 rounded-full bg-sev-crit/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sev-crit">
+          <Mountain className="size-2.5" /> Hard
+        </span>
+        <DifficultyFlames n={zone.difficulty} />
+      </div>
+      <h4 className="mt-2 line-clamp-2 text-sm font-semibold leading-snug">{zone.name}</h4>
+      <p className="mt-0.5 text-[11px] font-medium" style={{ color: zone.subjectColor }}>
+        {zone.subjectName}
+      </p>
+      <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-ink-soft">{zone.reason}</p>
+      <div className="mt-2">
+        <div className="flex items-center justify-between text-[10px] text-ink-soft">
+          <span>mastery</span>
+          <span className="font-semibold tabular-nums text-sev-crit">{zone.mastery}%</span>
+        </div>
+        <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-surface-2">
+          <MasteryBar pct={zone.mastery} className="bg-sev-crit" delay={0.3 + index * 0.08} />
+        </div>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-1.5">
+        <Button size="sm" className="h-8 min-h-8 gap-1 rounded-lg px-2 text-[11px]" onClick={practice}>
+          <Play className="size-3" /> Practice
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-8 min-h-8 gap-1 rounded-lg px-2 text-[11px]"
+          onClick={() => openConcept(zone.conceptId)}
+        >
+          <MapIcon className="size-3" /> Explore
+        </Button>
+      </div>
+    </motion.li>
+  )
+}
+
+// Nature scene backdrop — soft decorative layer, hides itself if missing
+function MapSceneImage({ src, alt }: { src: string; alt: string }) {
+  const [ok, setOk] = useState(true)
+  if (!ok) return null
+  return (
+    <img
+      src={src}
+      alt={alt}
+      onError={() => setOk(false)}
+      className="absolute inset-0 size-full object-cover opacity-[0.16] mix-blend-luminosity"
+      loading="lazy"
+    />
+  )
+}
 
 type MapNode = GraphPayload['nodes'][number]
 type StatusFilter = 'all' | 'attention' | 'unlearned' | 'struggle'
@@ -180,11 +279,15 @@ function SceneBackdrop() {
 export function MedicalMapCanvas({
   variant = 'full',
   className,
+  showHeader,
 }: {
   variant?: 'full' | 'hero'
   className?: string
+  showHeader?: boolean
 }) {
   const hero = variant === 'hero'
+  // Default: full variant shows its compact header, hero does not.
+  const withHeader = showHeader ?? !hero
   const mapScope = useAppStore(s => s.mapScope)
   const setMapScope = useAppStore(s => s.setMapScope)
   const conceptFocus = useAppStore(s => s.conceptFocus)
@@ -460,8 +563,8 @@ export function MedicalMapCanvas({
 
   return (
     <div className={cn('space-y-3', className)}>
-      {/* ── Header (full variant only) ── */}
-      {!hero && (
+      {/* ── Header (full variant only, can be suppressed) ── */}
+      {!hero && withHeader && (
         <header className="flex items-start gap-3">
           <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-line bg-surface-2 text-primary md:size-11">
             <Waypoints className="size-5" />
@@ -942,5 +1045,90 @@ export function MedicalMapCanvas({
 }
 
 export function MedicalMapView() {
-  return <MedicalMapCanvas variant="full" />
+  const reduce = useReducedMotion()
+  const [insights, setInsights] = useState<MapInsights | null>(null)
+
+  useEffect(() => {
+    let ok = true
+    api.mapInsights().then(d => { if (ok) setInsights(d) }).catch(() => {})
+    return () => { ok = false }
+  }, [])
+
+  const struggleZones = insights?.struggleZones ?? []
+  const branches = insights?.branches ?? []
+  const totalConcepts = branches.reduce((a, b) => a + b.conceptCount, 0)
+
+  return (
+    <div className="space-y-5">
+      {/* ── Warm universe hero — the crown of the Medical Map page ── */}
+      <section className="warm-scene relative overflow-hidden rounded-3xl p-4 md:p-6" aria-label="The Medical Map">
+        <div aria-hidden className="pointer-events-none absolute inset-0">
+          <MapSceneImage src="/scenes/dawn-meadow.jpg" alt="" />
+          <div className="scene-dawn absolute inset-0" />
+          <div className="scene-float absolute -left-10 -top-12 size-56 rounded-full bg-sky-300/20 blur-3xl" />
+          <div className="scene-float absolute -right-16 top-24 size-64 rounded-full bg-amber-300/20 blur-3xl" style={{ animationDelay: '2.5s' }} />
+          {/* drifting nature friends */}
+          {['🗺️', '🍃', '☁️', '🌿', '🦋'].map((e, i) => (
+            <motion.span
+              key={i}
+              className="absolute select-none text-base opacity-50 md:text-lg"
+              animate={reduce ? undefined : { y: [0, -14, 0, 10, 0], rotate: [0, 8, 0, -6, 0] }}
+              transition={reduce ? undefined : { duration: 9 + i * 2, repeat: Infinity, ease: 'easeInOut', delay: i * 1.1 }}
+              style={{ left: `${8 + i * 21}%`, top: `${(i % 2 === 0 ? 4 : 62)}%` }}
+            >
+              {e}
+            </motion.span>
+          ))}
+        </div>
+
+        <div className="relative flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink-soft">Your medical universe</p>
+            <h1 className="mt-1 flex items-center gap-2 text-2xl font-semibold tracking-tight md:text-3xl">
+              The Medical Map
+              <motion.span aria-hidden animate={reduce ? undefined : { y: [0, -3, 0] }} transition={{ duration: 2.6, repeat: Infinity }}>🗺️</motion.span>
+            </h1>
+            <p className="mt-1 max-w-xl text-xs text-ink-soft md:text-sm">
+              Every concept is a place. {totalConcepts} concepts across {branches.length} branches, connected by how medicine
+              actually works — drag, zoom and wander. Click any node to open its explorer.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <span className="clay-in rounded-xl px-3 py-2 text-center">
+              <span className="block text-lg font-semibold tabular-nums leading-none">{totalConcepts}</span>
+              <span className="text-[10px] font-medium uppercase tracking-wide text-ink-soft">concepts</span>
+            </span>
+            <span className="clay-in rounded-xl px-3 py-2 text-center">
+              <span className="block text-lg font-semibold tabular-nums leading-none text-sev-crit">{struggleZones.length}</span>
+              <span className="text-[10px] font-medium uppercase tracking-wide text-ink-soft">struggle zones</span>
+            </span>
+          </div>
+        </div>
+      </section>
+
+      {/* ── The interactive map (header suppressed — hero above) ── */}
+      <MedicalMapCanvas variant="full" showHeader={false} />
+
+      {/* ── Struggle zones — the topics students find hardest ── */}
+      {struggleZones.length > 0 && (
+        <section aria-label="Struggle zones">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.14em] text-ink-soft">
+              <TriangleAlert className="size-4 text-sev-crit" />
+              Struggle zones
+              <span className="rounded-full bg-sev-crit/10 px-2 py-0.5 text-[10px] font-bold text-sev-crit">
+                hardest topics nationwide
+              </span>
+            </h2>
+            <p className="text-[11px] text-ink-soft">High difficulty × low mastery × high NEET-PG yield</p>
+          </div>
+          <ul className="grid max-h-[27rem] grid-cols-1 gap-3 overflow-y-auto pb-1 pr-1 med-scroll sm:grid-cols-2 lg:grid-cols-3">
+            {struggleZones.map((z, i) => (
+              <StruggleZoneCard key={z.conceptId} zone={z} index={i} />
+            ))}
+          </ul>
+        </section>
+      )}
+    </div>
+  )
 }

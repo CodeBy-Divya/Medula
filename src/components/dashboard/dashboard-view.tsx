@@ -12,7 +12,6 @@ import {
   GraduationCap,
   History,
   Map as MapIcon,
-  Mountain,
   Play,
   RefreshCw,
   ShieldCheck,
@@ -23,7 +22,7 @@ import {
   Zap,
   ClipboardList,
   ScanSearch,
-  Compass,
+  Waypoints,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -31,10 +30,9 @@ import { api } from '@/lib/api'
 import { useAppStore } from '@/lib/store'
 import { PREP_STAGE_LABELS } from '@/lib/types'
 import type { DashboardPayload, PlanSegment } from '@/lib/types'
-import type { MapInsights, StruggleZone } from '@/app/api/map-insights/route'
+import type { MapInsights } from '@/app/api/map-insights/route'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { MedicalMapCanvas } from '@/components/map/medical-map-view'
 import { BranchGalaxy } from '@/components/dashboard/branch-galaxy'
 import { InternshipPanel } from '@/components/dashboard/internship-panel'
 import { cn } from '@/lib/utils'
@@ -217,75 +215,6 @@ function SceneImage({ src, alt }: { src: string; alt: string }) {
   )
 }
 
-// ─── Struggle zone card (the "hardest topics" highlight) ─────────────────────
-
-function DifficultyFlames({ n }: { n: number }) {
-  return (
-    <span className="inline-flex items-center gap-0.5" aria-label={`Difficulty ${n} of 5`}>
-      {Array.from({ length: 5 }).map((_, i) => (
-        <span key={i} className={cn('text-[10px] leading-none', i < n ? 'opacity-100' : 'opacity-25 grayscale')}>
-          🔥
-        </span>
-      ))}
-    </span>
-  )
-}
-
-function StruggleZoneCard({ zone, index }: { zone: StruggleZone; index: number }) {
-  const openConcept = useAppStore(s => s.openConcept)
-  const setQuizPreset = useAppStore(s => s.setQuizPreset)
-  const setView = useAppStore(s => s.setView)
-
-  const practice = () => {
-    setQuizPreset({ conceptId: zone.conceptId, count: 5 })
-    setView('questions')
-  }
-
-  return (
-    <motion.li
-      initial={false}
-      whileHover={{ y: -3 }}
-      transition={{ duration: 0.2, ease: EASE }}
-      className="warm-card flex min-w-0 flex-col rounded-2xl p-3.5 transition-shadow hover:shadow-lg hover:shadow-rose-500/5"
-      style={{ animationDelay: `${index * 0.08}s` }}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <span className="inline-flex items-center gap-1 rounded-full bg-sev-crit/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sev-crit">
-          <Mountain className="size-2.5" /> Hard
-        </span>
-        <DifficultyFlames n={zone.difficulty} />
-      </div>
-      <h4 className="mt-2 line-clamp-2 text-sm font-semibold leading-snug">{zone.name}</h4>
-      <p className="mt-0.5 text-[11px] font-medium" style={{ color: zone.subjectColor }}>
-        {zone.subjectName}
-      </p>
-      <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-ink-soft">{zone.reason}</p>
-      <div className="mt-2">
-        <div className="flex items-center justify-between text-[10px] text-ink-soft">
-          <span>mastery</span>
-          <span className="font-semibold tabular-nums text-sev-crit">{zone.mastery}%</span>
-        </div>
-        <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-surface-2">
-          <Bar pct={zone.mastery} className="bg-sev-crit" delay={0.3 + index * 0.08} />
-        </div>
-      </div>
-      <div className="mt-3 grid grid-cols-2 gap-1.5">
-        <Button size="sm" className="h-8 min-h-8 gap-1 rounded-lg px-2 text-[11px]" onClick={practice}>
-          <Play className="size-3" /> Practice
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-8 min-h-8 gap-1 rounded-lg px-2 text-[11px]"
-          onClick={() => openConcept(zone.conceptId)}
-        >
-          <MapIcon className="size-3" /> Explore
-        </Button>
-      </div>
-    </motion.li>
-  )
-}
-
 // ─── Loading / Error states ──────────────────────────────────────────────────
 
 function DashboardSkeleton() {
@@ -398,7 +327,6 @@ export function DashboardView() {
   const splitPct = (n: number) => (splitTotal > 0 ? (n / splitTotal) * 100 : 0)
   const accuracyUp = weeklyDelta.thisWeek >= weeklyDelta.lastWeek
   const { strong, unstable, weak, new: newCount } = knowledgeSplit
-  const struggleZones = insights?.struggleZones ?? []
 
   const startNextAction = (count: number) => {
     if (!nextAction) return
@@ -434,84 +362,29 @@ export function DashboardView() {
         </div>
         <p className="flex flex-wrap items-center gap-2 text-sm text-ink-soft">
           <span aria-hidden className="text-base">🌤️</span>
-          Your medical universe is mapped and calm — explore it below, one branch at a time.
+          Your 19-branch medical universe — organized, calm, and one glance away.
         </p>
       </Reveal>
 
-      {/* 2 · THE MEDICAL UNIVERSE — map-first hero */}
+      {/* 2 · BRANCH GALAXY — the home centerpiece */}
       <Reveal index={1}>
-        <section className="warm-scene relative overflow-hidden rounded-3xl p-4 md:p-5" aria-label="Your medical universe">
-          {/* warm scenic layers */}
+        <section className="relative overflow-hidden rounded-3xl" aria-label="Your medical universe">
+          {/* warm scenic frame around the galaxy */}
           <div aria-hidden className="pointer-events-none absolute inset-0">
             <SceneImage src="/scenes/dawn-meadow.jpg" alt="" />
-            <div className="scene-dawn absolute inset-0" />
-            <div className="scene-float absolute -left-10 -top-12 size-56 rounded-full bg-amber-300/20 blur-3xl" />
-            <div className="scene-float absolute -right-16 top-24 size-64 rounded-full bg-emerald-300/20 blur-3xl" style={{ animationDelay: '2.5s' }} />
-            <div className="scene-float absolute bottom-0 left-1/3 size-52 rounded-full bg-rose-300/15 blur-3xl" style={{ animationDelay: '5s' }} />
-            {/* drifting nature friends */}
-            {['🍃', '☁️', '🌿', '🌤️', '🦋'].map((e, i) => (
-              <motion.span
-                key={i}
-                className="absolute select-none text-base opacity-50 md:text-lg"
-                animate={reduceMotion ? undefined : { y: [0, -14, 0, 10, 0], rotate: [0, 8, 0, -6, 0] }}
-                transition={reduceMotion ? undefined : { duration: 9 + i * 2, repeat: Infinity, ease: 'easeInOut', delay: i * 1.1 }}
-                style={{ left: `${8 + i * 21}%`, top: `${(i % 2 === 0 ? 4 : 62)}%` }}
-              >
-                {e}
-              </motion.span>
-            ))}
+            <div className="scene-dawn absolute inset-0 opacity-70" />
           </div>
-
-          <div className="relative mb-3 flex flex-wrap items-end justify-between gap-2 px-1">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-soft">Your medical universe</p>
-              <h2 className="flex items-center gap-2 text-xl font-semibold tracking-tight md:text-2xl">
-                <Compass className="size-5 text-primary" /> The Medical Map
-                <motion.span aria-hidden animate={{ y: [0, -3, 0] }} transition={{ duration: 2.6, repeat: Infinity }}>🗺️</motion.span>
-              </h2>
-              <p className="mt-0.5 text-xs text-ink-soft md:text-sm">
-                Every concept is a place. Drag, zoom and wander — click any node to open its explorer.
-              </p>
-            </div>
-            <span className="hidden items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1 text-[11px] font-medium text-ink-soft sm:inline-flex">
-              🍃 take a slow breath — you&apos;re exactly where you need to be
-            </span>
-          </div>
-
           <div className="relative">
-            <MedicalMapCanvas variant="hero" />
+            <BranchGalaxy
+              onOpenMap={() => setView('map')}
+              focusCount={insights?.struggleZones.length ?? 0}
+            />
           </div>
-
-          {/* Struggle zones — the topics students find hardest */}
-          {struggleZones.length > 0 && (
-            <div className="relative mt-4">
-              <div className="mb-2 flex flex-wrap items-center justify-between gap-2 px-1">
-                <h3 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.14em] text-ink-soft">
-                  <AlertTriangle className="size-4 text-sev-crit" />
-                  Struggle zones
-                  <span className="rounded-full bg-sev-crit/10 px-2 py-0.5 text-[10px] font-bold text-sev-crit">
-                    hardest topics nationwide
-                  </span>
-                </h3>
-                <p className="text-[11px] text-ink-soft">High difficulty × low mastery × high NEET-PG yield</p>
-              </div>
-              <ul className="grid max-h-[27rem] grid-cols-1 gap-3 overflow-y-auto pb-1 pr-1 med-scroll sm:grid-cols-2 lg:grid-cols-3">
-                {struggleZones.map((z, i) => (
-                  <StruggleZoneCard key={z.conceptId} zone={z} index={i} />
-                ))}
-              </ul>
-            </div>
-          )}
         </section>
       </Reveal>
 
       {/* 2b · Internship mode — rotation-based plan (renders only for year ≥ 5) */}
       <InternshipPanel />
-
-      {/* 3 · Branch galaxy */}
-      <Reveal index={2}>
-        <BranchGalaxy />
-      </Reveal>
 
       {/* 4 · Daily intelligence strip */}
       <Reveal index={3} className="space-y-3">

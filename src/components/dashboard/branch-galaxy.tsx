@@ -1,13 +1,14 @@
 'use client'
 
-// ─── BRANCH GALAXY ───
+// ─── BRANCH GALAXY — the home centerpiece ───
 // The 19 MBBS subjects orbiting around "you" as animated 3D emoji spheres.
 // Click a branch → a drill-down mini-panel opens right here on Home (no view
 // switch): top concepts, struggle zones, mastery + actions (Map / Practice / Learn).
+// Below the orbits: an organized subject index (all 19 branches, tidy grid).
 
 import { useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { BookOpen, Loader2, Map as MapIcon, Play, Waypoints, X } from 'lucide-react'
+import { BookOpen, Loader2, Map as MapIcon, Play, ShieldCheck, Waypoints, X } from 'lucide-react'
 import { api } from '@/lib/api'
 import { useAppStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
@@ -335,11 +336,25 @@ function BranchSphere({ b, reduce, active, onToggle }: { b: Placed; reduce: bool
           <p className="mt-0.5 text-[10px] text-muted-foreground">Click for a closer look · NEET-PG weight {b.neetWeight}%</p>
         </motion.div>
       )}
+
+      {/* always-visible name label — systematic, professional */}
+      <p
+        aria-hidden
+        className="pointer-events-none absolute left-1/2 top-full mt-1 w-max max-w-[110px] -translate-x-1/2 truncate text-center text-[9.5px] font-medium uppercase tracking-wide text-ink-soft"
+      >
+        {b.name}
+      </p>
     </div>
   )
 }
 
-export function BranchGalaxy() {
+export function BranchGalaxy({
+  onOpenMap,
+  focusCount = 0,
+}: {
+  onOpenMap?: () => void
+  focusCount?: number
+}) {
   const reduce = useReducedMotion()
   const [insights, setInsights] = useState<MapInsights | null>(null)
   const [failed, setFailed] = useState(false)
@@ -354,23 +369,72 @@ export function BranchGalaxy() {
   const branches = insights?.branches ?? []
   const placed = useMemo(() => (branches.length ? orbitLayout(branches) : []), [branches])
   const avgMastery = insights?.totals.avgMastery ?? 0
+  const strongCount = insights?.totals.strongCount ?? 0
+  const weakCount = insights?.totals.weakCount ?? 0
+
+  // Organized index: year → name ordering for the tidy grid under the orbits
+  const indexed = useMemo(
+    () => [...branches].sort((a, b) => a.year - b.year || a.name.localeCompare(b.name)),
+    [branches],
+  )
 
   return (
-    <div className="glass relative overflow-hidden rounded-3xl p-4 md:p-6">
+    <div className="clay relative overflow-hidden rounded-3xl p-4 md:p-6">
       {/* warm aurora glow */}
       <div aria-hidden className="galaxy-aurora pointer-events-none absolute inset-0" />
 
-      <div className="relative mb-3 flex flex-wrap items-center justify-between gap-2">
+      {/* professional header — title, stats, CTA */}
+      <div className="relative flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.14em] text-ink-soft">
-            <Waypoints className="size-4 text-primary" /> Branch galaxy
-          </h3>
-          <p className="mt-0.5 text-xs text-ink-soft">19 subjects orbit your brain · tap one for a closer look</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">Your medical universe</p>
+          <h2 className="mt-1 flex items-center gap-2 text-xl font-semibold tracking-tight md:text-2xl">
+            <Waypoints className="size-5 text-primary" aria-hidden />
+            Branch Galaxy
+            <motion.span aria-hidden animate={reduce ? undefined : { y: [0, -3, 0] }} transition={{ duration: 2.6, repeat: Infinity }}>
+              🌌
+            </motion.span>
+          </h2>
+          <p className="mt-1 text-xs text-ink-soft md:text-sm">
+            19 MBBS subjects organized around you — tap a sphere for a closer look.
+          </p>
         </div>
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface-2 px-3 py-1 text-xs font-medium tabular-nums">
-          🌤️ avg mastery {avgMastery}%
-        </span>
+
+        <div className="flex flex-col items-end gap-2">
+          <Button
+            size="sm"
+            className="min-h-9 gap-1.5 rounded-full px-4"
+            onClick={() => onOpenMap?.()}
+            aria-label="Open the full Medical Map"
+          >
+            <MapIcon className="size-3.5" /> Open the Medical Map
+          </Button>
+          <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-ink-soft">
+            <ShieldCheck className="size-3 text-sev-ok" aria-hidden />
+            NMC CBME 2024 aligned
+          </span>
+        </div>
       </div>
+
+      {/* organized stats bar */}
+      {branches.length > 0 && (
+        <div className="relative mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Galaxy summary">
+          {[
+            { label: 'Avg mastery', value: avgMastery, emoji: '🌤️', tone: 'text-foreground', suffix: '%' },
+            { label: 'Strong branches', value: strongCount, emoji: '💪', tone: 'text-sev-ok', suffix: '' },
+            { label: 'Need attention', value: weakCount, emoji: '🎯', tone: 'text-sev-warn', suffix: '' },
+            { label: 'Struggle zones', value: focusCount, emoji: '⚠️', tone: 'text-sev-crit', suffix: '' },
+          ].map(s => (
+            <div key={s.label} className="clay-in rounded-xl px-3 py-2.5">
+              <p className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-ink-soft">
+                <span aria-hidden>{s.emoji}</span> {s.label}
+              </p>
+              <p className={cn('mt-0.5 text-lg font-semibold tabular-nums tracking-tight', s.tone)}>
+                {s.value}{s.suffix}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {failed && (
         <p className="relative py-8 text-center text-sm text-ink-soft">
@@ -386,7 +450,7 @@ export function BranchGalaxy() {
       {branches.length > 0 && (
         <div className="relative mx-auto max-w-2xl">
           <div
-            className="relative h-[320px] md:h-[440px]"
+            className="relative h-[360px] md:h-[470px]"
             role="group"
             aria-label="Subject branches"
           >
@@ -428,12 +492,58 @@ export function BranchGalaxy() {
               <BranchPanel key={selected.id} branch={selected} onClose={() => setSelected(null)} />
             )}
           </AnimatePresence>
+
+          {/* ORGANIZED SUBJECT INDEX — every branch in a tidy, systematic grid */}
+          <div className="relative mt-5">
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-soft">
+                Subject index · Year 1 → Intern
+              </h3>
+              <span className="text-[10px] text-muted-foreground">tap to inspect</span>
+            </div>
+            <ul className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-7" aria-label="All subjects">
+              {indexed.map(b => {
+                const tone = STATUS_TONE[b.status]
+                const active = selected?.id === b.id
+                return (
+                  <li key={b.id}>
+                    <button
+                      type="button"
+                      onClick={() => setSelected(cur => (cur?.id === b.id ? null : b))}
+                      aria-pressed={active}
+                      aria-label={`${b.name}, mastery ${b.mastery}%, ${tone.label}`}
+                      className={cn(
+                        'clay-in group flex w-full flex-col items-start gap-1 rounded-xl px-2.5 py-2 text-left transition-all',
+                        'hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                        active && 'ring-2 ring-primary',
+                      )}
+                    >
+                      <span className="flex w-full items-center justify-between gap-1">
+                        <span aria-hidden className="text-base leading-none">{b.emoji}</span>
+                        <span className="size-1.5 shrink-0 rounded-full" style={{ background: tone.ring }} aria-hidden />
+                      </span>
+                      <span className="w-full truncate text-[10px] font-semibold leading-tight">{b.code}</span>
+                      <span className="flex w-full items-center gap-1.5">
+                        <span className="h-1 flex-1 overflow-hidden rounded-full bg-background/60">
+                          <span
+                            className="block h-full rounded-full transition-[width] duration-700"
+                            style={{ width: `${Math.max(4, b.mastery)}%`, background: tone.ring }}
+                          />
+                        </span>
+                        <span className="text-[9px] font-semibold tabular-nums text-ink-soft">{b.mastery}%</span>
+                      </span>
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
         </div>
       )}
 
       {/* legend */}
       {branches.length > 0 && (
-        <div className="relative mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[10px] text-ink-soft">
+        <div className="relative mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[10px] text-ink-soft">
           <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-full" style={{ background: 'var(--sev-ok)' }} /> Strong ≥70%</span>
           <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-full" style={{ background: 'var(--sev-warn)' }} /> Unstable</span>
           <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-full" style={{ background: 'var(--sev-crit)' }} /> Weak &lt;45%</span>

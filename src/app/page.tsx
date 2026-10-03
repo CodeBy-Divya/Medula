@@ -5,6 +5,7 @@ import { useAppStore } from '@/lib/store'
 import { api } from '@/lib/api'
 import { AppShell } from '@/components/app-shell'
 import { LandingPage } from '@/components/landing/landing-page'
+import { SignInView } from '@/components/auth/signin-view'
 import { OnboardingWizard } from '@/components/onboarding/onboarding-wizard'
 import { DashboardView } from '@/components/dashboard/dashboard-view'
 import { MedicalMapView } from '@/components/map/medical-map-view'
@@ -48,6 +49,7 @@ export default function Home() {
 
   // ── Landing / onboarding (standalone pages without shell) ──
   if (view === 'landing') return <LandingPage />
+  if (view === 'signin') return <SignInView />
   if (view === 'onboarding') return <OnboardingWizard />
 
   // Wait for profile hydration before entering the app

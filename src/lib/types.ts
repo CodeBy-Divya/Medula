@@ -1,7 +1,7 @@
 // ─── MEDOS shared types ───
 
 export type View =
-  | 'landing' | 'onboarding' | 'home' | 'map' | 'learn' | 'questions'
+  | 'landing' | 'signin' | 'onboarding' | 'home' | 'map' | 'learn' | 'questions'
   | 'cases' | 'revise' | 'tutor' | 'progress' | 'roadmap' | 'profile'
 
 export interface Profile {

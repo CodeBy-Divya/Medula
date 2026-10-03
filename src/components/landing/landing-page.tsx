@@ -301,9 +301,9 @@ export function LandingPage() {
           <Button
             size="lg"
             className="h-10 rounded-full px-5 text-sm font-semibold"
-            onClick={() => setView('onboarding')}
+            onClick={() => setView('signin')}
           >
-            Sign in → Start
+            Sign in
           </Button>
         </nav>
       </header>
@@ -376,7 +376,7 @@ export function LandingPage() {
               <Button
                 size="lg"
                 className="h-12 rounded-full px-8 text-sm font-semibold tracking-wide shadow-[0_0_36px_-10px_rgba(34,211,238,0.55)] transition-transform hover:scale-[1.03]"
-                onClick={() => setView('onboarding')}
+                onClick={() => setView('signin')}
               >
                 START YOUR MEDICAL JOURNEY
               </Button>
