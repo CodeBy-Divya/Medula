@@ -1,0 +1,220 @@
+// ─── MEDOS shared types ───
+
+export type View =
+  | 'landing' | 'onboarding' | 'home' | 'map' | 'learn' | 'questions'
+  | 'cases' | 'revise' | 'tutor' | 'progress' | 'roadmap' | 'profile'
+
+export interface Profile {
+  id: string
+  name: string
+  year: number // 1..4 MBBS, 5 intern, 6 dedicated
+  semester: number
+  collegeName: string
+  collegeType: string
+  gradYear: number
+  internshipDone: boolean
+  pastScore: string
+  prepStage: 'exploring' | 'foundation' | 'regular' | 'serious' | 'dedicated' | 'revision'
+  dailyHours: number
+  weekdayHours: number
+  weekendHours: number
+  learningStyles: string[]
+  resources: string[]
+  examMode: boolean
+  examLabel: string
+  examDate: string | null
+  onboarded: boolean
+}
+
+export interface SubjectSummary {
+  id: string; code: string; name: string; year: number; color: string
+  neetWeight: number; blurb: string
+  topicCount: number; conceptCount: number
+  mastery: number // 0..100 (avg of knowledge states or 0)
+  status: 'new' | 'weak' | 'unstable' | 'strong'
+}
+
+export interface TopicSummary {
+  id: string; subjectId: string; name: string; system: string | null
+  importance: number; description: string
+  conceptCount: number; mastery: number
+}
+
+export interface ConceptNode {
+  id: string; name: string; kind: string; summary: string
+  mastery: number; status: 'new' | 'weak' | 'unstable' | 'strong'
+  estRecall: number; examRelevance: number; difficulty: number
+}
+
+export interface GraphPayload {
+  nodes: (ConceptNode & { topicId: string; subjectCode: string; subjectColor: string })[]
+  edges: { from: string; to: string; type: string; label: string }[]
+}
+
+export interface Section { h: string; body?: string[]; table?: { headers: string[]; rows: string[][] } }
+
+export interface ConceptDetail {
+  id: string; name: string; kind: string; summary: string; whyMatters: string
+  mnemonic: string; difficulty: number; examRelevance: number; clinicalRelevance: number
+  detail: Section[] | null
+  topic: { id: string; name: string; subject: { code: string; name: string; color: string; year: number } }
+  knowledge: { score: number; status: string; estRecall: number; attemptCount: number; correctCount: number; lastReviewed: string | null; stability: number } | null
+  edgesOut: { to: string; toName: string; type: string; label: string; kind: string; mastery: number }[]
+  edgesIn: { from: string; fromName: string; type: string; label: string; kind: string; mastery: number }[]
+  whyChain: { stage: string; label: string; conceptId?: string }[]
+  flashcards: { id: string; front: string; back: string }[]
+  questionCount: number
+}
+
+export interface QuestionClient {
+  id: string; stem: string
+  options: { id: string; text: string }[]
+  difficulty: number; qtype: string; subjectCode: string; system: string
+}
+
+export interface AttemptResult {
+  correct: boolean
+  answer: string
+  explanation: string
+  teaching: string
+  errorTypeSuggestion?: string
+  knowledgeUpdated: boolean
+  mastery?: number
+  status?: string
+}
+
+export interface PlanSegment { minutes: number; activity: string; detail: string }
+
+export interface NextAction {
+  conceptId: string
+  conceptName: string
+  reason: string
+  duration: number
+  priority: number
+  plan: PlanSegment[]
+  activityType: string
+}
+
+export interface DashboardPayload {
+  greeting: string
+  name: string
+  prepStage: string
+  stageLabel: string
+  brainScore: number // overall preparation %
+  stats: {
+    topicsAtRisk: number; recurringMistakes: number; dueQuestions: number
+    dueFlashcards: number; recommendedMinutes: number; streak: number
+  }
+  knowledgeSplit: { strong: number; unstable: number; weak: number; new: number }
+  revisionDebt: { count: number; minutes: number }
+  weaknesses: { conceptId: string; name: string; subject: string; mastery: number; reason: string }[]
+  nextAction: NextAction | null
+  todayPlan: PlanSegment[]
+  weeklyDelta: { lastWeek: number; thisWeek: number }
+  examClock: {
+    daysLeft: number; weeksLeft: number; monthsLeft: number
+    examYear: number; stage: string; weeklyTarget: number
+    revisionCyclesLeft: number; questionTarget: number; mockTarget: number
+    isEstimate: boolean
+  }
+  heatToday: { questions: number; minutes: number }
+}
+
+export interface RoadmapPhase {
+  phase: string; timeframe: string; goal: string
+  focus: string[]; actions: string[]; milestone: string
+  intensity: number // 1..5
+}
+
+export interface RoadmapPayload {
+  horizonYears: number
+  currentStageLabel: string
+  stageLabel: string
+  phases: RoadmapPhase[]
+  neetClock: DashboardPayload['examClock']
+  weeklySplit: { label: string; pct: number }[]
+  isEstimate: boolean
+}
+
+export interface ProgressPayload {
+  overall: { mastery: number; accuracy: number; trend: number }
+  subjects: (SubjectSummary & { accuracy: number; foundation: number; clinical: number; debt: number })[]
+  heatmap: { date: string; minutes: number; questions: number; revision: number }[]
+  weeklyReport: {
+    topicsStudied: number; accuracyNow: number; accuracyPrev: number
+    weakest: string; strongest: string; topMistake: string
+    consistency: number; timeSpent: number; revisionDebt: number
+    narrative: string[]
+  }
+  errorPatterns: { errorType: string; count: number; examples: { concept: string; count: number }[] }[]
+  confusions: {
+    id: string; a: string; b: string; aCode: string; bCode: string
+    aPoints: string[]; bPoints: string[]; mnemonic: string; subjectCode: string
+    detected: boolean
+  }[]
+}
+
+export interface RevisionPayload {
+  dueFlashcards: { id: string; front: string; back: string; subjectCode: string; conceptId: string | null }[]
+  dueConcepts: { conceptId: string; name: string; reason: string; priority: number; minutes: number; estRecall: number }[]
+  debt: { count: number; minutes: number }
+  counts: { now: number; soon: number; stable: number; mastered: number }
+}
+
+export interface SearchResults {
+  concepts: { id: string; name: string; kind: string; summary: string; subject: string }[]
+  subjects: { id: string; name: string; code: string; blurb: string }[]
+  questions: { id: string; stem: string }[]
+  flashcards: { id: string; front: string; subjectCode: string }[]
+  cases: { id: string; title: string; specialty: string }[]
+  topics: { id: string; name: string; subject: string }[]
+}
+
+export const ERROR_TYPES: { id: string; label: string; hint: string }[] = [
+  { id: 'didnt_know', label: "Didn't know the concept", hint: 'New or never learned properly' },
+  { id: 'forgot', label: 'Forgot the concept', hint: 'Knew it once — memory decayed' },
+  { id: 'confused', label: 'Confused two concepts', hint: 'Mixed up similar topics' },
+  { id: 'misread', label: 'Misread the question', hint: 'Skipped a keyword or negation' },
+  { id: 'calculation', label: 'Calculation error', hint: 'Right idea, wrong arithmetic' },
+  { id: 'reasoning', label: 'Clinical reasoning error', hint: 'Wrong step in the chain' },
+  { id: 'changed', label: 'Changed the right answer', hint: 'Second-guessed correctly-known fact' },
+  { id: 'time', label: 'Time pressure', hint: 'Rushed and slipped' },
+  { id: 'guess', label: 'Guessed', hint: 'No real basis for the choice' },
+]
+
+export const ERROR_TYPE_LABELS: Record<string, string> = Object.fromEntries(ERROR_TYPES.map(e => [e.id, e.label]))
+
+export const YEAR_LABELS: Record<number, string> = {
+  1: 'First Year MBBS', 2: 'Second Year MBBS', 3: 'Third Year MBBS',
+  4: 'Final Year MBBS', 5: 'Intern', 6: 'Dedicated NEET-PG Preparation',
+}
+
+export const PREP_STAGE_LABELS: Record<string, string> = {
+  exploring: 'Exploring', foundation: 'Building Foundation', regular: 'Regular Preparation',
+  serious: 'Serious Preparation', dedicated: 'Dedicated NEET-PG Prep', revision: 'Revision Phase',
+}
+
+export const KIND_META: Record<string, { label: string; color: string; icon: string }> = {
+  concept: { label: 'Concept', color: '#22d3ee', icon: 'Lightbulb' },
+  disease: { label: 'Disease', color: '#f87171', icon: 'Stethoscope' },
+  drug: { label: 'Drug', color: '#a78bfa', icon: 'Pill' },
+  investigation: { label: 'Investigation', color: '#fbbf24', icon: 'Microscope' },
+  physiology: { label: 'Physiology', color: '#34d399', icon: 'Activity' },
+  anatomy: { label: 'Anatomy', color: '#38bdf8', icon: 'Bone' },
+  pathology: { label: 'Pathology', color: '#f472b6', icon: 'Biohazard' },
+  pharmacology: { label: 'Pharmacology', color: '#c084fc', icon: 'Syringe' },
+  microbiology: { label: 'Microbiology', color: '#facc15', icon: 'Bug' },
+  clinical_skill: { label: 'Clinical Skill', color: '#4ade80', icon: 'Hand' },
+}
+
+export const SYSTEMS = [
+  { id: 'cardiovascular', label: 'Cardiovascular', icon: 'HeartPulse' },
+  { id: 'respiratory', label: 'Respiratory', icon: 'Wind' },
+  { id: 'renal', label: 'Renal', icon: 'Droplets' },
+  { id: 'gastrointestinal', label: 'Gastrointestinal', icon: 'Utensils' },
+  { id: 'endocrine', label: 'Endocrine', icon: 'Sparkles' },
+  { id: 'neurology', label: 'Neurology', icon: 'Brain' },
+  { id: 'hematology', label: 'Haematology', icon: 'Droplet' },
+  { id: 'infectious', label: 'Infectious Disease', icon: 'Bug' },
+  { id: 'musculoskeletal', label: 'Musculoskeletal', icon: 'Bone' },
+]

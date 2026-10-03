@@ -1,0 +1,304 @@
+// PROJECT MEDOS — Medical Learning Operating System
+// Core schema: curriculum graph + knowledge state + adaptive learning
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────────────────── STUDENT ─────────────────────────
+
+model StudentProfile {
+  id             String   @id @default(cuid())
+  name           String   @default("Future Dr.")
+  year           Int      @default(1) // 1..4 = MBBS years, 5 = intern, 6 = dedicated prep
+  semester       Int      @default(1)
+  collegeName    String   @default("")
+  collegeType    String   @default("government")
+  gradYear       Int      @default(2030)
+  internshipDone Boolean  @default(false)
+  pastScore      String   @default("")
+  prepStage      String   @default("exploring") // exploring|foundation|regular|serious|dedicated|revision
+  dailyHours     Float    @default(2)
+  weekdayHours   Float    @default(2)
+  weekendHours   Float    @default(4)
+  learningStyles Json     @default("[]") // visual,text,questions,cases,flashcards,audio,mixed
+  resources      Json     @default("[]") // Marrow,PW,PrepLadder,DAMS,Cerebellum,other
+  examMode       Boolean  @default(false) // college-exam priority mode
+  examLabel      String   @default("")
+  examDate       DateTime?
+  onboarded      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  knowledgeStates KnowledgeState[]
+  attempts        QuestionAttempt[]
+  reviews         FlashcardReview[]
+  revisionItems   RevisionItem[]
+  sessions        StudySession[]
+  errorPatterns   ErrorPattern[]
+  caseRuns        CaseRun[]
+  resourceLogs    ResourceLog[]
+}
+
+// ───────────────────────── CURRICULUM GRAPH ─────────────────────────
+
+model Subject {
+  id          String @id // slug e.g. "anatomy"
+  code        String @unique // ANAT, PHYS, PATHO...
+  name        String
+  year        Int // 1..4 (clinical subjects mapped to year they start)
+  color       String @default("#22d3ee")
+  neetWeight  Int    @default(5) // approximate % weight in NEET-PG
+  blurb       String @default("")
+  topics      Topic[]
+  questions   Question[]
+  flashcards  Flashcard[]
+
+  @@index([code])
+}
+
+model Topic {
+  id          String  @id
+  subjectId   String
+  subject     Subject @relation(fields: [subjectId], references: [id])
+  name        String
+  system      String? // cardiovascular, renal...
+  importance  Int     @default(3) // 1..5 NEET-PG yield
+  description String  @default("")
+  concepts    Concept[]
+}
+
+model Concept {
+  id          String  @id
+  topicId     String
+  topic       Topic   @relation(fields: [topicId], references: [id])
+  name        String
+  kind        String  @default("concept") // concept|disease|drug|investigation|physiology|anatomy|pathology|pharmacology|microbiology|clinical_skill
+  summary     String  @default("") // one-line idea
+  whyMatters  String  @default("") // "Why am I learning this" narrative
+  detail      Json?   // structured sections for explorer: [{h, body[], table?}]
+  mnemonic    String  @default("")
+  difficulty  Int     @default(2) // 1..3
+  examRelevance    Int @default(3) // 1..5 NEET-PG yield
+  clinicalRelevance Int @default(3) // 1..5
+  edgesOut    ConceptEdge[] @relation("fromEdge")
+  edgesIn     ConceptEdge[] @relation("toEdge")
+  knowledgeStates KnowledgeState[]
+  questions   Question[]
+  flashcards  Flashcard[]
+  revisionItems RevisionItem[]
+}
+
+model ConceptEdge {
+  id    String @id
+  fromId String
+  from  Concept @relation("fromEdge", fields: [fromId], references: [id])
+  toId  String
+  to    Concept @relation("toEdge", fields: [toId], references: [id])
+  type  String // prerequisite_of|related_to|causes|caused_by|treated_by|diagnosed_by|complication_of|differential_of|commonly_tested_with|clinical_application_of
+  label String @default("")
+
+  @@index([fromId])
+  @@index([toId])
+}
+
+// ───────────────────────── QUESTIONS ─────────────────────────
+
+model Question {
+  id          String  @id
+  stem        String
+  options     Json // [{id:'a',text}, ...]
+  answer      String // option id
+  explanation String
+  teaching    String  @default("") // one-line takeaway
+  subjectCode String
+  system      String  @default("")
+  topicId     String?
+  conceptId   String?
+  concept     Concept? @relation(fields: [conceptId], references: [id])
+  difficulty  Int     @default(2) // 1..3
+  qtype       String  @default("sba") // sba|vignette|assertion|rapid|integrated
+  tags        Json    @default("[]")
+  attempts    QuestionAttempt[]
+  subject     Subject @relation(fields: [subjectCode], references: [code])
+}
+
+model QuestionAttempt {
+  id         String   @id @default(cuid())
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id])
+  profileId  String
+  profile    StudentProfile @relation(fields: [profileId], references: [id])
+  selected   String
+  correct    Boolean
+  errorType  String? // didnt_know|forgot|misread|confused|calculation|reasoning|changed|time|guess
+  timeMs     Int      @default(0)
+  confidence Int      @default(3) // 1..5
+  createdAt  DateTime @default(now())
+
+  @@index([profileId])
+}
+
+// ───────────────────────── KNOWLEDGE STATE ─────────────────────────
+
+model KnowledgeState {
+  id           String  @id @default(cuid())
+  profileId    String
+  profile      StudentProfile @relation(fields: [profileId], references: [id])
+  conceptId    String
+  concept      Concept @relation(fields: [conceptId], references: [id])
+  score        Float   @default(0) // 0..100 mastery indicator (learning analytics, not clinical competence)
+  attemptCount Int     @default(0)
+  correctCount Int     @default(0)
+  lastReviewed DateTime?
+  lastCorrect  DateTime?
+  stability    Float   @default(1) // memory stability in days
+  estRecall    Float   @default(0) // 0..1 estimated recall probability
+  status       String  @default("new") // new|weak|unstable|strong
+  priority     Int     @default(0)
+
+  @@unique([profileId, conceptId])
+  @@index([profileId])
+}
+
+// ───────────────────────── FLASHCARDS / REVISION ─────────────────────────
+
+model Flashcard {
+  id          String  @id
+  conceptId   String?
+  concept     Concept? @relation(fields: [conceptId], references: [id])
+  front       String
+  back        String
+  subjectCode String
+  system      String  @default("")
+  tags        Json    @default("[]")
+  reviews     FlashcardReview[]
+  subject     Subject @relation(fields: [subjectCode], references: [code])
+}
+
+model FlashcardReview {
+  id           String   @id @default(cuid())
+  flashcardId  String
+  flashcard    Flashcard @relation(fields: [flashcardId], references: [id])
+  profileId    String
+  profile      StudentProfile @relation(fields: [profileId], references: [id])
+  dueAt        DateTime @default(now())
+  intervalDays Float    @default(0)
+  reps         Int      @default(0)
+  lapses       Int      @default(0)
+  lastGrade    Int      @default(2)
+  reviewedAt   DateTime?
+
+  @@unique([flashcardId, profileId])
+  @@index([profileId])
+}
+
+model RevisionItem {
+  id         String   @id @default(cuid())
+  profileId  String
+  profile    StudentProfile @relation(fields: [profileId], references: [id])
+  conceptId  String
+  concept    Concept  @relation(fields: [conceptId], references: [id])
+  reason     String
+  priority   Int      @default(2)
+  dueAt      DateTime @default(now())
+  cleared    Boolean  @default(false)
+  clearedAt  DateTime?
+  minutes    Int      @default(15)
+
+  @@index([profileId])
+}
+
+model StudySession {
+  id        String   @id @default(cuid())
+  profileId String
+  profile   StudentProfile @relation(fields: [profileId], references: [id])
+  minutes   Int
+  kind      String // study|questions|revision|case|recall
+  label     String   @default("")
+  date      DateTime @default(now())
+
+  @@index([profileId])
+}
+
+// ───────────────────────── ERRORS / CONFUSIONS ─────────────────────────
+
+model ErrorPattern {
+  id        String   @id @default(cuid())
+  profileId String
+  profile   StudentProfile @relation(fields: [profileId], references: [id])
+  errorType String
+  conceptId String?
+  count     Int      @default(1)
+  lastAt    DateTime @default(now())
+
+  @@unique([profileId, errorType, conceptId])
+}
+
+model ConfusionPair {
+  id        String @id
+  a         String
+  b         String
+  aCode     String @default("") // concept id if exists
+  bCode     String @default("")
+  aPoints   Json // ["..."]
+  bPoints   Json
+  mnemonic  String @default("")
+  subjectCode String
+  system    String @default("")
+}
+
+// ───────────────────────── CLINICAL CASES ─────────────────────────
+
+model ClinicalCase {
+  id         String @id
+  title      String
+  specialty  String
+  system     String
+  difficulty Int    @default(2)
+  patient    Json // {age, sex, occupation, complaint}
+  steps      Json // [{id, phase, title, content[], question?, options?, answerId?}]
+  learning   Json // string[] teaching points
+  diagnosis  String @default("")
+  runs       CaseRun[]
+}
+
+model CaseRun {
+  id        String   @id @default(cuid())
+  profileId String
+  profile   StudentProfile @relation(fields: [profileId], references: [id])
+  caseId    String
+  case      ClinicalCase @relation(fields: [caseId], references: [id])
+  score     Int      @default(0)
+  correctSteps Int   @default(0)
+  totalSteps Int     @default(0)
+  detail    Json?
+  completedAt DateTime @default(now())
+}
+
+// ───────────────────────── RESOURCES / LOGBOOK ─────────────────────────
+
+model ResourceLog {
+  id        String   @id @default(cuid())
+  profileId String
+  profile   StudentProfile @relation(fields: [profileId], references: [id])
+  resource  String // Marrow|PW|PrepLadder|DAMS|Cerebellum|other
+  item      String
+  done      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model LogbookEntry {
+  id        String   @id @default(cuid())
+  profileId String
+  caseType  String
+  system    String
+  diagnosis String
+  learned   String   @default("")
+  createdAt DateTime @default(now())
+}

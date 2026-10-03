@@ -1,0 +1,543 @@
+'use client'
+
+import { useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
+import { motion, useInView, useReducedMotion } from 'framer-motion'
+import {
+  ChevronRight,
+  Map as MapIcon,
+  Network,
+  RefreshCcw,
+  ScanSearch,
+  Sparkles,
+  Stethoscope,
+} from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { useAppStore } from '@/lib/store'
+
+const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1]
+
+// Reduced-motion as post-hydration state → SSR and first client render always match.
+function usePrefersReducedMotion() {
+  const prefers = useReducedMotion()
+  const [reduce, setReduce] = useState(false)
+  useEffect(() => {
+    setReduce(prefers === true)
+  }, [prefers])
+  return reduce
+}
+
+// ─── Reveal-on-scroll helper ───
+function Reveal({
+  children,
+  className,
+  delay = 0,
+}: {
+  children: ReactNode
+  className?: string
+  delay?: number
+}) {
+  return (
+    <motion.div
+      className={className}
+      initial={{ opacity: 0, y: 28 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-80px' }}
+      transition={{ duration: 0.7, delay, ease: EASE }}
+    >
+      {children}
+    </motion.div>
+  )
+}
+
+function Eyebrow({ children }: { children: ReactNode }) {
+  return (
+    <p className="text-[11px] font-medium uppercase tracking-[0.3em] text-cyan-600 dark:text-cyan-300/90">
+      {children}
+    </p>
+  )
+}
+
+// ─── Fragmented → connected constellation ───
+type Pt = { x: number; y: number }
+
+const NODES: { label: string; scattered: Pt; formed: Pt; color: string }[] = [
+  { label: 'Anatomy', scattered: { x: 100, y: 84 }, formed: { x: 168, y: 128 }, color: '#38bdf8' },
+  { label: 'Physiology', scattered: { x: 688, y: 64 }, formed: { x: 632, y: 128 }, color: '#34d399' },
+  { label: 'Pathology', scattered: { x: 84, y: 384 }, formed: { x: 168, y: 332 }, color: '#38bdf8' },
+  { label: 'Pharmacology', scattered: { x: 706, y: 392 }, formed: { x: 632, y: 332 }, color: '#34d399' },
+  { label: 'Medicine', scattered: { x: 352, y: 428 }, formed: { x: 400, y: 234 }, color: '#22d3ee' },
+  { label: 'NEET-PG', scattered: { x: 452, y: 44 }, formed: { x: 400, y: 72 }, color: '#fbbf24' },
+]
+
+const EDGES: [number, number][] = [
+  [0, 1], [0, 2], [1, 3], [2, 3], [1, 4], [2, 4], [3, 4], [4, 5],
+]
+
+const CAPTIONS = [
+  { text: 'Medical education is fragmented.', cls: 'text-ink-soft' },
+  { text: "Medicine doesn't work in departments.", cls: 'text-foreground' },
+  {
+    text: "Your preparation shouldn't either.",
+    cls: 'bg-gradient-to-r from-cyan-500 via-sky-500 to-emerald-500 bg-clip-text text-transparent dark:from-cyan-300 dark:via-sky-400 dark:to-emerald-300',
+  },
+]
+
+function Constellation() {
+  const ref = useRef<HTMLDivElement>(null)
+  const inView = useInView(ref, { once: true, margin: '-18% 0px' })
+  const reduce = usePrefersReducedMotion()
+  const [phase, setPhase] = useState(0)
+
+  useEffect(() => {
+    if (!inView || reduce) return
+    const t1 = window.setTimeout(() => setPhase(1), 2200)
+    const t2 = window.setTimeout(() => setPhase(2), 3700)
+    return () => {
+      window.clearTimeout(t1)
+      window.clearTimeout(t2)
+    }
+  }, [inView, reduce])
+
+  const connected = reduce || inView
+  // Reduced motion → skip straight to the final caption/connected state (derived, no effect).
+  const displayPhase = reduce ? 2 : phase
+
+  return (
+    <div ref={ref} className="relative">
+      {/* Swapping captions */}
+      <div className="grid justify-items-center text-center" aria-live="polite">
+        {CAPTIONS.map((c, i) => (
+          <motion.p
+            key={c.text}
+            className={`[grid-area:1/1] px-4 text-2xl font-semibold tracking-tight sm:text-4xl ${c.cls}`}
+            initial={false}
+            animate={{ opacity: displayPhase === i ? 1 : 0, y: displayPhase === i ? 0 : 14 }}
+            transition={{ duration: reduce ? 0 : 0.55, ease: EASE }}
+            aria-hidden={displayPhase !== i}
+          >
+            {c.text}
+          </motion.p>
+        ))}
+      </div>
+
+      <motion.svg
+        viewBox="0 0 800 470"
+        className="mt-6 h-auto w-full text-muted-foreground sm:mt-2"
+        role="img"
+        aria-label="Diagram of scattered medical subjects connecting into one linked knowledge constellation ending at NEET-PG"
+        initial={false}
+        animate={{ opacity: inView ? 1 : 0.55 }}
+        transition={{ duration: 1, ease: 'easeOut' }}
+      >
+        {/* Dim dashed lines between scattered nodes */}
+        {EDGES.map(([a, b], i) => (
+          <motion.line
+            key={`scatter-${i}`}
+            x1={NODES[a].scattered.x}
+            y1={NODES[a].scattered.y}
+            x2={NODES[b].scattered.x}
+            y2={NODES[b].scattered.y}
+            stroke="currentColor"
+            strokeWidth={1}
+            strokeDasharray="4 8"
+            initial={{ opacity: 0.28 }}
+            animate={{ opacity: connected && !reduce ? 0 : 0.28 }}
+            transition={{ duration: 0.8, delay: connected && !reduce ? 0.35 : 0 }}
+          />
+        ))}
+
+        {/* Formation edges drawing in */}
+        {EDGES.map(([a, b], i) => (
+          <motion.line
+            key={`edge-${i}`}
+            x1={NODES[a].formed.x}
+            y1={NODES[a].formed.y}
+            x2={NODES[b].formed.x}
+            y2={NODES[b].formed.y}
+            stroke={i === EDGES.length - 1 ? '#34d399' : '#22d3ee'}
+            strokeWidth={1.4}
+            strokeLinecap="round"
+            initial={{ pathLength: reduce ? 1 : 0, opacity: reduce ? 0.5 : 0 }}
+            animate={connected ? { pathLength: 1, opacity: 0.5 } : { pathLength: 0, opacity: 0 }}
+            transition={{
+              pathLength: { duration: reduce ? 0 : 0.8, delay: reduce ? 0 : 0.75 + i * 0.13, ease: 'easeOut' },
+              opacity: { duration: reduce ? 0 : 0.4, delay: reduce ? 0 : 0.75 + i * 0.13 },
+            }}
+          />
+        ))}
+
+        {/* Nodes fly into formation */}
+        {NODES.map((n, i) => (
+          <motion.g
+            key={n.label}
+            initial={{ x: n.scattered.x, y: n.scattered.y, opacity: 0.45 }}
+            animate={{
+              x: connected ? n.formed.x : n.scattered.x,
+              y: connected ? n.formed.y : n.scattered.y,
+              opacity: connected ? 1 : 0.45,
+            }}
+            transition={{ duration: reduce ? 0 : 1.15, delay: reduce ? 0 : 0.15 + i * 0.09, ease: EASE }}
+          >
+            <circle r={18} fill={n.color} opacity={0.14} />
+            <circle r={5.5} fill={n.color} />
+            <text
+              y={26}
+              textAnchor="middle"
+              fontSize={14}
+              fontWeight={n.label === 'NEET-PG' ? 600 : 500}
+              fill="currentColor"
+            >
+              {n.label}
+            </text>
+          </motion.g>
+        ))}
+      </motion.svg>
+    </div>
+  )
+}
+
+// ─── Feature grid data ───
+const FEATURES = [
+  {
+    icon: MapIcon,
+    title: 'Medical Map',
+    hue: 'cyan',
+    desc: "Google Maps for medicine — every subject, topic and concept as a navigable knowledge graph, with your mastery painted on top.",
+  },
+  {
+    icon: Network,
+    title: 'Concept Explorer',
+    hue: 'sky',
+    desc: "Every node answers the question “Why am I learning this?” — chains that link today's lecture to the wards, the viva and the exam hall.",
+  },
+  {
+    icon: RefreshCcw,
+    title: 'Adaptive Revision',
+    hue: 'emerald',
+    desc: 'Spaced repetition driven by a real forgetting curve — each concept resurfaces exactly when your memory of it starts to decay.',
+  },
+  {
+    icon: ScanSearch,
+    title: 'Error Intelligence',
+    hue: 'amber',
+    desc: 'Confusion detection and mistake-pattern analysis turn every wrong answer into a targeted fix instead of a shrug.',
+  },
+  {
+    icon: Stethoscope,
+    title: 'Clinical Case Simulator',
+    hue: 'sky',
+    desc: 'Progressive-reveal cases that train reasoning the way wards do — history, examination, investigations, decisions.',
+  },
+  {
+    icon: Sparkles,
+    title: 'AI Study Coach',
+    hue: 'cyan',
+    desc: 'Next-best-action scheduling and an AI tutor with 7 explanation modes — from five-year-old-simple to exam-crisp.',
+  },
+] as const
+
+const HUES: Record<string, string> = {
+  cyan: 'text-cyan-500 dark:text-cyan-300 bg-cyan-500/10 border-cyan-500/20 group-hover:border-cyan-400/40 group-hover:shadow-[0_0_44px_-12px_rgba(34,211,238,0.4)]',
+  sky: 'text-sky-500 dark:text-sky-300 bg-sky-500/10 border-sky-500/20 group-hover:border-sky-400/40 group-hover:shadow-[0_0_44px_-12px_rgba(56,189,248,0.4)]',
+  emerald:
+    'text-emerald-500 dark:text-emerald-300 bg-emerald-500/10 border-emerald-500/20 group-hover:border-emerald-400/40 group-hover:shadow-[0_0_44px_-12px_rgba(52,211,153,0.4)]',
+  amber:
+    'text-amber-500 dark:text-amber-300 bg-amber-500/10 border-amber-500/20 group-hover:border-amber-400/40 group-hover:shadow-[0_0_44px_-12px_rgba(251,191,36,0.4)]',
+}
+
+// ─── Classroom → NEET-PG chain ───
+const CHAIN = ['CBME competency', 'Core concept', 'Clinical connection', 'Question practice', 'Revision schedule']
+
+// ─── Personas ───
+const PERSONAS = [
+  { tag: 'Year 1', title: 'Foundation', desc: 'Build the concept base the rest of medicine stands on.' },
+  { tag: 'Year 2', title: 'Integration', desc: 'The heavy years — connected subject by subject, not in silos.' },
+  { tag: 'Year 3', title: 'Clinical', desc: 'Ward work feeds the map, and the map feeds your answers.' },
+  { tag: 'Intern', title: 'Intensive', desc: 'Internship and serious prep, compressed into one system.' },
+]
+
+export function LandingPage() {
+  const setView = useAppStore((s) => s.setView)
+  const reduce = usePrefersReducedMotion()
+
+  const scrollTo = (e: React.MouseEvent<HTMLAnchorElement>, hash: string) => {
+    e.preventDefault()
+    const el = document.querySelector(hash)
+    if (!el) return
+    el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' })
+  }
+
+  return (
+    <div className="min-h-svh bg-background text-foreground">
+      {/* ─── Sticky nav ─── */}
+      <header className="glass-strong sticky top-0 z-40 border-b border-line">
+        <nav className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
+          <a
+            href="#top"
+            onClick={(e) => scrollTo(e, '#top')}
+            className="flex items-center gap-2.5 text-lg font-bold tracking-tight"
+          >
+            <span className="relative flex size-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-400 opacity-60" />
+              <span className="relative inline-flex size-2 rounded-full bg-cyan-400" />
+            </span>
+            MEDOS
+          </a>
+
+          <div className="hidden items-center gap-7 text-sm text-ink-soft md:flex">
+            {[
+              ['Philosophy', '#philosophy'],
+              ['Medical Map', '#features'],
+              ['AI Tutor', '#ai-tutor'],
+              ['Roadmap', '#roadmap'],
+            ].map(([label, href]) => (
+              <a key={label} href={href} onClick={(e) => scrollTo(e, href)} className="transition-colors hover:text-foreground">
+                {label}
+              </a>
+            ))}
+          </div>
+
+          <Button
+            size="lg"
+            className="h-10 rounded-full px-5 text-sm font-semibold"
+            onClick={() => setView('onboarding')}
+          >
+            Sign in → Start
+          </Button>
+        </nav>
+      </header>
+
+      <main id="top">
+        {/* ─── HERO ─── */}
+        <section className="relative overflow-hidden">
+          <div className="med-grid absolute inset-0" aria-hidden />
+          <div
+            className="absolute left-1/2 top-[-20%] h-[480px] w-[720px] -translate-x-1/2 rounded-full bg-cyan-500/[0.07] blur-3xl"
+            aria-hidden
+          />
+
+          {/* Animated ECG line */}
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-16 h-32 w-full [mask-image:linear-gradient(to_right,transparent,black_18%,black_82%,transparent)]"
+            aria-hidden
+          >
+            <svg viewBox="0 0 1200 160" preserveAspectRatio="none" className="h-full w-full opacity-[0.28]">
+              <path
+                className="ecg-line"
+                d="M0 90 H150 l10 -14 10 14 H360 l8 10 12 -46 14 82 10 -46 6 10 H640 l10 -16 10 16 H880 l8 10 12 -46 14 82 10 -46 6 10 H1200"
+                fill="none"
+                stroke="#22d3ee"
+                strokeWidth={1.6}
+              />
+            </svg>
+          </div>
+
+          <div className="relative mx-auto flex min-h-[calc(100svh-4rem)] w-full max-w-5xl flex-col items-center justify-center px-4 py-24 text-center sm:px-6">
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, ease: EASE }}
+              className="glass inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-[11px] font-medium tracking-wide text-muted-foreground sm:text-xs"
+            >
+              <span className="size-1.5 rounded-full bg-cyan-400" />
+              PROJECT MEDOS · The intelligence layer for medical education
+            </motion.div>
+
+            <motion.h1
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.12, ease: EASE }}
+              className="mt-8 text-4xl font-bold tracking-tighter sm:text-6xl lg:text-7xl"
+            >
+              Don&apos;t just study medicine.
+              <br />
+              <span className="bg-gradient-to-r from-cyan-500 via-sky-500 to-emerald-500 bg-clip-text text-transparent dark:from-cyan-300 dark:via-sky-400 dark:to-emerald-300">
+                Build a medical brain.
+              </span>
+            </motion.h1>
+
+            <motion.p
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.24, ease: EASE }}
+              className="mt-6 max-w-2xl text-balance text-base leading-relaxed text-ink-soft sm:text-lg"
+            >
+              An AI-powered learning system that connects your MBBS curriculum, clinical reasoning and
+              NEET-PG preparation into one continuously evolving knowledge map.
+            </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.36, ease: EASE }}
+              className="mt-10 flex flex-col items-center gap-4 sm:flex-row"
+            >
+              <Button
+                size="lg"
+                className="h-12 rounded-full px-8 text-sm font-semibold tracking-wide shadow-[0_0_36px_-10px_rgba(34,211,238,0.55)] transition-transform hover:scale-[1.03]"
+                onClick={() => setView('onboarding')}
+              >
+                START YOUR MEDICAL JOURNEY
+              </Button>
+              <Button
+                size="lg"
+                variant="ghost"
+                className="h-12 rounded-full border border-line px-8 text-sm font-semibold tracking-wide text-ink-soft transition-transform hover:scale-[1.03] hover:text-foreground"
+                onClick={() => setView('map')}
+              >
+                EXPLORE THE MEDICAL MAP
+              </Button>
+            </motion.div>
+
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 1, delay: 0.55 }}
+              className="mt-8 text-xs text-muted-foreground"
+            >
+              Built on the NMC CBME curriculum · For every MBBS year → NEET-PG
+            </motion.p>
+          </div>
+        </section>
+
+        {/* ─── Fragmented → connected ─── */}
+        <section id="philosophy" className="scroll-mt-24 px-4 py-24 sm:px-6 sm:py-32">
+          <div className="mx-auto max-w-4xl">
+            <Reveal className="mb-10 flex justify-center">
+              <Eyebrow>The philosophy</Eyebrow>
+            </Reveal>
+            <Constellation />
+          </div>
+        </section>
+
+        {/* ─── Feature grid ─── */}
+        <section id="features" className="scroll-mt-24 border-t border-line px-4 py-24 sm:px-6 sm:py-32">
+          <div className="mx-auto max-w-6xl">
+            <Reveal className="max-w-2xl">
+              <Eyebrow>One system · six instruments</Eyebrow>
+              <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-5xl">
+                The learning operating system
+              </h2>
+              <p className="mt-4 text-ink-soft">
+                Six instruments, one continuous loop: learn → connect → forget a little → repair → repeat.
+              </p>
+            </Reveal>
+
+            <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {FEATURES.map((f, i) => (
+                <Reveal key={f.title} delay={i * 0.06}>
+                  <motion.div
+                    id={f.title === 'Medical Map' ? 'medical-map' : f.title === 'AI Study Coach' ? 'ai-tutor' : undefined}
+                    whileHover={{ scale: 1.02 }}
+                    transition={{ duration: 0.25, ease: 'easeOut' }}
+                    className="group glass h-full scroll-mt-32 rounded-2xl p-6 transition-all duration-300 hover:border-cyan-400/30 hover:shadow-[0_10px_44px_-16px_rgba(34,211,238,0.35)]"
+                  >
+                    <div
+                      className={`grid size-11 place-items-center rounded-xl border transition-all duration-300 ${HUES[f.hue]}`}
+                    >
+                      <f.icon className="size-5" aria-hidden />
+                    </div>
+                    <h3 className="mt-5 text-lg font-semibold tracking-tight">{f.title}</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-ink-soft">{f.desc}</p>
+                  </motion.div>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ─── Classroom → NEET-PG chain ─── */}
+        <section id="roadmap" className="scroll-mt-24 border-t border-line px-4 py-24 sm:px-6 sm:py-32">
+          <div className="mx-auto max-w-5xl text-center">
+            <Reveal>
+              <Eyebrow>From classroom to NEET-PG</Eyebrow>
+              <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-5xl">One chain. No dead ends.</h2>
+              <p className="mx-auto mt-4 max-w-2xl text-ink-soft">
+                Every lecture, concept and question you touch is slotted into the same chain — so classroom
+                learning and NEET-PG preparation stop being separate lives.
+              </p>
+            </Reveal>
+
+            <Reveal delay={0.1}>
+              <div className="mt-12 flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+                {CHAIN.map((step, i) => (
+                  <div key={step} className="flex items-center gap-2 sm:gap-3">
+                    <span className="glass rounded-full px-4 py-2.5 text-sm font-medium sm:px-5">
+                      {step}
+                    </span>
+                    {i < CHAIN.length - 1 && (
+                      <motion.span
+                        aria-hidden
+                        className="text-cyan-500 dark:text-cyan-300"
+                        initial={{ x: 0 }}
+                        animate={reduce ? undefined : { x: [0, 4, 0] }}
+                        transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.18, ease: 'easeInOut' }}
+                      >
+                        <ChevronRight className="size-4" />
+                      </motion.span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </Reveal>
+          </div>
+        </section>
+
+        {/* ─── Persona strip ─── */}
+        <section className="border-t border-line px-4 py-24 sm:px-6 sm:py-32">
+          <div className="mx-auto max-w-6xl">
+            <Reveal className="max-w-2xl">
+              <Eyebrow>Every stage of the journey</Eyebrow>
+              <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-5xl">
+                Your first year. Your final year. Your attempt.
+              </h2>
+            </Reveal>
+
+            <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {PERSONAS.map((p, i) => (
+                <Reveal key={p.tag} delay={i * 0.06}>
+                  <div className="glass h-full rounded-2xl p-5 transition-colors hover:border-cyan-400/30">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-cyan-600 dark:text-cyan-300/90">
+                      {p.tag}
+                    </p>
+                    <h3 className="mt-2 text-lg font-semibold tracking-tight">{p.title}</h3>
+                    <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">{p.desc}</p>
+                  </div>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ─── Final CTA ─── */}
+        <section className="px-4 pb-24 sm:px-6 sm:pb-32">
+          <Reveal className="mx-auto max-w-5xl">
+            <div className="glass-strong relative overflow-hidden rounded-3xl px-6 py-16 text-center sm:px-12 sm:py-20">
+              <div className="med-grid absolute inset-0 opacity-70" aria-hidden />
+              <div className="relative">
+                <h2 className="mx-auto max-w-3xl text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
+                  The system understands where you are, what you forgot, and what to study next.
+                </h2>
+                <Button
+                  size="lg"
+                  className="mt-10 h-12 rounded-full px-10 text-sm font-semibold tracking-wide shadow-[0_0_36px_-10px_rgba(34,211,238,0.55)] transition-transform hover:scale-[1.03]"
+                  onClick={() => setView('onboarding')}
+                >
+                  START
+                </Button>
+              </div>
+            </div>
+          </Reveal>
+        </section>
+      </main>
+
+      {/* ─── Footer ─── */}
+      <footer className="border-t border-line px-4 py-8 sm:px-6">
+        <p className="mx-auto max-w-6xl text-center text-xs text-muted-foreground sm:text-left">
+          MEDOS — educational learning platform. Not medical advice. Always verify with official NMC/NBEMS sources.
+        </p>
+      </footer>
+    </div>
+  )
+}
