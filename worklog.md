@@ -192,3 +192,22 @@ Work Log:
 
 Stage Summary:
 - Golden path (spec §87) verified end-to-end. App is production-presentable. Next rounds: polish + feature expansion per cron reviews.
+
+---
+Task ID: 5 (cron round 2)
+Agent: main
+Task: Knowledge Audit + Clinical Logbook + integration polish
+
+Work Log:
+- STATUS ASSESSMENT: app stable — lint clean, tsc clean (outside pre-existing examples/skills), all APIs 200, zero console errors. Chose feature expansion over fixes.
+- FEATURE — Knowledge Audit (spec §49): new store flag auditOpen + /api/audit POST (samples up to 2 questions per subject with questions — easy+hard spread, capped 24, weighted by NEET yield) + /api/audit/submit (records attempts, upserts KnowledgeStates via engine, returns per-subject {accuracy, mastery, band: strong/moderate/weak/unmapped}, weakest/strongest, tailored recommendation). New src/components/audit/audit-view.tsx — spring-scale modal: intro explainer → 22-question run (keyboard-free radio cards, progress bar, subject chip) → knowledge map results (animated dual bars: audit accuracy vs stored mastery, band chips, weakest/strongest callouts, recommendation, CTAs: Practice weakest subject → quiz preset; View on Medical Map). Entry: dashboard "AUDIT MY MEDICAL KNOWLEDGE" button in the knowledge split card + registered globally in page.tsx.
+- FEATURE — Clinical Logbook (spec §45): /api/logbook GET/POST/DELETE (LogbookEntry model already in schema; de-identified educational records; each entry logs a 5-min study session). CasesView gained a tab switcher: CASE SIMULATOR | CLINICAL LOGBOOK with LogbookPanel — stats band (cases logged / systems touched / learning tasks), entry form (5 case-type chips, 9 system chips, diagnosis*, learned textarea, "de-identified only" badge), timeline of entries (type+system chips, auto learning tasks: 15 min recall / 8 questions / 1 case review, PRACTICE → setQuizPreset({system}) → questions, delete with optimistic update), privacy disclaimer.
+- FIX: logbook entry cards animated to opacity 0 forever (animate prop set only scale) → animate includes opacity/y.
+- ENHANCEMENT: /api/progress now emits weeklyReport.clinicalAccuracy (vignette/integrated accuracy, last-7d fallback all-time) → the conditional "CLINICAL QUESTIONS %" card in Progress view is now live.
+- ENHANCEMENT: Concept Explorer "Ask AI Tutor" now hands context over via sessionStorage 'medos:tutor-question' (tutor already consumes it) AND closes the explorer; "Quiz me" also closes the explorer (previously the slide-over blocked the target view).
+- QA via agent-browser: audit full run (22 Qs answered → 9% baseline map with per-subject bands, weakest/strongest), logbook add/list/practice/delete verified, clinical-accuracy card live (33%), explorer→tutor handoff fires prefilled message ("Explain 'ACE Inhibitors' (drug)…"), mobile 390px audit dialog clean. lint 0 errors, tsc 0 errors (app code), dev.log clean.
+
+Stage Summary:
+- New surfaces: Knowledge Audit modal (dashboard entry), Clinical Logbook tab in Cases. Cross-subject diagnostics now feed the knowledge engine directly.
+- Verified end-to-end in browser; no regressions (quiz/cases/revise/progress flows re-checked via API 200s + spot screenshots).
+- NEXT ROUND PRIORITIES: (1) Internship mode dashboard (§44 — rotation-based plan for year-5 profiles), (2) College-sync weekly planner (§42/43 exam mode planner UI in profile/roadmap), (3) deep content expansion for surgery/obgy/peds topics (concepts+questions), (4) image-based learning stubs (§34) with original SVG illustrations, (5) consider seeding logbook with 3-4 sample entries for demo richness.

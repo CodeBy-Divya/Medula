@@ -51,6 +51,13 @@ export const api = {
     post<{ score: number }>(`/api/cases/${id}/complete`, body),
   tutor: (body: { messages: { role: 'user' | 'assistant'; content: string }[]; mode: string; conceptId?: string }) =>
     post<{ reply: string }>('/api/tutor', body),
+  auditStart: () => post<import('./types').AuditPayload>('/api/audit', {}),
+  auditSubmit: (body: { results: { questionId: string; selected: string }[] }) =>
+    post<import('./types').AuditResultPayload>('/api/audit/submit', body),
+  logbook: () => get<{ entries: import('./types').LogbookEntryClient[] }>('/api/logbook'),
+  logbookCreate: (body: { caseType: string; system: string; diagnosis: string; learned: string }) =>
+    post<{ entry: import('./types').LogbookEntryClient }>('/api/logbook', body),
+  logbookDelete: (id: string) => fetch(`/api/logbook?id=${encodeURIComponent(id)}`, { method: 'DELETE' }).then(r => r.json()) as Promise<{ ok: boolean }>,
   roadmap: () => get<RoadmapPayload>('/api/roadmap'),
   progress: () => get<ProgressPayload>('/api/progress'),
   search: (q: string) => get<SearchResults>(`/api/search?q=${encodeURIComponent(q)}`),

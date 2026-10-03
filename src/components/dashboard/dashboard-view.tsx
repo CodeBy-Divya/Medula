@@ -20,6 +20,7 @@ import {
   TrendingUp,
   Zap,
   ClipboardList,
+  ScanSearch,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -246,6 +247,7 @@ export function DashboardView() {
   const setView = useAppStore((s) => s.setView)
   const openConcept = useAppStore((s) => s.openConcept)
   const setQuizPreset = useAppStore((s) => s.setQuizPreset)
+  const setAuditOpen = useAppStore((s) => s.setAuditOpen)
 
   const [data, setData] = useState<DashboardPayload | null>(null)
   const [status, setStatus] = useState<LoadState>('loading')
@@ -424,6 +426,15 @@ export function DashboardView() {
                 </span>{' '}
                 this week
               </span>
+              <Button
+                size="sm"
+                variant="outline"
+                className="ml-auto min-h-9 gap-1.5 border-primary/40 text-primary hover:bg-primary/10"
+                onClick={() => setAuditOpen(true)}
+              >
+                <ScanSearch className="size-3.5" />
+                AUDIT MY MEDICAL KNOWLEDGE
+              </Button>
             </div>
           </section>
         </div>

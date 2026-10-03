@@ -97,6 +97,10 @@ export async function GET() {
   // clinical accuracy
   const clinicalAttempts = attempts.filter(a => ['vignette', 'integrated'].includes(a.question.qtype))
   const clinicalAcc = clinicalAttempts.length ? Math.round((clinicalAttempts.filter(a => a.correct).length / clinicalAttempts.length) * 100) : 0
+  const clinicalAcc7 = (() => {
+    const win = clinicalAttempts.filter(a => (now.getTime() - a.createdAt.getTime()) / DAY < 7)
+    return win.length ? Math.round((win.filter(a => a.correct).length / win.length) * 100) : 0
+  })()
 
   // weekly report narrative
   const topMistake = patterns.slice().sort((a, b) => b.count - a.count)[0]
@@ -149,6 +153,7 @@ export async function GET() {
       consistency: Math.round((activeDays / 7) * 100),
       timeSpent: timeLast7,
       revisionDebt: revisionItems.length,
+      clinicalAccuracy: clinicalAcc7 > 0 || clinicalAcc > 0 ? (clinicalAcc7 || clinicalAcc) : 0,
       narrative,
     },
     errorPatterns: [...patternGroups.entries()].map(([errorType, g]) => ({
@@ -158,6 +163,6 @@ export async function GET() {
     })).sort((a, b) => b.count - a.count),
     confusions: confusionsPayload,
   }
-  void clinicalAcc; void topicSubject; void estimatedRecall
+  void topicSubject; void estimatedRecall
   return NextResponse.json(payload)
 }

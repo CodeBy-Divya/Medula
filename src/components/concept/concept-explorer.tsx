@@ -344,10 +344,18 @@ export function ConceptExplorer() {
   const practiceNow = useCallback(() => {
     if (!detail) return
     setQuizPreset({ conceptId: detail.id, count: 6 })
+    closeConcept()
     setView('questions')
-  }, [detail, setQuizPreset, setView])
+  }, [detail, setQuizPreset, setView, closeConcept])
 
-  const askTutor = useCallback(() => setView('tutor'), [setView])
+  const askTutor = useCallback(() => {
+    // Hand the concept over to the tutor so it opens with context, then close the explorer
+    try {
+      if (detail?.name) sessionStorage.setItem('medos:tutor-question', `Explain "${detail.name}" (${detail.kind}) — build it up from its foundation and show the clinical connections.`)
+    } catch { /* storage unavailable */ }
+    closeConcept()
+    setView('tutor')
+  }, [setView, detail, closeConcept])
 
   return (
     <AnimatePresence>

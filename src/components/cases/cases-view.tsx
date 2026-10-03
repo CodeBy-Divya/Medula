@@ -13,18 +13,23 @@ import {
   FileText,
   Lightbulb,
   Loader2,
+  NotebookPen,
   Play,
+  Plus,
   RefreshCw,
   RotateCcw,
   Sparkles,
   Stethoscope,
   Target,
+  Trash2,
   UserRound,
   XCircle,
 } from 'lucide-react'
 
 import { api } from '@/lib/api'
 import { useAppStore } from '@/lib/store'
+import { SYSTEMS } from '@/lib/types'
+import type { LogbookEntryClient } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
@@ -241,6 +246,9 @@ export function CasesView() {
   const setQuizPreset = useAppStore((s) => s.setQuizPreset)
   const reduce = useReducedMotion()
 
+  // Tab state — case simulator vs clinical logbook
+  const [tab, setTab] = useState<'cases' | 'logbook'>('cases')
+
   // List state
   const [cases, setCases] = useState<CaseSummary[]>([])
   const [listStatus, setListStatus] = useState<LoadState>('loading')
@@ -415,12 +423,38 @@ export function CasesView() {
           </p>
         </header>
 
-        {listStatus === 'loading' && <ListSkeleton />}
-        {listStatus === 'error' && (
-          <LoadErrorCard message="Couldn't load the case files" onRetry={() => setReloadKey((k) => k + 1)} />
-        )}
+        {/* Tab switcher — case simulator / clinical logbook */}
+        <div className="inline-flex rounded-xl border border-line bg-surface-2 p-1" role="tablist" aria-label="Cases sections">
+          {([
+            { id: 'cases' as const, label: 'CASE SIMULATOR', icon: Stethoscope },
+            { id: 'logbook' as const, label: 'CLINICAL LOGBOOK', icon: NotebookPen },
+          ]).map((t) => (
+            <button
+              key={t.id}
+              role="tab"
+              aria-selected={tab === t.id}
+              onClick={() => setTab(t.id)}
+              className={cn(
+                'flex min-h-10 items-center gap-2 rounded-lg px-4 text-xs font-semibold tracking-wide transition-colors',
+                tab === t.id ? 'bg-primary/15 text-primary' : 'text-ink-soft hover:text-foreground',
+              )}
+            >
+              <t.icon className="size-4" />
+              {t.label}
+            </button>
+          ))}
+        </div>
 
-        {listStatus === 'ready' && (
+        {tab === 'logbook' ? (
+          <LogbookPanel reduce={reduce} />
+        ) : (
+          <>
+            {listStatus === 'loading' && <ListSkeleton />}
+            {listStatus === 'error' && (
+              <LoadErrorCard message="Couldn't load the case files" onRetry={() => setReloadKey((k) => k + 1)} />
+            )}
+
+            {listStatus === 'ready' && (
           <div className="grid gap-4 md:grid-cols-2">
             {cases.map((c, i) => {
               const dm = diffMeta(c.difficulty)
@@ -477,6 +511,8 @@ export function CasesView() {
               )
             })}
           </div>
+        )}
+          </>
         )}
       </div>
     )
@@ -869,6 +905,254 @@ export function CasesView() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// ─── CLINICAL LOGBOOK PANEL ──────────────────────────────────────────────────
+// De-identified educational records only — never real patient data.
+
+const CASE_TYPES = ['Ward case', 'Emergency', 'OPD visit', 'Procedure observed', 'Interesting finding'] as const
+
+const LOG_TYPE_META: Record<string, { color: string }> = {
+  'Ward case': { color: '#22d3ee' },
+  'Emergency': { color: 'var(--sev-crit)' },
+  'OPD visit': { color: 'var(--sev-ok)' },
+  'Procedure observed': { color: '#a78bfa' },
+  'Interesting finding': { color: 'var(--sev-warn)' },
+}
+
+function LogbookPanel({ reduce }: { reduce: boolean | null }) {
+  const setQuizPreset = useAppStore((s) => s.setQuizPreset)
+  const setView = useAppStore((s) => s.setView)
+
+  const [entries, setEntries] = useState<LogbookEntryClient[]>([])
+  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
+  const [reloadKey, setReloadKey] = useState(0)
+  const [caseType, setCaseType] = useState<string>('Ward case')
+  const [system, setSystem] = useState<string>('cardiovascular')
+  const [diagnosis, setDiagnosis] = useState('')
+  const [learned, setLearned] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState(false)
+  const [justAdded, setJustAdded] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    api.logbook().then(
+      (res) => { if (!cancelled) { setEntries(res.entries); setStatus('ready') } },
+      () => { if (!cancelled) setStatus('error') },
+    )
+    return () => { cancelled = true }
+  }, [reloadKey])
+
+  const submit = () => {
+    if (!diagnosis.trim()) { setFormError(true); return }
+    setFormError(false)
+    setSaving(true)
+    api.logbookCreate({ caseType, system, diagnosis, learned })
+      .then((res) => {
+        setEntries((prev) => [res.entry, ...prev])
+        setDiagnosis(''); setLearned('')
+        setJustAdded(res.entry.id)
+        setTimeout(() => setJustAdded(null), 1800)
+      })
+      .catch(() => setFormError(true))
+      .finally(() => setSaving(false))
+  }
+
+  const remove = (id: string) => {
+    setEntries((prev) => prev.filter((e) => e.id !== id))
+    api.logbookDelete(id).catch(() => {
+      setReloadKey((k) => k + 1) // restore truth on failure
+    })
+  }
+
+  const systemsCovered = new Set(entries.map((e) => e.system)).size
+
+  return (
+    <div className="space-y-6">
+      {/* Stats band */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { label: 'Cases logged', value: entries.length },
+          { label: 'Systems touched', value: systemsCovered },
+          { label: 'Learning tasks', value: entries.length * 3 },
+        ].map((s) => (
+          <div key={s.label} className="glass rounded-2xl p-4 text-center">
+            <p className="text-2xl font-semibold tabular-nums tracking-tight">{s.value}</p>
+            <p className="mt-0.5 text-[10px] uppercase tracking-[0.14em] text-ink-soft">{s.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* New entry form */}
+      <section className="glass rounded-2xl p-4 md:p-5">
+        <div className="flex items-center gap-2">
+          <Plus className="size-4 text-primary" />
+          <h3 className="text-sm font-semibold tracking-tight">Log a clinical exposure</h3>
+          <span className="ml-auto rounded-full border border-line px-2 py-0.5 text-[9px] uppercase tracking-wider text-ink-soft">
+            de-identified only
+          </span>
+        </div>
+
+        <div className="mt-4 space-y-4">
+          <div>
+            <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-ink-soft">Case type</p>
+            <div className="flex flex-wrap gap-2">
+              {CASE_TYPES.map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setCaseType(t)}
+                  className={cn(
+                    'min-h-9 rounded-full border px-3 text-xs transition-colors',
+                    caseType === t ? 'border-primary bg-primary/10 font-medium text-primary' : 'border-line text-ink-soft hover:text-foreground',
+                  )}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-ink-soft">System</p>
+            <div className="flex flex-wrap gap-2">
+              {SYSTEMS.map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => setSystem(s.id)}
+                  className={cn(
+                    'min-h-9 rounded-full border px-3 text-xs transition-colors',
+                    system === s.id ? 'border-primary bg-primary/10 font-medium text-primary' : 'border-line text-ink-soft hover:text-foreground',
+                  )}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="block">
+              <span className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-ink-soft">Diagnosis / finding *</span>
+              <input
+                value={diagnosis}
+                onChange={(e) => setDiagnosis(e.target.value)}
+                placeholder="e.g. Circle of Willis aneurysm — ruptured"
+                className={cn(
+                  'min-h-11 w-full rounded-xl border bg-card px-3.5 text-sm outline-none transition-colors placeholder:text-muted-foreground/60',
+                  formError ? 'border-sev-crit' : 'border-line focus:border-primary/60',
+                )}
+                maxLength={200}
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-ink-soft">What did I learn?</span>
+              <textarea
+                value={learned}
+                onChange={(e) => setLearned(e.target.value)}
+                placeholder="Key takeaways, differentials considered, what to read next…"
+                rows={2}
+                className="min-h-11 w-full resize-none rounded-xl border border-line bg-card px-3.5 py-2.5 text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-primary/60"
+                maxLength={1000}
+              />
+            </label>
+          </div>
+
+          {formError && (
+            <p className="text-xs text-sev-crit">Add a diagnosis or finding — one line is enough.</p>
+          )}
+
+          <Button className="min-h-11" onClick={submit} disabled={saving}>
+            {saving ? <Loader2 className="mr-2 size-4 animate-spin" /> : <NotebookPen className="mr-2 size-4" />}
+            {saving ? 'Saving…' : 'ADD TO LOGBOOK'}
+          </Button>
+        </div>
+      </section>
+
+      {/* Entries timeline */}
+      {status === 'loading' && (
+        <div className="space-y-3">{[0, 1].map((i) => <Skeleton key={i} className="h-24 rounded-2xl" />)}</div>
+      )}
+      {status === 'error' && (
+        <div className="glass rounded-2xl p-6 text-center">
+          <p className="text-sm text-ink-soft">Couldn&apos;t load your logbook.</p>
+          <Button variant="outline" size="sm" className="mt-3 min-h-9" onClick={() => setReloadKey((k) => k + 1)}>
+            <RefreshCw className="mr-2 size-3.5" /> Retry
+          </Button>
+        </div>
+      )}
+      {status === 'ready' && entries.length === 0 && (
+        <div className="glass rounded-2xl p-8 text-center">
+          <NotebookPen className="mx-auto size-8 text-ink-soft" />
+          <p className="mt-3 text-sm font-medium">Your logbook is empty</p>
+          <p className="mx-auto mt-1 max-w-md text-xs leading-relaxed text-ink-soft">
+            After every ward case or interesting patient, log one line here. MEDOS turns each exposure into
+            recall tasks and question sets — clinical experience becomes exam preparation.
+          </p>
+        </div>
+      )}
+      {status === 'ready' && entries.length > 0 && (
+        <div className="space-y-3">
+          {entries.map((e, i) => {
+            const meta = LOG_TYPE_META[e.caseType] ?? { color: 'var(--muted-foreground)' }
+            const sysLabel = SYSTEMS.find((s) => s.id === e.system)?.label ?? e.system
+            return (
+              <motion.article
+                key={e.id}
+                initial={reduce ? false : { opacity: 0, y: 10 }}
+                animate={justAdded === e.id ? { opacity: 1, y: 0, scale: [1, 1.015, 1] } : { opacity: 1, y: 0 }}
+                transition={reduce ? undefined : { duration: 0.35, delay: Math.min(i * 0.04, 0.2) }}
+                className="glass rounded-2xl p-4 md:p-5"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    className="rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em]"
+                    style={{ color: meta.color, background: 'color-mix(in oklab, currentColor 12%, transparent)' }}
+                  >
+                    {e.caseType}
+                  </span>
+                  <span className="rounded-full bg-surface-2 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-soft">
+                    {sysLabel}
+                  </span>
+                  <span className="ml-auto text-[11px] text-ink-soft">
+                    {new Date(e.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                  </span>
+                  <button
+                    onClick={() => remove(e.id)}
+                    aria-label={`Delete entry: ${e.diagnosis}`}
+                    className="flex size-8 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-sev-crit/10 hover:text-sev-crit"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </button>
+                </div>
+                <h4 className="mt-2.5 text-[15px] font-semibold tracking-tight">{e.diagnosis}</h4>
+                {e.learned && <p className="mt-1 text-sm leading-relaxed text-ink-soft">{e.learned}</p>}
+                <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line pt-3">
+                  <span className="text-[10px] uppercase tracking-wider text-ink-soft">Auto learning tasks:</span>
+                  <span className="rounded-md border border-line px-2 py-0.5 text-[10px] text-ink-soft">15 min recall</span>
+                  <span className="rounded-md border border-line px-2 py-0.5 text-[10px] text-ink-soft">8 questions</span>
+                  <span className="rounded-md border border-line px-2 py-0.5 text-[10px] text-ink-soft">1 case review</span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="ml-auto min-h-8 gap-1 text-xs text-primary"
+                    onClick={() => { setQuizPreset({ system: e.system, count: 6 }); setView('questions') }}
+                  >
+                    PRACTICE <ArrowRight className="size-3" />
+                  </Button>
+                </div>
+              </motion.article>
+            )
+          })}
+        </div>
+      )}
+
+      <p className="text-center text-[10px] leading-relaxed text-ink-soft">
+        Logbook entries are educational notes. Never record identifiable patient information —
+        use de- descriptions and follow your institution&apos;s privacy rules.
+      </p>
     </div>
   )
 }

@@ -144,6 +144,7 @@ export interface ProgressPayload {
     topicsStudied: number; accuracyNow: number; accuracyPrev: number
     weakest: string; strongest: string; topMistake: string
     consistency: number; timeSpent: number; revisionDebt: number
+    clinicalAccuracy: number
     narrative: string[]
   }
   errorPatterns: { errorType: string; count: number; examples: { concept: string; count: number }[] }[]
@@ -205,6 +206,31 @@ export const KIND_META: Record<string, { label: string; color: string; icon: str
   pharmacology: { label: 'Pharmacology', color: '#c084fc', icon: 'Syringe' },
   microbiology: { label: 'Microbiology', color: '#facc15', icon: 'Bug' },
   clinical_skill: { label: 'Clinical Skill', color: '#4ade80', icon: 'Hand' },
+}
+
+export interface AuditPayload {
+  questions: QuestionClient[]
+  subjects: { code: string; name: string; color: string }[]
+}
+
+export interface AuditSubjectResult {
+  code: string; name: string; color: string
+  correct: number; total: number; accuracy: number
+  mastery: number // pre-existing knowledge-state average (0 if unmapped)
+  band: 'strong' | 'moderate' | 'weak' | 'unmapped'
+}
+
+export interface AuditResultPayload {
+  overall: { correct: number; total: number; accuracy: number }
+  subjects: AuditSubjectResult[]
+  weakest: { code: string; name: string } | null
+  strongest: { code: string; name: string } | null
+  recommendation: string
+}
+
+export interface LogbookEntryClient {
+  id: string; caseType: string; system: string; diagnosis: string
+  learned: string; createdAt: string
 }
 
 export const SYSTEMS = [
