@@ -1,18 +1,26 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { animate, motion, useReducedMotion } from 'framer-motion'
+import { AnimatePresence, animate, motion, useReducedMotion } from 'framer-motion'
 import {
   Activity,
   ArrowRight,
+  CalendarCheck,
   Check,
+  ChevronDown,
   Clock3,
   Flag,
+  GraduationCap,
+  Leaf,
   ListChecks,
   RefreshCw,
   Repeat,
+  RotateCcw,
   Target,
   Timer,
+  Wrench,
+  X,
+  Zap,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -29,15 +37,24 @@ type LoadState = 'loading' | 'ready' | 'error'
 
 const SPLIT_COLORS = ['bg-primary', 'bg-sev-ok', 'bg-sev-warn', 'bg-info', 'bg-muted-foreground/50'] as const
 
-// Week-planner block palette (kind → chip classes)
-const BLOCK_KIND: Record<string, { chip: string; bar: string; label: string }> = {
-  college: { chip: 'bg-info/10 text-info', bar: 'bg-info', label: 'College' },
-  questions: { chip: 'bg-primary/10 text-primary', bar: 'bg-primary', label: 'Questions' },
-  revision: { chip: 'bg-sev-warn/10 text-sev-warn', bar: 'bg-sev-warn', label: 'Revision' },
-  flashcards: { chip: 'bg-sev-ok/10 text-sev-ok', bar: 'bg-sev-ok', label: 'Recall' },
-  mocks: { chip: 'bg-sev-crit/10 text-sev-crit', bar: 'bg-sev-crit', label: 'Mocks' },
-  weakness: { chip: 'bg-sev-crit/10 text-sev-crit', bar: 'bg-sev-crit', label: 'Repair' },
-  rest: { chip: 'bg-surface-2 text-ink-soft', bar: 'bg-muted-foreground/50', label: 'Rest' },
+// Week-planner block palette (kind → icon + chip classes)
+const BLOCK_KIND: Record<string, { icon: LucideIcon; chip: string; bar: string; label: string }> = {
+  college: { icon: GraduationCap, chip: 'bg-info/10 text-info', bar: 'bg-info', label: 'College' },
+  questions: { icon: ListChecks, chip: 'bg-primary/10 text-primary', bar: 'bg-primary', label: 'Questions' },
+  revision: { icon: RotateCcw, chip: 'bg-sev-warn/10 text-sev-warn', bar: 'bg-sev-warn', label: 'Revision' },
+  flashcards: { icon: Zap, chip: 'bg-sev-ok/10 text-sev-ok', bar: 'bg-sev-ok', label: 'Recall' },
+  mocks: { icon: Timer, chip: 'bg-sev-crit/10 text-sev-crit', bar: 'bg-sev-crit', label: 'Mocks' },
+  weakness: { icon: Wrench, chip: 'bg-sev-crit/10 text-sev-crit', bar: 'bg-sev-crit', label: 'Repair' },
+  rest: { icon: Leaf, chip: 'bg-surface-2 text-ink-soft', bar: 'bg-muted-foreground/50', label: 'Rest' },
+}
+
+// Per-kind CTA in the day detail panel (college / rest get no action)
+const BLOCK_ACTION_LABEL: Record<string, string> = {
+  questions: 'Practice now',
+  mocks: 'Start a mock',
+  revision: 'Open Revise',
+  flashcards: 'Recall drill',
+  weakness: 'Go to next best action',
 }
 
 function fmtDur(minutes: number): string {
@@ -47,37 +64,181 @@ function fmtDur(minutes: number): string {
   return m ? `${h}h ${m}m` : `${h}h`
 }
 
-function DayCard({ plan, index, reduce }: { plan: WeekDayPlan; index: number; reduce: boolean }) {
+// Small pulsing "Today" dot — sev-ok, respects reduced motion
+function TodayBadge({ reduce }: { reduce: boolean }) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-sev-ok/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-sev-ok">
+      <span className="relative flex size-1.5">
+        {!reduce && (
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sev-ok opacity-75" />
+        )}
+        <span className="relative inline-flex size-1.5 rounded-full bg-sev-ok" />
+      </span>
+      Today
+    </span>
+  )
+}
+
+function DayCard({
+  plan,
+  index,
+  reduce,
+  isToday,
+  isOpen,
+  onToggle,
+}: {
+  plan: WeekDayPlan
+  index: number
+  reduce: boolean
+  isToday: boolean
+  isOpen: boolean
+  onToggle: () => void
+}) {
   return (
     <motion.li
       initial={reduce ? false : { opacity: 0, y: 14 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-40px' }}
+      whileHover={reduce ? undefined : { y: -2 }}
       transition={{ duration: 0.4, delay: reduce ? 0 : index * 0.06, ease: EASE }}
-      className={cn(
-        'flex w-[172px] shrink-0 flex-col rounded-2xl border p-3 sm:w-auto',
-        plan.isWeekend ? 'border-amber-400/30 bg-amber-400/5' : 'border-line bg-surface-2/50',
-      )}
+      onClick={onToggle}
+      className="flex w-[172px] shrink-0 cursor-pointer sm:w-auto"
     >
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-bold uppercase tracking-wide">{plan.short}</p>
-        <span className="rounded-full bg-surface-2 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-ink-soft">{plan.hours}h</span>
+      {/* Clay surface sits on a static child so framer's transform never fights the CSS */}
+      <div
+        className={cn(
+          'relative flex flex-1 flex-col rounded-2xl p-3',
+          isToday ? 'clay border-primary/40!' : 'clay-in',
+        )}
+      >
+        {plan.isWeekend && (
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-br from-amber-400/15 via-amber-300/5 to-transparent"
+          />
+        )}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onToggle()
+          }}
+          aria-expanded={isOpen}
+          aria-controls={`day-panel-${plan.day}`}
+          className="relative flex w-full items-center justify-between gap-2 rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+        >
+          <span className="flex items-center gap-1.5">
+            <span className="text-xs font-bold uppercase tracking-wide">{plan.short}</span>
+            {isToday && <TodayBadge reduce={reduce} />}
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="rounded-full bg-surface-2 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-ink-soft">{plan.hours}h</span>
+            <ChevronDown className={cn('size-3.5 shrink-0 text-ink-soft transition-transform', isOpen && 'rotate-180')} />
+          </span>
+        </button>
+        <ul className="relative mt-2 flex-1 space-y-2">
+          {plan.blocks.map((b, i) => {
+            const s = BLOCK_KIND[b.kind] ?? BLOCK_KIND.rest
+            return (
+              <li key={`${b.label}-${i}`} className="flex items-start gap-1.5">
+                <span aria-hidden className={cn('mt-0.5 h-4 w-1 shrink-0 rounded-full', s.bar)} />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[10px] font-medium leading-snug">{b.label}</span>
+                  <span className={cn('mt-0.5 inline-block rounded-full px-1.5 text-[9px] font-bold tabular-nums', s.chip)}>{fmtDur(b.minutes)}</span>
+                </span>
+              </li>
+            )
+          })}
+        </ul>
       </div>
-      <ul className="mt-2 flex-1 space-y-2">
+    </motion.li>
+  )
+}
+
+// Expanded day detail — clay-in recessed panel with per-block actions
+function DayDetailPanel({
+  plan,
+  onClose,
+  onAction,
+}: {
+  plan: WeekDayPlan
+  onClose: () => void
+  onAction: (kind: string) => void
+}) {
+  const totalMinutes = plan.blocks.reduce((sum, b) => sum + b.minutes, 0)
+  return (
+    <div
+      id={`day-panel-${plan.day}`}
+      role="region"
+      aria-label={`${plan.day} — detailed plan`}
+      className="clay-in mt-3 rounded-2xl border-amber-400/30! p-4 md:p-5"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-base font-semibold tracking-tight">{plan.day}</h3>
+            <span className="rounded-full bg-surface-2 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-ink-soft">
+              {plan.hours}h target
+            </span>
+            {plan.isWeekend && (
+              <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400">
+                Weekend
+              </span>
+            )}
+          </div>
+          <p className="mt-1 text-[11px] text-ink-soft">
+            {fmtDur(totalMinutes)} of planned work · {plan.blocks.length} blocks
+          </p>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onClose}
+          aria-label="Close day details"
+          className="size-9 shrink-0 rounded-full text-ink-soft hover:text-foreground"
+        >
+          <X className="size-4" />
+        </Button>
+      </div>
+
+      <ul className="mt-4 space-y-2">
         {plan.blocks.map((b, i) => {
           const s = BLOCK_KIND[b.kind] ?? BLOCK_KIND.rest
+          const Icon = s.icon
+          const actionLabel = BLOCK_ACTION_LABEL[b.kind]
           return (
-            <li key={`${b.label}-${i}`} className="flex items-start gap-1.5">
-              <span aria-hidden className={cn('mt-0.5 h-4 w-1 shrink-0 rounded-full', s.bar)} />
-              <span className="min-w-0 flex-1">
-                <span className="block text-[10px] font-medium leading-snug">{b.label}</span>
-                <span className={cn('mt-0.5 inline-block rounded-full px-1.5 text-[9px] font-bold tabular-nums', s.chip)}>{fmtDur(b.minutes)}</span>
+            <li
+              key={`${b.label}-${i}`}
+              className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-surface-2/60 p-3"
+            >
+              <span aria-hidden className={cn('grid size-9 shrink-0 place-items-center rounded-xl', s.chip)}>
+                <Icon className="size-4" />
               </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium leading-snug">{b.label}</p>
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide', s.chip)}>
+                    {s.label}
+                  </span>
+                  <span className="text-[11px] font-semibold tabular-nums text-ink-soft">{fmtDur(b.minutes)}</span>
+                </div>
+              </div>
+              {actionLabel && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="ml-auto min-h-9 shrink-0"
+                  onClick={() => onAction(b.kind)}
+                >
+                  {actionLabel}
+                  <ArrowRight className="size-3.5" />
+                </Button>
+              )}
             </li>
           )
         })}
       </ul>
-    </motion.li>
+    </div>
   )
 }
 
@@ -245,10 +406,12 @@ function RoadmapError({ onRetry }: { onRetry: () => void }) {
 
 export function RoadmapView() {
   const setView = useAppStore((s) => s.setView)
+  const setQuizPreset = useAppStore((s) => s.setQuizPreset)
 
   const [data, setData] = useState<RoadmapPayload | null>(null)
   const [status, setStatus] = useState<LoadState>('loading')
   const [reloadKey, setReloadKey] = useState(0)
+  const [openDay, setOpenDay] = useState<string | null>(null)
   const reduce = useReducedMotion()
 
   useEffect(() => {
@@ -274,10 +437,39 @@ export function RoadmapView() {
     setReloadKey((k) => k + 1)
   }, [])
 
+  // Block-kind → view hand-off (questions also seeds a small practice preset)
+  const runBlockAction = useCallback(
+    (kind: string) => {
+      switch (kind) {
+        case 'questions':
+          setQuizPreset({ count: 8 })
+          setView('questions')
+          break
+        case 'mocks':
+          setView('questions')
+          break
+        case 'revision':
+        case 'flashcards':
+          setView('revise')
+          break
+        case 'weakness':
+          setView('home')
+          break
+      }
+    },
+    [setQuizPreset, setView],
+  )
+
   if (status === 'loading') return <RoadmapSkeleton />
   if (status === 'error' || !data) return <RoadmapError onRetry={retry} />
 
   const { neetClock, weeklySplit, phases, currentStageLabel, weekPlan } = data
+
+  // Today's weekday — Monday = 0 … Sunday = 6 (weekPlan is built Monday-first)
+  const todayIdx = (new Date().getDay() + 6) % 7
+  const plannedDays = weekPlan.filter((d) => !d.isWeekend).length
+  const plannedMinutes = weekPlan.reduce((sum, d) => sum + d.hours * 60, 0)
+  const openPlan = openDay ? (weekPlan.find((p) => p.day === openDay) ?? null) : null
 
   return (
     <div className="mx-auto max-w-5xl space-y-8 p-4 md:p-6">
@@ -413,11 +605,46 @@ export function RoadmapView() {
               built from the {data.neetClock.stage.toLowerCase()} stage and your declared hours — Sunday evening is mock night
             </span>
           </div>
-          <ul className="med-scroll mt-4 flex gap-2 overflow-x-auto pb-1 md:grid md:grid-cols-7 md:overflow-visible">
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <p className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface-2/70 px-3 py-1 text-[11px] font-semibold">
+              <CalendarCheck aria-hidden className="size-3.5 text-sev-ok" />
+              <span className="tabular-nums">{plannedDays} days planned</span>
+              <span aria-hidden className="text-ink-soft">·</span>
+              <span className="tabular-nums text-primary">{fmtDur(plannedMinutes)} total</span>
+            </p>
+            <span className="text-[11px] text-ink-soft">tap a day to see every block</span>
+          </div>
+          <ul className="med-scroll mt-3 flex gap-2 overflow-x-auto pb-1 md:grid md:grid-cols-7 md:overflow-visible">
             {weekPlan.map((p, i) => (
-              <DayCard key={p.day} plan={p} index={i} reduce={reduce ?? false} />
+              <DayCard
+                key={p.day}
+                plan={p}
+                index={i}
+                reduce={reduce ?? false}
+                isToday={i === todayIdx}
+                isOpen={openDay === p.day}
+                onToggle={() => setOpenDay((cur) => (cur === p.day ? null : p.day))}
+              />
             ))}
           </ul>
+          <AnimatePresence initial={false}>
+            {openPlan && (
+              <motion.div
+                key="day-detail"
+                className="overflow-hidden"
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={reduce ? { duration: 0 } : { duration: 0.25, ease: EASE }}
+              >
+                <DayDetailPanel
+                  plan={openPlan}
+                  onClose={() => setOpenDay(null)}
+                  onAction={runBlockAction}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
           <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-line pt-3 text-[10px] text-ink-soft">
             {Object.entries(BLOCK_KIND).map(([kind, s]) => (
               <span key={kind} className="inline-flex items-center gap-1">

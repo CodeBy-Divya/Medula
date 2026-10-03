@@ -650,6 +650,19 @@ export const flashcards: SeedFlashcard[] = [
   { id: 'f-81', conceptId: 'c-airway', subjectCode: 'ANES', front: 'Suxamethonium contraindications?', back: 'Hyperkalemia states (burns/crush >48 h), MH history, neuromuscular disease, raised IOP; MH trigger — dantrolene rescues.' },
   { id: 'f-82', conceptId: 'c-genetics', subjectCode: 'PEDS', front: 'Pedigree quick rules?', back: 'Male-to-male = AD. Skipped generations + consanguinity = AR. No father-to-son = X-linked. Mothers-only = mitochondrial.' },
   { id: 'f-83', conceptId: 'c-fluids', subjectCode: 'PEDS', front: 'WHO dehydration plans?', back: 'Some (6–9%): Plan B — 75 ml/kg ORS over 4 h. Severe (≥10%): Plan C — 30 ml/kg IV in 1 h (infants) + 70 over 2.5 h.' },
+  // ── Deck for the 6 newest 3D-diagram concepts (Task 10-a) ──
+  { id: 'f-84', conceptId: 'c-aki', subjectCode: 'MED', system: 'renal', front: 'Prerenal AKI vs ATN — urine indices?', back: 'Prerenal: urine Na <20, FENa <1%, BUN:Cr >20:1, concentrated urine (>500 mOsm) — kidney is intact but underfilled. ATN: FENa >2%, BUN:Cr 10–15:1, muddy brown casts — tubules are injured.' },
+  { id: 'f-85', conceptId: 'c-aki', subjectCode: 'MED', system: 'renal', front: 'Dialysis indications in AKI?', back: 'AEIOU — Acidosis (severe, refractory), Electrolyte (refractory hyperkalemia), Intoxication (salicylate, methanol, lithium), Overload (fluid refractory to diuretics), Uremia (pericarditis, encephalopathy, bleeding).' },
+  { id: 'f-86', conceptId: 'c-dka', subjectCode: 'MED', system: 'endocrine', front: 'DKA — the diagnostic triad + labs?', back: 'Glucose 300–600 mg/dL + ketonemia/ketonuria + anion-gap metabolic acidosis (pH <7.3, HCO₃⁻ low, AG >12). Total-body potassium DEPLETED even when serum K looks normal/high.' },
+  { id: 'f-87', conceptId: 'c-dka', subjectCode: 'MED', system: 'endocrine', front: 'DKA management sequence?', back: '1) IV isotonic saline 1–1.5 L first hour. 2) Regular insulin 0.1 U/kg bolus + 0.1 U/kg/h (glucose fall ~50–75 mg/dL/h). 3) Add K⁺ once K <5.2 AND urine flows. 4) Bicarb only if pH <6.9. 5) Glucose 200–250 → add dextrose, keep insulin until anion gap closes.' },
+  { id: 'f-88', conceptId: 'c-imnci', subjectCode: 'PEDS', system: 'community', front: 'IMNCI — the 5 general danger signs (any one = PINK)?', back: 'Unable to drink/breastfeed · Vomits everything · Convulsions (current illness) · Lethargy/unconsciousness · Stridor at rest (or severe chest indrawing). Fast breathing: <2 m ≥60, 2–12 m ≥50, 1–5 y ≥40 per full minute.' },
+  { id: 'f-89', conceptId: 'c-imnci', subjectCode: 'CM', system: 'community', front: 'IMNCI colour triage?', back: 'PINK = urgent pre-referral (O₂, first-dose IM antibiotics/antimalarial, ORS sip, keep warm, prevent hypoglycemia) → REFER. YELLOW = treat at facility (oral amoxycillin 5 days for non-severe pneumonia). GREEN = home care + follow-up (2 d abx, 5 d fever, 30 d growth).' },
+  { id: 'f-90', conceptId: 'c-thyroidstorm', subjectCode: 'MED', system: 'endocrine', front: 'Thyroid storm — the 5-step block, in order?', back: '1) Propranolol (β-blockade). 2) PTU (blocks TPO AND T4→T3 conversion — preferred over carbimazole). 3) Iodine 1 hour AFTER thionamide (Wolff-Chaikoff). 4) Glucocorticoids. 5) Supportive: cooling, fluids, treat trigger.' },
+  { id: 'f-91', conceptId: 'c-thyroidstorm', subjectCode: 'MED', system: 'endocrine', front: 'Why iodine must follow PTU in thyroid storm?', back: 'Iodine alone fuels new hormone synthesis (substrate for TPO). Thionamide must first lock TPO so iodine only inhibits release (Wolff-Chaikoff) — iodine-first risks Jod-Basedow worsening.' },
+  { id: 'f-92', conceptId: 'c-schizo-frs', subjectCode: 'PSY', system: 'psychiatry', front: 'Schneiderian first-rank symptoms?', back: 'Thought alienation (insertion/withdrawal/broadcast), 3rd-person or running-commentary audible thoughts, passivity phenomena (made feelings/impulses/acts), delusional perception. Specific but NOT sensitive — modern DSM/ICD rely on the ≥1 month active symptoms inside a ≥6-month disturbance with functional decline.' },
+  { id: 'f-93', conceptId: 'c-schizo-frs', subjectCode: 'PSY', system: 'psychiatry', front: 'Psychosis timeline differentials?', back: 'Brief psychotic disorder <1 mo. Schizophreniform 1–6 mo (good prognosis third). Schizophrenia ≥6 mo with ≥1 mo active phase. Delusional disorder ≥1 mo, non-bizarre delusions only. Schizoaffective ≥2 wk psychosis WITHOUT mood episodes alongside mood disorder.' },
+  { id: 'f-94', conceptId: 'c-sepsis', subjectCode: 'MED', system: 'infectious', front: 'Sepsis vs septic shock — definitions?', back: 'Sepsis = suspected infection + SOFA rise ≥2 (~10% mortality). Septic shock = sepsis + vasopressors needed to hold MAP ≥65 + lactate >2 despite adequate fluids (~40% mortality). qSOFA bedside: RR ≥22, altered mentation, SBP ≤100 — 2 of 3 raises alarm.' },
+  { id: 'f-95', conceptId: 'c-sepsis', subjectCode: 'MED', system: 'infectious', front: 'Hour-1 sepsis bundle — in order?', back: '1) Measure lactate (repeat if >2). 2) Blood cultures BEFORE antibiotics (never delay antibiotics >45 min). 3) Broad-spectrum IV antibiotics. 4) 30 mL/kg balanced crystalloid if hypotension or lactate ≥4. 5) Norepinephrine if MAP <65. Source control (drain/line removal/debride) within 6–12 h.' },
 ]
 
 export const confusions: SeedConfusion[] = [
@@ -713,5 +726,18 @@ export const confusions: SeedConfusion[] = [
     aPoints: ['True positives ÷ all diseased', 'High Sn → NEGATIVE test rules OUT (SnNout)', 'Screening tests prioritise sensitivity', 'Affected by disease prevalence only via PPV, not the metric itself'],
     bPoints: ['True negatives ÷ all healthy', 'High Sp → POSITIVE test rules IN (SPin)', 'Confirmatory tests prioritise specificity', 'Low prevalence → even high specificity yields many false positives'],
     mnemonic: 'SnNout — sensitive test, Negative rules out. SPin — specific test, Positive rules in.',
+  },
+  // ── Struggle-zone pairs round 2 (Task 10-a) ──
+  {
+    id: 'cf-11', a: 'Prerenal AKI', b: 'Acute tubular necrosis (ATN)', aCode: 'c-aki', bCode: 'c-aki', subjectCode: 'MED', system: 'renal',
+    aPoints: ['Kidney structurally INTACT — underperfused', 'Urine Na <20 mmol/L (sodium-hungry tubules)', 'FENa <1%', 'BUN:Cr ratio >20:1', 'Concentrated urine >500 mOsm', 'Responds to volume restoration'],
+    bPoints: ['Tubular epithelial injury (ischemia/toxins — contrast, aminoglycosides, myoglobin)', 'Urine Na >40 mmol/L (tubules cannot reabsorb)', 'FENa >2%', 'BUN:Cr ratio 10–15:1', 'Muddy brown granular casts (pathognomonic)', 'Isosthenuria ~300 mOsm; recovery takes days–weeks'],
+    mnemonic: 'Prerenal = Prefect kidney (saves salt, FENa <1%). ATN = Abandoned tubules (muddy brown, FENa >2%). FENa <1% points pre; >2% points ATN.',
+  },
+  {
+    id: 'cf-12', a: 'DKA', b: 'HHS (hyperosmolar hyperglycemic state)', aCode: 'c-dka', bCode: 'c-dm', subjectCode: 'MED', system: 'endocrine',
+    aPoints: ['Typically T1DM (younger)', 'Onset hours–days', 'Glucose usually 300–600 mg/dL', 'Anion-gap metabolic acidosis (pH <7.3, HCO₃⁻ low)', 'Ketonemia/ketonuria prominent', 'Kussmaul breathing + fruity breath'],
+    bPoints: ['Typically T2DM (elderly, debilitated)', 'Onset over days–weeks', 'Glucose usually >600 (often 800–1000+)', 'No significant acidosis (pH preserved, AG normal)', 'Ketones minimal — enough insulin to suppress ketogenesis', 'Profound dehydration + altered sensorium; osmolality >320 mOsm/kg; mortality higher than DKA'],
+    mnemonic: 'DKA = Ketones + Acidosis (the K and A). HHS = Heavy Hyperosmolar state — sugar sky-high, pipes dry, no ketone fire.',
   },
 ]

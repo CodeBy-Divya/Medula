@@ -26,7 +26,7 @@ import {
 
 import { api } from '@/lib/api'
 import { useAppStore } from '@/lib/store'
-import type { QuestionClient } from '@/lib/types'
+import type { QuestionClient, SubjectSummary } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -63,7 +63,12 @@ const MIXES = [
   { id: 'high-yield', label: 'High-Yield Mix', emoji: '⭐', desc: 'Weighted to the big NEET-PG subjects — Medicine, Surgery, OBGY get more seats' },
   { id: 'weak', label: 'Weak-Areas Focus', emoji: '🎯', desc: 'Pulled from concepts your knowledge map flags as weak or unstable' },
   { id: 'random', label: 'Mixed Bag', emoji: '🎲', desc: 'A uniform draw across the whole bank — good for surprises' },
+  { id: 'custom', label: 'Build My Paper', emoji: '🧪', desc: 'Pick your own subject mix — your personal mock, your rules' },
 ] as const
+
+// Quick-pick bundles for the custom paper builder (codes must match seeded subjects)
+const BUNDLE_CLINICAL_CORE = ['MED', 'SURG', 'OBGY', 'PEDS'] as const
+const BUNDLE_FINAL_YEAR = ['PATHO', 'PHARM', 'MICRO', 'FMT', 'CM'] as const
 
 function fmtTime(totalSec: number): string {
   const m = Math.floor(totalSec / 60)
@@ -91,6 +96,11 @@ export function MockTestView() {
   const [submitOpen, setSubmitOpen] = useState(false)
   const [loadState, setLoadState] = useState<'idle' | 'loading' | 'error'>('idle')
 
+  // Custom paper builder — subjects + picked codes (fetched lazily on first open)
+  const [subjects, setSubjects] = useState<SubjectSummary[]>([])
+  const [subjectStatus, setSubjectStatus] = useState<'idle' | 'ready' | 'error'>('idle')
+  const [picked, setPicked] = useState<Set<string>>(new Set())
+
   const timerRef = useRef<number | null>(null)
   const questionStartRef = useRef<number>(0)
   const submittingRef = useRef(false)
@@ -98,6 +108,9 @@ export function MockTestView() {
   const q = questions[qIndex]
   const currentAnswer = q ? answers[q.id]?.selected ?? null : null
   const answeredCount = Object.keys(answers).length
+
+  const customActive = mix === 'custom'
+  const canStart = !customActive || picked.size > 0
 
   // ── Countdown + auto-submit ──
   const submitAll = useCallback(
@@ -152,7 +165,12 @@ export function MockTestView() {
   const startTest = () => {
     setLoadState('loading')
     api
-      .questions({ count: size, mix })
+      .questions({
+        count: size,
+        // Custom papers draw from the picked subjects, weighted by NEET yield
+        mix: mix === 'custom' ? 'high-yield' : mix,
+        ...(customActive && picked.size > 0 ? { subjects: [...picked].join(',') } : {}),
+      })
       .then((res) => {
         if (!res.questions.length) {
           setLoadState('error')
@@ -198,6 +216,42 @@ export function MockTestView() {
       return next
     })
   }
+
+  // ── Custom paper builder helpers ──
+  const toggleSubject = (code: string) => {
+    setPicked((prev) => {
+      const next = new Set(prev)
+      if (next.has(code)) next.delete(code)
+      else next.add(code)
+      return next
+    })
+  }
+  const pickAllSubjects = () => setPicked(new Set(subjects.map((s) => s.code)))
+  const clearSubjects = () => setPicked(new Set())
+  const pickBundle = (codes: readonly string[]) => {
+    const known = new Set(subjects.map((s) => s.code))
+    setPicked(new Set(codes.filter((c) => known.has(c))))
+  }
+
+  // Lazy-load subjects the first time the picker is opened (async setState only)
+  useEffect(() => {
+    if (mix !== 'custom' || subjectStatus !== 'idle') return
+    let cancelled = false
+    api.subjects().then(
+      (res) => {
+        if (cancelled) return
+        setSubjects(res.subjects)
+        setSubjectStatus('ready')
+      },
+      () => {
+        if (cancelled) return
+        setSubjectStatus('error')
+      },
+    )
+    return () => {
+      cancelled = true
+    }
+  }, [mix, subjectStatus])
 
   // ── Results derivation ──
   const results = useMemo(() => {
@@ -249,8 +303,9 @@ export function MockTestView() {
                   key={n}
                   type="button"
                   onClick={() => setSize(n)}
+                  aria-pressed={size === n}
                   className={cn(
-                    'min-h-11 rounded-full border px-5 py-2 text-sm font-medium transition-colors',
+                    'clay-btn min-h-11 rounded-full! border px-5 py-2 text-sm font-medium',
                     size === n
                       ? 'border-primary bg-primary/10 text-primary'
                       : 'border-line bg-surface-2/50 text-ink-soft hover:border-primary/50 hover:text-foreground',
@@ -264,7 +319,7 @@ export function MockTestView() {
 
           <div className="space-y-3">
             <label className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-soft">Paper mix</label>
-            <div className="grid gap-2 sm:grid-cols-3">
+            <div className="grid gap-2 sm:grid-cols-2">
               {MIXES.map((m) => {
                 const active = mix === m.id
                 return (
@@ -274,9 +329,9 @@ export function MockTestView() {
                     onClick={() => setMix(m.id)}
                     aria-pressed={active}
                     className={cn(
-                      'min-h-11 rounded-xl border p-3 text-left transition-colors',
+                      'clay-btn min-h-11 border p-3 text-left',
                       active
-                        ? 'border-primary bg-primary/10 shadow-sm'
+                        ? 'border-primary bg-primary/10'
                         : 'border-line bg-surface-2/40 hover:border-primary/40',
                     )}
                   >
@@ -294,6 +349,109 @@ export function MockTestView() {
             </div>
           </div>
 
+          <AnimatePresence initial={false}>
+            {mix === 'custom' && (
+              <motion.div
+                key="custom-picker"
+                initial={reduce ? false : { opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={reduce ? undefined : { opacity: 0, height: 0 }}
+                transition={{ duration: 0.26, ease: EASE }}
+                className="overflow-hidden"
+              >
+                <div
+                  role="group"
+                  aria-label="Subjects in your custom paper"
+                  className="clay-in space-y-3 rounded-2xl p-4"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-soft">Subjects in your paper</span>
+                    <span className="text-xs font-semibold text-primary" aria-live="polite">
+                      {picked.size} subject{picked.size === 1 ? '' : 's'} selected
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {([
+                      { label: `All ${subjects.length || 19}`, on: pickAllSubjects, disabled: subjectStatus !== 'ready' },
+                      { label: '🩺 Clinical Core', on: () => pickBundle(BUNDLE_CLINICAL_CORE), disabled: subjectStatus !== 'ready' },
+                      { label: '🎓 Final-Year Gateway', on: () => pickBundle(BUNDLE_FINAL_YEAR), disabled: subjectStatus !== 'ready' },
+                      { label: 'Clear', on: clearSubjects, disabled: picked.size === 0 },
+                    ]).map((qk) => (
+                      <button
+                        key={qk.label}
+                        type="button"
+                        onClick={qk.on}
+                        disabled={qk.disabled}
+                        className="clay-btn min-h-9 rounded-full! border border-line bg-surface-2/50 px-3.5 text-xs font-medium text-ink-soft hover:border-primary/50 hover:text-foreground disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                      >
+                        {qk.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {subjectStatus === 'error' ? (
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-sev-crit/30 bg-sev-crit/5 px-3.5 py-3">
+                      <p className="text-xs text-sev-crit" role="alert">Couldn&apos;t load subjects — check your connection.</p>
+                      <Button size="sm" variant="outline" className="min-h-9 shrink-0" onClick={() => setSubjectStatus('idle')}>
+                        Retry
+                      </Button>
+                    </div>
+                  ) : subjectStatus === 'ready' ? (
+                    <div className="med-scroll max-h-72 overflow-y-auto rounded-xl border border-line/70 bg-background/30 p-2">
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                        {subjects.map((s) => {
+                          const on = picked.has(s.code)
+                          return (
+                            <button
+                              key={s.code}
+                              type="button"
+                              aria-pressed={on}
+                              onClick={() => toggleSubject(s.code)}
+                              style={
+                                on
+                                  ? { borderColor: s.color, background: `color-mix(in oklab, ${s.color} 16%, transparent)` }
+                                  : undefined
+                              }
+                              className={cn(
+                                'clay-btn flex min-h-11 flex-col items-start gap-1.5 border px-3 py-2 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+                                on ? 'border-line' : 'border-line bg-surface-2/40 hover:border-primary/40',
+                              )}
+                            >
+                              <span className="flex w-full min-w-0 items-center gap-1.5">
+                                <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ backgroundColor: s.color }} />
+                                <span className="min-w-0 flex-1 truncate text-xs font-semibold text-foreground">{s.name}</span>
+                              </span>
+                              <span className="flex w-full items-center justify-between gap-1.5 text-[10px] font-medium text-ink-soft">
+                                <span className="rounded-full border border-line px-1.5 py-px">{s.code}</span>
+                                <span className="rounded-full bg-sev-warn/15 px-1.5 py-px font-bold text-sev-warn" title={`NEET-PG weight ${s.neetWeight}`}>
+                                  ×{s.neetWeight}
+                                </span>
+                              </span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="med-scroll max-h-72 overflow-y-auto rounded-xl border border-line/70 bg-background/30 p-2">
+                      <p className="sr-only">Loading subjects…</p>
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3" aria-hidden>
+                        {Array.from({ length: 9 }).map((_, i) => (
+                          <Skeleton key={i} className="h-[58px] rounded-xl" />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <p className="text-[11px] leading-snug text-ink-soft">
+                    Questions are drawn only from your subjects — bigger NEET-yield subjects get more seats. The paper fills with whatever your bank has.
+                  </p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <ul className="space-y-2 rounded-xl border border-line bg-surface-2/50 p-4 text-sm text-ink-soft">
             <li className="flex items-center gap-2">⏱️ <span><strong className="text-foreground">1 minute per question</strong> — the clock auto-submits when it hits zero.</span></li>
             <li className="flex items-center gap-2">🙈 <span><strong className="text-foreground">No feedback during the test</strong> — just like the real NEET-PG hall.</span></li>
@@ -301,10 +459,13 @@ export function MockTestView() {
             <li className="flex items-center gap-2">🧠 <span>Every attempt still updates your knowledge map and spaced-repetition schedule.</span></li>
           </ul>
 
-          <Button size="lg" className="min-h-12 w-full text-base font-semibold" onClick={startTest} disabled={loadState === 'loading'}>
+          <Button size="lg" className="min-h-12 w-full text-base font-semibold" onClick={startTest} disabled={loadState === 'loading' || !canStart}>
             {loadState === 'loading' ? <Loader2 className="size-5 animate-spin" /> : <Play className="size-5" />}
             BEGIN MOCK TEST
           </Button>
+          {mix === 'custom' && picked.size === 0 && (
+            <p className="text-center text-xs font-medium text-sev-warn">Pick at least one subject to build your paper.</p>
+          )}
           {loadState === 'error' && (
             <p className="text-center text-sm text-sev-crit">Couldn&apos;t load questions — check your connection and try again.</p>
           )}

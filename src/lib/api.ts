@@ -31,7 +31,7 @@ export const api = {
   concept: (id: string) => get<ConceptDetail>(`/api/concepts/${id}`),
   subjects: () => get<{ subjects: import('./types').SubjectSummary[] }>('/api/subjects'),
   subject: (id: string) => get<{ subject: import('./types').SubjectSummary; topics: import('./types').TopicSummary[] }>(`/api/subjects/${id}`),
-  questions: (params: { subjectCode?: string; system?: string; conceptId?: string; count?: number; qtype?: string; mode?: string; mix?: 'random' | 'high-yield' | 'weak' }) => {
+  questions: (params: { subjectCode?: string; subjects?: string; system?: string; conceptId?: string; count?: number; qtype?: string; mode?: string; mix?: 'random' | 'high-yield' | 'weak' }) => {
     const q = new URLSearchParams(Object.entries(params).filter(([, v]) => v != null).map(([k, v]) => [k, String(v)])).toString()
     return get<{ questions: QuestionClient[] }>(`/api/questions?${q}`)
   },

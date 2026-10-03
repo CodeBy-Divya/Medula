@@ -19,6 +19,19 @@ export const metadata: Metadata = {
   description:
     "An AI-powered learning system that connects your MBBS curriculum, clinical reasoning and NEET-PG preparation into one continuously evolving knowledge map.",
   keywords: ["MBBS", "NEET-PG", "medical education", "AI tutor", "knowledge graph", "spaced repetition"],
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: [
+      { url: "/favicon.png", type: "image/png", sizes: "32x32" },
+      { url: "/icons/icon-192.png", type: "image/png", sizes: "192x192" },
+    ],
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180" }],
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "MEDOS",
+  },
 };
 
 export const viewport: Viewport = {

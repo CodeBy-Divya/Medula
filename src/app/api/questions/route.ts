@@ -8,11 +8,16 @@ export const dynamic = 'force-dynamic'
 // mix=high-yield → subjects sampled proportionally to their NEET-PG weight
 // mix=weak       → prefer questions tied to the profile's weak/unstable concepts
 // mix=random     → uniform shuffle (default)
+// subjects=MED,SURG → restrict the pool to these subject codes (composable with any mix;
+//                       only applied when the single `subjectCode` param is absent)
 type Mix = 'random' | 'high-yield' | 'weak'
+
+const MAX_SUBJECT_FILTERS = 25 // hard cap on the comma-separated subjects list
 
 export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams
   const subjectCode = sp.get('subjectCode') ?? undefined
+  const subjectsParam = sp.get('subjects') ?? undefined
   const system = sp.get('system') ?? undefined
   const conceptId = sp.get('conceptId') ?? undefined
   const qtype = sp.get('qtype') ?? undefined
@@ -20,7 +25,18 @@ export async function GET(req: NextRequest) {
   const count = Math.min(50, Math.max(1, Number(sp.get('count') ?? 10)))
 
   const where: Record<string, unknown> = {}
-  if (subjectCode) where.subjectCode = subjectCode
+  if (subjectCode) {
+    where.subjectCode = subjectCode
+  } else if (subjectsParam) {
+    // Custom paper builder: IN-filter on the requested subject codes.
+    // Empty segments are ignored, unknown codes are dropped, list length is capped.
+    const requested = [...new Set(subjectsParam.split(',').map((c) => c.trim()).filter(Boolean))]
+    if (requested.length > 0) {
+      const known = await db.subject.findMany({ select: { code: true } })
+      const knownCodes = new Set(known.map((s) => s.code))
+      where.subjectCode = { in: requested.filter((c) => knownCodes.has(c)).slice(0, MAX_SUBJECT_FILTERS) }
+    }
+  }
   if (system) where.system = system
   if (conceptId) where.OR = [{ conceptId }, { concept: { edgesIn: { some: { fromId: conceptId } } } }]
   if (qtype) where.qtype = qtype

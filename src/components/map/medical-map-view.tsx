@@ -292,6 +292,8 @@ export function MedicalMapCanvas({
   const setMapScope = useAppStore(s => s.setMapScope)
   const conceptFocus = useAppStore(s => s.conceptFocus)
   const openConcept = useAppStore(s => s.openConcept)
+  const setQuizPreset = useAppStore(s => s.setQuizPreset)
+  const setAppView = useAppStore(s => s.setView)
   const reduceMotion = useReducedMotion()
 
   // Arriving from a focused concept (e.g. opened from Home) → neighborhood scope
@@ -551,6 +553,13 @@ export function MedicalMapCanvas({
     setHover(null)
     setTour({ stops, index: 0 })
   }, [data, degreeMap])
+
+  // Tour stop → focused quiz hand-off (closes the tour; preset drives Question Lab)
+  const practiceStop = useCallback((stopId: string) => {
+    setQuizPreset({ conceptId: stopId, count: 5 })
+    setTour(null)
+    setAppView('questions')
+  }, [setQuizPreset, setAppView])
 
   const centerId = scope.startsWith('concept:') ? scope.slice(8) : null
   const centerName = centerId ? data?.nodes.find(n => n.id === centerId)?.name ?? 'Focused concept' : null
@@ -909,6 +918,14 @@ export function MedicalMapCanvas({
                   </Button>
                   <Button
                     size="sm"
+                    className="min-h-9 gap-1"
+                    onClick={() => practiceStop(stop.id)}
+                  >
+                    <Play className="size-3.5" /> Practice
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
                     className="ml-auto min-h-9"
                     onClick={() => (last ? setTour(null) : setTour(t => (t ? { ...t, index: t.index + 1 } : t)))}
                   >
