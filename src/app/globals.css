@@ -209,6 +209,81 @@
   border: 1px solid color-mix(in oklab, var(--line) 80%, transparent);
 }
 
+/* ── Clay inner surfaces — inputs, selects, tabs (Task 9-c) ── */
+/* Recessed clay field: default Input / SelectTrigger well. Declared after .clay-in
+   so an explicit clay-in override still wins on background/border/box-shadow. */
+.clay-field {
+  --clay-field-edge: color-mix(in oklab, var(--line) 88%, var(--clay-lo));
+  --clay-field-focus: color-mix(in oklab, var(--clay-glow) 45%, transparent);
+  background-image: linear-gradient(150deg,
+    color-mix(in oklab, var(--clay-lo) 18%, transparent),
+    color-mix(in oklab, var(--clay-hi) 24%, transparent));
+  border-color: var(--clay-field-edge);
+  box-shadow:
+    inset 2px 3px 6px -2px var(--clay-lo),
+    inset -2px -2px 5px -2px var(--clay-hi),
+    0 2px 5px -3px var(--clay-lo);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.clay-field:hover { border-color: color-mix(in oklab, var(--clay-glow) 40%, var(--clay-field-edge)); }
+.clay-field:focus-visible {
+  border-color: color-mix(in oklab, var(--clay-glow) 60%, var(--ring));
+  box-shadow:
+    inset 2px 3px 6px -2px var(--clay-lo),
+    inset -2px -2px 5px -2px var(--clay-hi),
+    0 0 0 2px var(--clay-field-focus);
+}
+.clay-field[aria-invalid="true"] {
+  border-color: var(--destructive);
+  box-shadow:
+    inset 2px 3px 6px -2px var(--clay-lo),
+    inset -2px -2px 5px -2px var(--clay-hi),
+    0 0 0 2px color-mix(in oklab, var(--destructive) 18%, transparent);
+}
+/* Light-mode contrast audit: darken field edges so wells stay visible on the sky-wash bg */
+:root:not(.dark) .clay-field {
+  --clay-field-edge: color-mix(in oklab, var(--foreground) 14%, var(--line));
+  --clay-field-focus: color-mix(in oklab, var(--clay-glow) 70%, transparent);
+}
+/* Recessed clay tray: TabsList (background-image only, so bg-* utilities still layer) */
+.clay-tray {
+  background-image: linear-gradient(150deg,
+    color-mix(in oklab, var(--clay-lo) 14%, transparent),
+    color-mix(in oklab, var(--clay-hi) 18%, transparent));
+  border: 1px solid color-mix(in oklab, var(--line) 75%, transparent);
+  box-shadow:
+    inset 2px 3px 6px -2px var(--clay-lo),
+    inset -2px -2px 5px -2px var(--clay-hi);
+}
+/* Raised clay pill: active TabsTrigger — inactive triggers stay flat */
+.clay-tab {
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.clay-tab[data-state="active"] {
+  background-image: linear-gradient(150deg,
+    color-mix(in oklab, var(--clay-hi) 70%, transparent),
+    color-mix(in oklab, var(--clay-glow) 16%, transparent));
+  border-color: color-mix(in oklab, var(--clay-hi) 45%, var(--line));
+  box-shadow:
+    0 4px 10px -4px var(--clay-lo),
+    inset 0 1.5px 3px -1px var(--clay-hi),
+    inset 0 -2px 5px -2px var(--clay-lo);
+}
+.clay-tab[data-state="active"]:focus-visible {
+  box-shadow:
+    0 4px 10px -4px var(--clay-lo),
+    inset 0 1.5px 3px -1px var(--clay-hi),
+    inset 0 -2px 5px -2px var(--clay-lo),
+    0 0 0 2px color-mix(in oklab, var(--clay-glow) 55%, transparent);
+}
+/* Light-mode contrast audit: keep tray + active-pill edges visible on the sky wash */
+:root:not(.dark) .clay-tray {
+  border-color: color-mix(in oklab, var(--foreground) 12%, var(--line));
+}
+:root:not(.dark) .clay-tab[data-state="active"] {
+  border-color: color-mix(in oklab, var(--foreground) 12%, var(--line));
+}
+
 /* Clay buttons — puffy, squishy press */
 .clay-btn {
   border-radius: calc(var(--radius) + 2px);

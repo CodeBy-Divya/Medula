@@ -7,12 +7,12 @@
 
 import { useState } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
-import { ArrowLeft, Eye, EyeOff, Loader2, LockKeyhole, LogIn, Mail, ShieldCheck, Sparkles, UserRound } from 'lucide-react'
+import { ArrowLeft, Eye, EyeOff, History, Loader2, LockKeyhole, LogIn, Mail, ShieldCheck, Sparkles, UserRound } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useAppStore } from '@/lib/store'
-import type { Profile } from '@/lib/types'
+import { useAppStore, readStoredView, viewToLabel } from '@/lib/store'
+import type { Profile, View } from '@/lib/types'
 
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1]
 const DEMO_EMAIL = 'doctor@medos.in'
@@ -30,11 +30,23 @@ export function SignInView() {
   const [showPw, setShowPw] = useState(false)
   const [phase, setPhase] = useState<Phase>('idle')
   const [error, setError] = useState<string | null>(null)
+  // The map remembers where the doctor left off — offer to resume there.
+  // (SignInView mounts client-side only, so reading localStorage here is safe.)
+  const [resumeView] = useState<View | null>(() => {
+    if (typeof window === 'undefined') return null
+    const stored = readStoredView()
+    return stored && stored !== 'home' ? stored : null
+  })
 
   const enterApp = (profile: Profile | null) => {
     if (profile) {
       setProfile(profile)
-      setView(profile.onboarded ? 'home' : 'onboarding')
+      if (profile.onboarded) {
+        // Resume the last working view when there is one (kept fresh by setView).
+        setView(readStoredView() ?? 'home')
+      } else {
+        setView('onboarding')
+      }
     } else {
       setProfile(null)
       setView('onboarding')
@@ -118,6 +130,12 @@ export function SignInView() {
             <p className="mt-1.5 text-sm text-ink-soft">
               Sign in to your medical universe — your map remembers exactly where you left off.
             </p>
+            {resumeView && (
+              <p className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/[0.07] px-3 py-1 text-[11px] font-semibold text-primary">
+                <History className="size-3" aria-hidden />
+                Resume at {viewToLabel(resumeView)} after sign-in
+              </p>
+            )}
           </div>
 
           {/* form */}

@@ -4,8 +4,9 @@ import { useEffect, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { api } from '@/lib/api'
 import { useAppStore } from '@/lib/store'
-import type { SubjectSummary, TopicSummary, GraphPayload } from '@/lib/types'
+import type { SubjectSummary, TopicSummary, GraphPayload, ConceptDetail } from '@/lib/types'
 import { YEAR_LABELS } from '@/lib/types'
+import { Concept3D } from '@/components/concept/concept-3d'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -13,7 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Progress } from '@/components/ui/progress'
 import {
   ChevronRight, ChevronDown, RefreshCcw, BookOpen, Sparkles,
-  ArrowLeft, Target, CircleDot,
+  ArrowLeft, Target, CircleDot, Orbit,
 } from 'lucide-react'
 
 const statusColor: Record<string, string> = {
@@ -39,6 +40,10 @@ export function LearnView() {
   const [openTopic, setOpenTopic] = useState<string | null>(null)
   const [topicConcepts, setTopicConcepts] = useState<Record<string, GraphPayload['nodes']>>({})
   const [conceptLoading, setConceptLoading] = useState<string | null>(null)
+  const [show3d, setShow3d] = useState<Record<string, boolean>>({})
+  const [conceptDetails, setConceptDetails] = useState<Record<string, ConceptDetail>>({})
+  const [detail3dLoading, setDetail3dLoading] = useState<string | null>(null)
+  const [detail3dError, setDetail3dError] = useState<Record<string, boolean>>({})
 
   const loadSubjects = useCallback(() => {
     setError(false)
@@ -67,7 +72,11 @@ export function LearnView() {
   }
 
   const toggleTopic = (topicId: string) => {
-    if (openTopic === topicId) { setOpenTopic(null); return }
+    if (openTopic === topicId) {
+      setOpenTopic(null)
+      setShow3d((prev) => ({ ...prev, [topicId]: false }))
+      return
+    }
     setOpenTopic(topicId)
     if (!topicConcepts[topicId]) {
       setConceptLoading(topicId)
@@ -76,6 +85,31 @@ export function LearnView() {
         .catch(() => setTopicConcepts((prev) => ({ ...prev, [topicId]: [] })))
         .finally(() => setConceptLoading(null))
     }
+  }
+
+  // 3D preview — lazily fetch the topic's first concept detail once, then cache it
+  const ensure3dDetail = (topicId: string, conceptId: string) => {
+    if (conceptDetails[conceptId] || detail3dError[conceptId] || detail3dLoading === topicId) return
+    setDetail3dLoading(topicId)
+    api.concept(conceptId)
+      .then((d) => setConceptDetails((prev) => ({ ...prev, [conceptId]: d })))
+      .catch(() => setDetail3dError((prev) => ({ ...prev, [conceptId]: true })))
+      .finally(() => setDetail3dLoading((cur) => (cur === topicId ? null : cur)))
+  }
+
+  const toggle3dPreview = (topicId: string, firstConceptId: string | undefined) => {
+    const next = !show3d[topicId]
+    setShow3d((prev) => ({ ...prev, [topicId]: next }))
+    if (next && firstConceptId) ensure3dDetail(topicId, firstConceptId)
+  }
+
+  const retry3dPreview = (topicId: string, conceptId: string) => {
+    setDetail3dError((prev) => {
+      const next = { ...prev }
+      delete next[conceptId]
+      return next
+    })
+    ensure3dDetail(topicId, conceptId)
   }
 
   const yearGroups = [1, 2, 3, 4].map((y) => ({
@@ -139,6 +173,10 @@ export function LearnView() {
             {(topics ?? []).map((t, idx) => {
               const isOpen = openTopic === t.id
               const concepts = topicConcepts[t.id]
+              const firstConcept = concepts && concepts.length > 0 ? concepts[0] : null
+              const previewDetail = firstConcept ? conceptDetails[firstConcept.id] : undefined
+              const previewFailed = firstConcept ? !!detail3dError[firstConcept.id] : false
+              const previewLoading = !!show3d[t.id] && !!firstConcept && detail3dLoading === t.id && !previewDetail && !previewFailed
               return (
                 <motion.div
                   key={t.id}
@@ -204,6 +242,58 @@ export function LearnView() {
                                 </button>
                               ))}
                             </div>
+
+                            {/* 3D VISUAL PREVIEW — collapsed by default; lazily fetches
+                                the topic's first concept and renders it as a compact
+                                interactive layer diagram */}
+                            {firstConcept && (
+                              <div className="mt-4 overflow-hidden rounded-2xl border border-line bg-surface-2">
+                                <button
+                                  type="button"
+                                  onClick={() => toggle3dPreview(t.id, firstConcept?.id)}
+                                  aria-expanded={!!show3d[t.id]}
+                                  className="flex w-full items-center gap-2 p-3.5 text-left transition-colors hover:text-primary md:p-4"
+                                >
+                                  <Orbit className="size-3.5 shrink-0 text-primary" />
+                                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">See it in 3D</span>
+                                  <span className="truncate text-xs text-ink-soft">{t.name}</span>
+                                  <ChevronDown className={`ml-auto size-4 shrink-0 text-ink-soft transition-transform ${show3d[t.id] ? '' : '-rotate-90'}`} />
+                                </button>
+                                <AnimatePresence initial={false}>
+                                  {show3d[t.id] && (
+                                    <motion.div
+                                      initial={{ height: 0, opacity: 0 }}
+                                      animate={{ height: 'auto', opacity: 1 }}
+                                      exit={{ height: 0, opacity: 0 }}
+                                      transition={{ duration: 0.22 }}
+                                    >
+                                      <div className="border-t border-line p-3.5 md:p-4">
+                                        {previewLoading && (
+                                          <div className="space-y-2.5">
+                                            <Skeleton className="h-8 w-1/2 rounded-full" />
+                                            <Skeleton className="h-[240px] w-full rounded-2xl md:h-[290px]" />
+                                          </div>
+                                        )}
+                                        {previewFailed && !previewLoading && (
+                                          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-sev-crit/30 bg-sev-crit/5 px-3 py-2.5">
+                                            <p className="text-xs text-ink-soft">Couldn&apos;t load the 3D preview for this concept.</p>
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              className="ml-auto min-h-8"
+                                              onClick={() => retry3dPreview(t.id, firstConcept.id)}
+                                            >
+                                              <RefreshCcw className="mr-1.5 size-3" />Retry
+                                            </Button>
+                                          </div>
+                                        )}
+                                        {previewDetail && <Concept3D detail={previewDetail} compact />}
+                                      </div>
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
+                              </div>
+                            )}
                           </div>
                         </motion.div>
                       )}

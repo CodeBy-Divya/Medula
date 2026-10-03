@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect } from 'react'
-import { useAppStore } from '@/lib/store'
+import { useEffect, useRef } from 'react'
+import { useAppStore, viewFromHash } from '@/lib/store'
 import { api } from '@/lib/api'
 import { AppShell } from '@/components/app-shell'
 import { LandingPage } from '@/components/landing/landing-page'
@@ -25,9 +25,23 @@ import { Loader2 } from 'lucide-react'
 export default function Home() {
   const { view, setView, profile, setProfile } = useAppStore()
 
+  // Capture the deep-link hash synchronously on first client render — the
+  // landing-state effect below strips the hash before hydration resolves.
+  const initialHashRef = useRef<string | null>(null)
+  if (initialHashRef.current === null) {
+    initialHashRef.current = typeof window !== 'undefined' ? window.location.hash : ''
+  }
+
   // Reset scroll whenever the view changes (SPA views share one scroll context)
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
+    // Mirror app views to the URL hash so reloads / shared links restore the view.
+    if (view === 'landing' || view === 'signin' || view === 'onboarding') {
+      if (window.location.hash) window.history.replaceState(null, '', window.location.pathname)
+    } else {
+      const target = `#/${view}`
+      if (window.location.hash !== target) window.history.replaceState(null, '', target)
+    }
   }, [view])
 
   // Hydrate profile once — decides landing vs app
@@ -38,7 +52,8 @@ export default function Home() {
         if (!ok) return
         setProfile(r.profile)
         if (r.profile?.onboarded) {
-          setView('home')
+          // Deep link wins (#/map), otherwise the stored last view, else home.
+          setView(viewFromHash(initialHashRef.current ?? '') ?? 'home')
         }
       })
       .catch(() => {})

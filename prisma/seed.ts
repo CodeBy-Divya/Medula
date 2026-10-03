@@ -211,6 +211,37 @@ async function main() {
     data: { profileId: profile.id, caseId: 'case-dka', score: 100, correctSteps: 5, totalSteps: 5, detail: [], completedAt: ago(2) },
   })
 
+  // Sample logbook entries — de-identified educational records (spec §45):
+  // the demo profile opens with a believable, recent clinical log.
+  await db.logbookEntry.createMany({
+    data: [
+      {
+        profileId: profile.id, caseType: 'Emergency', system: 'endocrine',
+        diagnosis: 'DKA — new-onset T1DM, 22-year-old',
+        learned: 'Sequence is everything: crystalloid first, insulin only after K⁺ is known, dextrose when glucose <250 mg/dL. Watch for cerebral oedema in young patients — headache + falling Na⁺ in the first hours.',
+        createdAt: ago(1),
+      },
+      {
+        profileId: profile.id, caseType: 'Ward case', system: 'respiratory',
+        diagnosis: 'Community-acquired pneumonia, CURB-65 = 1',
+        learned: 'CURB-65 doors: Confusion, Urea >7 mmol/L, RR ≥30, BP <90/60, age ≥65. Score 1–2 = outpatient amoxicillin; linked it to the IMNCI fast-breathing thresholds for the paediatric comparison.',
+        createdAt: ago(2),
+      },
+      {
+        profileId: profile.id, caseType: 'OPD visit', system: 'cardiovascular',
+        diagnosis: 'Rheumatic mitral stenosis with atrial fibrillation',
+        learned: 'Loud S1 + opening snap + mid-diastolic rumble. Rate control + anticoagulation first; balloon valvotomy if valve score favourable. Ask about childhood sore throats — Jones criteria refreshed.',
+        createdAt: ago(4),
+      },
+      {
+        profileId: profile.id, caseType: 'Procedure observed', system: 'renal',
+        diagnosis: 'Peritoneal dialysis catheter insertion — CKD stage 5',
+        learned: 'Tenckhoff catheter placement steps; PD vs HD choice in haemodynamically unstable patients. Revised the AKI-on-CKD workup: FENa <1% points to pre-renal, but think ATN after contrast.',
+        createdAt: ago(5),
+      },
+    ],
+  })
+
   console.log('✅ Seed complete:', {
     subjects: subjects.length, topics: topics.length, concepts: allConcepts.length, edges: allEdges.length,
     questions: questions.length, flashcards: flashcards.length, cases: cases.length, confusions: confusions.length,

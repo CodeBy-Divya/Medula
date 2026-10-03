@@ -273,3 +273,73 @@ Work Log:
 Stage Summary:
 - Homepage is now a professional, organized galaxy-first dashboard; the Medical Map lives as a rich dedicated page; the whole app wears the sky-blue+warm claymorphism skin; topics render as interactive 3D layer diagrams with simple explanations; demo sign-in works; dev server is watchdog-protected; all changes committed to git.
 - NEXT ROUND PRIORITIES: (1) more hand-authored 3D diagrams (AKI, DKA, pneumonia, thyroid storm, schizophrenia criteria…), (2) 3D section inside Learn view topics (not only explorer), (3) clay pass on remaining inner surfaces (inputs, selects, tabs) + light-mode contrast audit of clay-in, (4) sign-in remembers last view via localStorage, (5) galaxy subject-index → open BranchPanel directly, (6) map page: branch mini-legend + struggle-zone→guided-tour link-up, (7) consider hash-based deep links (#/map) for reload resilience.
+
+---
+Task ID: 9-a
+Agent: visual3d-expander (subagent)
+Task: Add 6 new hand-authored 3D diagrams to DIAGRAMS_3D registry in src/lib/visual3d.ts
+
+Work Log:
+- Read worklog.md (Tasks 6/7/8) + existing visual3d.ts conventions (entry shape, layer style, tint palette, z 0..N, simple/detail tone) before writing.
+- Cross-checked every new diagram against the concept's own detail text in prisma/seed-data.ts (c-aki L265, c-dka L305, c-imnci L738, c-thyroidstorm L531, c-schizo-frs L819, c-sepsis L631) — all numbers pulled/consistent from those entries, restated in original words (no verbatim source text).
+- 'c-aki' — 6 layers: prerenal (FENa <1%, BUN:Cr >20:1), ATN (muddy brown casts, FENa >2%), interstitial (WBC casts/eosinophiluria), postrenal (hydronephrosis), KDIGO staging (Cr ×1.5–1.9 / ×2–2.9 / ×3 or ≥4 or RRT or anuria ≥12 h), dialysis AEIOU.
+- 'c-dka' — 6 layers: triad (glucose 300–600, AG >12, pH <7.3), bedside picture (Kussmaul, pseudoperitonitis), fluids first (1–1.5 L saline), insulin (0.1 U/kg bolus+infusion, fall 50–75/h, dextrose at 200–250), potassium (add once <5.2 + urine flows; total-body depletion), paediatric cerebral-oedema pitfall (slow osmotic shifts, bicarb only pH <6.9).
+- 'c-imnci' — 6 layers: 5 general danger signs (any one = PINK), fast-breathing thresholds (<2 m ≥60 / 2–12 m ≥50 / 1–5 y ≥40, full-minute calm count), chest indrawing/grunting escalation, PINK pre-referral bundle (first-dose IM ampicillin + gentamicin, O₂, warmth, ORS sip, anti-hypoglycaemia → REFER), YELLOW facility care (oral amoxycillin 5 d), GREEN home care (no antibiotic; follow-up 2 d abx / 5 d fever / 30 d growth).
+- 'c-thyroidstorm' — 6 layers: trigger → decompensation cascade (fever >40, AF, HF, gut chaos) → the 5-step block across 4 layers (β-blocker → PTU BEFORE iodine (TPO + 5′-deiodinase) → iodine 1 h later (Wolff-Chaikoff) → steroids + supportive) incl. Burch–Wartofsky ≥45.
+- 'c-schizo-frs' — 6 layers: Schneiderian FRS quartet (thought alienation, 3rd-person/running-commentary voices, passivity, delusional perception — specific not sensitive), 6-month rule (≥1 mo active inside ≥6 mo + functional decline), positive vs negative layers, time-based differentials (brief <1 mo / schizophreniform 1–6 mo / delusional ≥1 mo / schizoaffective ≥2 wk psychosis-without-mood), treatment anchors (atypicals, clozapine ≥2 trials + agranulocytosis, EPS ladder).
+- 'c-sepsis' — 6 layers: definitions (SOFA ≥2, septic shock MAP ≥65 + lactate >2, ~40% mortality), qSOFA vs obsolete SIRS, hour-1 lactate + cultures-before-antibiotics (≤45 min rule), broad-spectrum abx + 30 mL/kg crystalloid (hypotension/lactate ≥4), norepinephrine → MAP ≥65, source control 6–12 h + India anchors.
+- Tints cycled from the existing family (#38bdf8, #34d399, #fbbf24, #fb7185, #a78bfa, #22d3ee, #f97316, #2dd4bf); 6 layers each with z 0..5; entries inserted after 'c-preec' before the closing brace; zero changes to existing entries or file formatting; no other file touched.
+
+Stage Summary:
+- DIAGRAMS_3D registry: 17 → 23 hand-authored 3D diagrams; c-aki, c-dka, c-imnci, c-thyroidstorm, c-schizo-frs, c-sepsis now render in the Concept Explorer 3D visual (previously generic fallback layers).
+- Verified: bunx tsc --noEmit → no app errors (only pre-existing skills/ errors, same class as examples); bun run lint → 0 errors (1 pre-existing seed.ts warning, untouched file).
+
+---
+Task ID: 9-b
+Agent: learn-3d-preview
+Task: Surface 3D Visual Learning inside the Learn view (compact Concept3D + per-topic preview section)
+
+Work Log:
+- concept-3d.tsx: added optional `compact?: boolean` prop (default false → Concept Explorer output pixel-identical: same h-[340px] stage, sizes, paddings, type scale). When compact: stage h-[240px] md:h-[290px], outer spacing space-y-2.5, smaller emoji tile (size-9), title text-sm, intro text-[11px], Orbit/Reset buttons min-h-8 px-2.5, caption ribbon text-[10px], layer chips min-h-7 px-2.5 text-[10px], explanation panel p-3.5 w/ text-xs heading + text-[13px] simple + text-[11px] detail, clinical strip px-2.5 py-2 text-[11px]. LayerStack takes compact: canvas h-[190px]/w-[260px] (md 210/320), Z-spread gap 38 vs 46, layer cards inset-x-4 p-2.5 rounded-xl (md inset-x-8), icon tile size-8, label/simple text-[11px]/text-[9px]. Layer chips + active-layer explanation panel + Orbit/Reset + drag orbit all work unchanged in both modes; reduced-motion handling untouched.
+- learn-view.tsx: new per-topic "3D VISUAL PREVIEW" section inside the expanded topic accordion, BELOW the concept grid. Header row: Orbit icon + "SEE IT IN 3D" eyebrow (text-[10px] uppercase tracking, text-primary) + topic name + rotating ChevronDown toggle; collapsed by default (state resets to collapsed when the topic accordion closes). Expanding lazily fetches the topic's FIRST concept via existing api.concept(id); details cached in component state Record<conceptId, ConceptDetail> so re-expanding never refetches; in-flight guard via detail3dLoading (topicId) prevents duplicate requests; errors cached per conceptId (Record<conceptId, boolean>) and rendered as an inline sev-crit-tinted message with a Retry button (clears the cached error then refetches). Loading state = header pill skeleton + stage-sized skeleton matching compact stage height (h-[240px] md:h-[290px]).
+- Rendering: <Concept3D detail={cached} compact /> inside a rounded-2xl border-line bg-surface-2 container (matches concept-card styling) with the same AnimatePresence height/opacity pattern (duration 0.22) as the topic accordion; section renders only when the topic has ≥1 concept (zero concepts → nothing, including the existing "No concepts mapped yet" path); concept cards + quiz CTAs untouched. No duplicate drag/tap caption added — Concept3D's in-stage "drag to rotate" chip + active-layer ribbon already render those hints.
+- TypeScript strict (no any, no non-null assertions; toggle takes `firstConceptId: string | undefined`); reused existing tokens (border-line, bg-surface-2, text-primary, text-ink-soft, sev-crit) and Framer Motion conventions; prefers-reduced-motion respected via Concept3D's existing useReducedMotion.
+
+Stage Summary:
+- 3D Visual Learning is now discoverable inside LEARN: every topic with concepts gets a collapsed "SEE IT IN 3D" drawer that expands into a compact interactive layer diagram (orbit/drag, layer chips, simple-first explanations) of the topic's first concept — closing Task 8's priority "(2) 3D section inside Learn view topics".
+- Concept Explorer's full-size Concept3D is visually unchanged (compact is opt-in).
+- Verified: bunx tsc --noEmit → no app errors (only pre-existing skills/ script errors, same class as examples); bun run lint → 0 errors (1 pre-existing prisma/seed.ts warning, untouched); dev.log clean after hot reload.
+
+---
+Task ID: 9-c
+Agent: frontend-styling-expert
+Task: Clay pass on remaining inner surfaces (Input, SelectTrigger, Tabs) + light-mode clay-in contrast audit
+
+Work Log:
+- Read worklog Task 8: clay tokens (--clay-hi/lo/glow per theme), .clay/.clay-in/.clay-btn system, sky-blue+warm calm mood.
+- Consumers audited first: signin-view Inputs (`clay-in h-11 border-0 shadow-none focus-visible:ring-2`), map view SelectTrigger (`h-9 w-[170px] text-xs`), quiz/profile/onboarding triggers (`min-h-11`), sidebar Input (`bg-background shadow-none`); ui/tabs used only by revise-view (Cases + Questions index use their own role="tab" buttons — unaffected).
+- globals.css (additive only, inserted after .clay-in): new `.clay-field` (recessed well for Input/SelectTrigger — gradient sheen via background-image so bg-* utilities keep layering, inset top dark + bottom light, soft bottom drop, glow hover edge, 2px --clay-glow focus ring + destructive aria-invalid ring in CSS because unlayered box-shadow overrides Tailwind ring utilities), `.clay-tray` (recessed TabsList tray, border + inset shadows only), `.clay-tab` (inactive flat; [data-state=active] = raised pill: hi/glow gradient, clay border, drop + inset highlight, smooth 0.2s transitions, focus-visible ring preserved). Declared after .clay-in so explicit clay-in overrides still win → signin keeps single border/shadow (no doubles) and now actually gets a working focus ring (utility ring was previously dead under .clay-in's box-shadow).
+- Light-mode contrast audit: `:root:not(.dark)` overrides tune local custom props only (--clay-field-edge mixes 14% foreground into --line; tray/pill edges 12% foreground) so wells, tray and active pill keep visible edges on the sky-wash bg without touching global tokens; dark theme reads via existing hi/lo tokens. No new keyframes; global reduced-motion rule already zeroes the 0.2s transitions.
+- input.tsx: +`clay-field`, rounded-md→rounded-xl (h-9/h-11 sizes, states, cva structure untouched). select.tsx: SelectTrigger +`clay-field`, rounded-md→rounded-xl (chevron/sizes untouched). tabs.tsx: TabsList +`clay-tray`, TabsTrigger +`clay-tab` (data-[state=active] API + sizes preserved). No exports/APIs renamed; diffs are single-token insertions.
+- Verify: `bunx tsc --noEmit` → no app errors (only pre-existing skills/* errors); `bun run lint` → 0 errors (1 pre-existing prisma/seed.ts warning); globals.css parses clean via postcss; did not run dev/build; touched only the 4 scoped files.
+
+Stage Summary:
+- Inputs, SelectTriggers and Tabs now wear the claymorphism skin by default: recessed sky-clay wells with visible light-mode edges, comfortable glow focus rings (incl. fixing the dead focus ring on sign-in's clay-in inputs), and a raised clay-pill active tab on a recessed tray. APIs intact, all consumer overrides (sign-in, Medical Map, quiz, profile, onboarding, revise) verified compatible; tsc + lint clean.
+---
+Task ID: 9-d/9-e (cron round 5, main agent)
+Agent: main
+Task: Hash deep links, sign-in last-view resume, logbook seed samples, QA + round wrap
+
+Work Log:
+- STATUS ASSESSMENT: app stable — HTTP 200, lint 0 errors, tsc clean, all APIs 200, zero console errors. Browser QA sweep (home galaxy, map hero/filters/guided tour, explorer 3D, learn, revise) found NO bugs → chose feature expansion per Task 8 'NEXT ROUND PRIORITIES'. Discovered two listed priorities were already done inside Task 8 (galaxy subject-index → BranchPanel drill-down; map guided tour + branch legend).
+- INFRA incident: dev server was serving a STALE compiled chunk after edits (page chunk hash unchanged, `initialHashRef` absent from served JS; touch/HMR did not help). Fix: killed wedged next-server procs — the keepalive watchdog (Task 8) auto-restarted it in ~16s and picked up all changes. Watchdog validated as the real recovery path.
+- FEATURE — hash deep links (Task 8 priority 7): store.ts gained APP_VIEWS/LAST_VIEW_KEY/isAppView/readStoredView/viewFromHash(optional hash param)/viewToLabel; setView persists app views to localStorage 'medos:last-view'. page.tsx mirrors every view to `#/<view>` via history.replaceState (strips hash on landing/signin/onboarding), captures the initial hash synchronously in a ref BEFORE the landing-state effect strips it, and on profile hydration resolves `viewFromHash(initialHash) ?? 'home'` — so `/#/map` reloads straight into the Medical Map. Verified: fresh open of #/map lands on The Medical Map.
+- FEATURE — sign-in remembers last view (Task 8 priority 4): SignInView reads the stored view via lazy useState (client-only mount, lint-safe — replaced a set-state-in-effect pattern after lint flagged it) and shows a "Resume at {view} after sign-in" chip; successful auth now routes to `readStoredView() ?? 'home'`. Verified end-to-end: stored 'revise' → chip visible → demo sign-in → landed on REVISE with #/revise.
+- FEATURE — logbook demo seed (Task 5 leftover priority): prisma/seed.ts now seeds 4 realistic de-identified logbook entries (Emergency/DKA endocrine, Ward case/CAP CURB-65 respiratory, OPD visit/rheumatic MS with AF cardio, Procedure observed/PD catheter renal) with exam-grade 'learned' lines; reseeded DB (85 Qs / 83 FCs / 10 confusion pairs unchanged) — logbook stats now 4 cases / 4 systems / 12 learning tasks, verified in UI.
+- FIX (9-b follow-up): Concept3D header squeezed on 390px (eyebrow wrapped letter-by-letter) — controls row now `w-full sm:w-auto justify-end` so Orbit/Reset drop below the intro on phones; re-verified on mobile viewport.
+- Verified the 3 new hand-authored diagrams in-browser (c-aki 'Pre, Renal, Post' with KDIGO/AEIOU layers via search→explorer; c-schizo-frs with 6-month-rule layer) + Learn-view 'SEE IT IN 3D' inline preview (Brachial Plexus, desktop + 390px).
+- Regression pass: home galaxy renders identically (dark), light-mode clay tray/field contrast verified in Revise, tabs tray + active pill clean in both themes.
+
+Stage Summary:
+- Round 5 delivered: reload-resilient hash deep links, sign-in resume flow, 23 hand-authored 3D diagrams, Learn-view inline 3D previews, claymorphism inputs/selects/tabs, seeded clinical logbook. All verified in browser (desktop + 390px, light + dark); lint 0 errors, tsc clean, dev.log clean.
+- NEXT ROUND PRIORITIES: (1) map guided-tour ↔ struggle-zone 'Practice' loop (tour stops → inline quiz hand-off), (2) exam-mode planner polish in Roadmap (§42/43), (3) more mock-test paper presets (subject-mix picker), (4) flashcard deck for the 6 new 3D-diagram concepts, (5) confusable pairs for AKI-pre vs ATN and DKA vs HHS, (6) PWA-lite (manifest + offline shell) for the 'calm companion' positioning.
