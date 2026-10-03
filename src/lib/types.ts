@@ -126,6 +126,12 @@ export interface RoadmapPhase {
   intensity: number // 1..5
 }
 
+// Weekly planner (spec §42/§43): how one real week should look, computed from
+// the profile's declared study hours and stage. kind ∈ college | questions |
+// revision | flashcards | mocks | weakness | rest
+export interface WeekBlock { label: string; minutes: number; kind: string }
+export interface WeekDayPlan { day: string; short: string; hours: number; blocks: WeekBlock[]; isWeekend: boolean }
+
 export interface RoadmapPayload {
   horizonYears: number
   currentStageLabel: string
@@ -133,6 +139,7 @@ export interface RoadmapPayload {
   phases: RoadmapPhase[]
   neetClock: DashboardPayload['examClock']
   weeklySplit: { label: string; pct: number }[]
+  weekPlan: WeekDayPlan[]
   isEstimate: boolean
 }
 

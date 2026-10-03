@@ -58,6 +58,13 @@ interface MockAnswer {
 const SIZES = [10, 15, 20] as const
 const SEC_PER_Q = 60 // NEET-PG pace: ~1 min per question
 
+// Paper-mix presets — how the question set is composed
+const MIXES = [
+  { id: 'high-yield', label: 'High-Yield Mix', emoji: '⭐', desc: 'Weighted to the big NEET-PG subjects — Medicine, Surgery, OBGY get more seats' },
+  { id: 'weak', label: 'Weak-Areas Focus', emoji: '🎯', desc: 'Pulled from concepts your knowledge map flags as weak or unstable' },
+  { id: 'random', label: 'Mixed Bag', emoji: '🎲', desc: 'A uniform draw across the whole bank — good for surprises' },
+] as const
+
 function fmtTime(totalSec: number): string {
   const m = Math.floor(totalSec / 60)
   const s = totalSec % 60
@@ -75,6 +82,7 @@ export function MockTestView() {
 
   const [phase, setPhase] = useState<Phase>('config')
   const [size, setSize] = useState<(typeof SIZES)[number]>(10)
+  const [mix, setMix] = useState<(typeof MIXES)[number]['id']>('high-yield')
   const [questions, setQuestions] = useState<QuestionClient[]>([])
   const [answers, setAnswers] = useState<Record<string, MockAnswer>>({})
   const [qIndex, setQIndex] = useState(0)
@@ -144,7 +152,7 @@ export function MockTestView() {
   const startTest = () => {
     setLoadState('loading')
     api
-      .questions({ count: size })
+      .questions({ count: size, mix })
       .then((res) => {
         if (!res.questions.length) {
           setLoadState('error')
@@ -251,6 +259,38 @@ export function MockTestView() {
                   {n} questions · {n} min
                 </button>
               ))}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <label className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-soft">Paper mix</label>
+            <div className="grid gap-2 sm:grid-cols-3">
+              {MIXES.map((m) => {
+                const active = mix === m.id
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => setMix(m.id)}
+                    aria-pressed={active}
+                    className={cn(
+                      'min-h-11 rounded-xl border p-3 text-left transition-colors',
+                      active
+                        ? 'border-primary bg-primary/10 shadow-sm'
+                        : 'border-line bg-surface-2/40 hover:border-primary/40',
+                    )}
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <span aria-hidden>{m.emoji}</span>
+                      <span className="whitespace-nowrap">{m.label}</span>
+                      {m.id === 'high-yield' && (
+                        <span className="rounded-full bg-sev-warn/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-sev-warn">recommended</span>
+                      )}
+                    </span>
+                    <span className="mt-1 block text-[11px] leading-snug text-ink-soft">{m.desc}</span>
+                  </button>
+                )
+              })}
             </div>
           </div>
 

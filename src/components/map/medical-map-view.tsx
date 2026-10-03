@@ -8,7 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import {
-  Bone, Brain, Bug, Droplet, Droplets, Filter, Focus, HeartPulse, Maximize2, Mountain, RotateCcw, Sparkles,
+  Bone, Brain, Bug, Compass, Droplet, Droplets, Filter, Focus, HeartPulse, Maximize2, Mountain, RotateCcw, Sparkles,
   TriangleAlert, Utensils, Waypoints, Wind, X, Zap, type LucideIcon,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -23,6 +23,25 @@ import { cn } from '@/lib/utils'
 type MapNode = GraphPayload['nodes'][number]
 type StatusFilter = 'all' | 'attention' | 'unlearned' | 'struggle'
 type LaidNode = { node: MapNode; x: number; y: number; labelAbove: boolean }
+
+// Guided tour: an auto-walk through the most important stops on the map —
+// struggle zones first (hardest × least mastered × highest yield), then the
+// highest-degree hub concepts that unlock whole clusters.
+interface TourStop {
+  id: string
+  name: string
+  kind: string
+  mastery: number
+  difficulty: number
+  status: MapNode['status']
+  reason: string
+  tag: 'struggle' | 'hub'
+  degree: number
+}
+interface TourState {
+  stops: TourStop[]
+  index: number
+}
 
 const VIEW_W = 1000
 const VIEW_H = 640
@@ -110,7 +129,7 @@ function clamp(v: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, v))
 }
 
-function ScopeChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
+function ScopeChip({ active, onClick, children, className }: { active: boolean; onClick: () => void; children: ReactNode; className?: string }) {
   return (
     <button
       type="button"
@@ -122,6 +141,7 @@ function ScopeChip({ active, onClick, children }: { active: boolean; onClick: ()
         active
           ? 'border-primary bg-primary text-primary-foreground shadow-sm'
           : 'border-line bg-surface text-ink-soft hover:border-primary/40 hover:text-foreground',
+        className,
       )}
     >
       {children}
@@ -183,6 +203,8 @@ export function MedicalMapCanvas({
   // Client-side status quick-filter — 'attention' = weak/unstable, 'unlearned' = new,
   // 'struggle' = the hardest topics (difficulty ≥ 4 AND mastery < 45)
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  // Guided-tour state (null = not touring)
+  const [tour, setTour] = useState<TourState | null>(null)
 
   const containerRef = useRef<HTMLDivElement>(null)
   const svgRef = useRef<SVGSVGElement>(null)
@@ -293,6 +315,7 @@ export function MedicalMapCanvas({
     const now = Date.now()
     if (now - lastOpenRef.current < 350) return // ignore double-click spam (would open+close)
     lastOpenRef.current = now
+    if (tour) setTour(null) // manual exploration takes over from the tour
     openConcept(id)
   }
 
@@ -316,6 +339,21 @@ export function MedicalMapCanvas({
       { width: VIEW_W, height: VIEW_H, seed: SEED },
     )
   }, [data])
+
+  // Guided tour camera: ease the viewport so the active stop sits mid-canvas
+  // (declared after `layout` — the memo it reads)
+  useEffect(() => {
+    if (!tour || !layout) return
+    const stop = tour.stops[tour.index]
+    const pos = layout.get(stop?.id)
+    if (!stop || !pos) return
+    const k = 1.4
+    setView({
+      k,
+      x: clamp(VIEW_W / 2 - k * pos.x, VIEW_W * (1 - k), 0),
+      y: clamp(VIEW_H / 2 - k * pos.y, VIEW_H * (1 - k), 0),
+    })
+  }, [tour, layout])
 
   // Layout positions are computed for the full payload (so toggling filters never
   // reflows the graph), then the status filter hides nodes + touching edges.
@@ -368,6 +406,48 @@ export function MedicalMapCanvas({
     () => (data ? data.nodes.filter(isStruggle).length : 0),
     [data],
   )
+
+  // Degree map for hub discovery (undirected)
+  const degreeMap = useMemo(() => {
+    const m = new Map<string, number>()
+    if (!data) return m
+    for (const e of data.edges) {
+      m.set(e.from, (m.get(e.from) ?? 0) + 1)
+      m.set(e.to, (m.get(e.to) ?? 0) + 1)
+    }
+    return m
+  }, [data])
+
+  const startTour = useCallback(() => {
+    if (!data) return
+    const struggles: TourStop[] = data.nodes
+      .filter(isStruggle)
+      .sort((a, b) => b.difficulty * (100 - b.mastery) * b.examRelevance - a.difficulty * (100 - a.mastery) * a.examRelevance)
+      .slice(0, 4)
+      .map(n => ({
+        id: n.id, name: n.name, kind: n.kind, mastery: n.mastery,
+        difficulty: n.difficulty, status: n.status, tag: 'struggle' as const,
+        degree: degreeMap.get(n.id) ?? 0,
+        reason: `Difficulty ${n.difficulty}/5 with only ${n.mastery}% mastery — high-yield territory where NEET-PG loves to set traps. Start here, then drill its connections.`,
+      }))
+    const struggleIds = new Set(struggles.map(s => s.id))
+    const hubs: TourStop[] = [...degreeMap.entries()]
+      .map(([id, degree]) => ({ id, degree, node: data.nodes.find(n => n.id === id) }))
+      .filter((x): x is { id: string; degree: number; node: MapNode } => !!x.node)
+      .filter(x => !struggleIds.has(x.id) && x.degree >= 2)
+      .sort((a, b) => b.degree - a.degree)
+      .slice(0, struggles.length ? 2 : 4)
+      .map(({ id, degree, node }) => ({
+        id, name: node.name, kind: node.kind, mastery: node.mastery,
+        difficulty: node.difficulty, status: node.status, tag: 'hub' as const,
+        degree,
+        reason: `A crossroads: ${degree} concepts connect through this one. Mastering it unlocks a whole cluster on the map — the highest-leverage recall you can build.`,
+      }))
+    const stops = [...struggles, ...hubs]
+    if (!stops.length) return
+    setHover(null)
+    setTour({ stops, index: 0 })
+  }, [data, degreeMap])
 
   const centerId = scope.startsWith('concept:') ? scope.slice(8) : null
   const centerName = centerId ? data?.nodes.find(n => n.id === centerId)?.name ?? 'Focused concept' : null
@@ -423,6 +503,15 @@ export function MedicalMapCanvas({
         <ScopeChip active={statusFilter === 'unlearned'} onClick={() => setStatusFilter('unlearned')}>
           <span aria-hidden className="size-2 rounded-full" style={{ backgroundColor: 'var(--muted-foreground)' }} />
           NOT YET LEARNED
+        </ScopeChip>
+        {/* guided tour — walks the most important stops, struggle zones first */}
+        <ScopeChip
+          active={!!tour}
+          onClick={() => (tour ? setTour(null) : startTour())}
+          className={cn(!tour && 'border-primary/40 text-primary hover:border-primary hover:text-primary')}
+        >
+          <Compass className="size-3.5" />
+          GUIDED TOUR
         </ScopeChip>
         <div className="ml-auto">
           <Select
@@ -518,8 +607,11 @@ export function MedicalMapCanvas({
               const struggle = isStruggle(n.node)
               const pulse = !reduceMotion && (struggle || ((n.node.status === 'weak' || n.node.status === 'unstable') && n.node.mastery > 0))
               const emoji = KIND_EMOJI[n.node.kind] ?? ''
+              const tourStop = tour?.stops[tour.index]
+              const isTourFocus = !!tour && tourStop?.id === n.node.id
+              const tourDim = !!tour && !isTourFocus
               return (
-                <g key={n.node.id} transform={`translate(${n.x} ${n.y})`}>
+                <g key={n.node.id} transform={`translate(${n.x} ${n.y})`} opacity={tourDim ? 0.25 : 1}>
                   <motion.g
                     className="cursor-pointer"
                     style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
@@ -530,6 +622,17 @@ export function MedicalMapCanvas({
                     onPointerLeave={() => setHover(h => (h?.node.id === n.node.id ? null : h))}
                     onClick={() => onNodeClick(n.node.id)}
                   >
+                    {isTourFocus && (
+                      <motion.circle
+                        r={r + 12}
+                        fill="none"
+                        stroke="var(--primary)"
+                        strokeWidth={2.5}
+                        initial={{ opacity: 0.9 }}
+                        animate={reduceMotion ? { opacity: 0.9 } : { opacity: [0.9, 0.25] }}
+                        transition={reduceMotion ? undefined : { duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+                      />
+                    )}
                     {pulse && (
                       <motion.circle
                         r={r + 9}
@@ -623,12 +726,108 @@ export function MedicalMapCanvas({
         )}
 
         {/* struggle-zone banner (hero) */}
-        {hero && struggleCount > 0 && (
+        {hero && struggleCount > 0 && !tour && (
           <div className="absolute left-3 top-3 z-30 inline-flex items-center gap-1.5 rounded-full border border-sev-crit/30 bg-sev-crit/10 px-3 py-1.5 text-[11px] font-semibold text-sev-crit shadow-sm backdrop-blur">
             <TriangleAlert className="size-3.5" />
             {struggleCount} struggle zones on your map
           </div>
         )}
+
+        {/* ── Guided tour card ── */}
+        {tour && tour.stops[tour.index] && (() => {
+          const stop = tour.stops[tour.index]
+          const last = tour.index === tour.stops.length - 1
+          return (
+            <motion.div
+              initial={reduceMotion ? false : { opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+              className="absolute bottom-14 left-1/2 z-30 w-[min(560px,94%)] -translate-x-1/2"
+              role="complementary"
+              aria-label="Guided tour"
+            >
+              <div className="rounded-2xl border border-primary/30 bg-card/95 p-4 shadow-2xl backdrop-blur md:p-5">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
+                    <Compass className="size-3.5" />
+                    Guided tour · stop {tour.index + 1} of {tour.stops.length}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setTour(null)}
+                    className="inline-flex min-h-9 items-center gap-1 rounded-full px-2.5 text-[11px] font-medium text-ink-soft transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <X className="size-3" /> Exit tour
+                  </button>
+                </div>
+
+                <h4 className="mt-2 text-lg font-semibold leading-snug tracking-tight">
+                  {KIND_EMOJI[stop.kind] ?? '💡'} {stop.name}
+                </h4>
+                <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px]">
+                  <span className={cn(
+                    'rounded-full px-2 py-0.5 font-bold uppercase tracking-wide',
+                    stop.tag === 'struggle' ? 'bg-sev-crit/10 text-sev-crit' : 'bg-primary/10 text-primary',
+                  )}>
+                    {stop.tag === 'struggle' ? '⚠️ Struggle zone' : '⭐ Hub concept'}
+                  </span>
+                  <span className="rounded-full border border-line px-2 py-0.5 text-ink-soft">
+                    {KIND_META[stop.kind]?.label ?? stop.kind}
+                  </span>
+                  <span className="rounded-full border border-line px-2 py-0.5 text-ink-soft tabular-nums">
+                    mastery {stop.mastery}%
+                  </span>
+                  <span className="rounded-full border border-line px-2 py-0.5 text-ink-soft tabular-nums">
+                    difficulty {stop.difficulty}/5
+                  </span>
+                  <span className="rounded-full border border-line px-2 py-0.5 text-ink-soft tabular-nums">
+                    {stop.degree} links
+                  </span>
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-ink-soft">{stop.reason}</p>
+
+                <div className="mt-3 flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="min-h-9"
+                    disabled={tour.index === 0}
+                    onClick={() => setTour(t => (t ? { ...t, index: t.index - 1 } : t))}
+                  >
+                    ← Prev
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="min-h-9"
+                    onClick={() => { setTour(null); openConcept(stop.id) }}
+                  >
+                    Open explorer
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="ml-auto min-h-9"
+                    onClick={() => (last ? setTour(null) : setTour(t => (t ? { ...t, index: t.index + 1 } : t)))}
+                  >
+                    {last ? 'Finish tour 🌿' : 'Next stop →'}
+                  </Button>
+                </div>
+                {/* progress dots */}
+                <div className="mt-3 flex items-center justify-center gap-1.5" aria-hidden>
+                  {tour.stops.map((s, i) => (
+                    <span
+                      key={s.id}
+                      className={cn(
+                        'h-1.5 rounded-full transition-all',
+                        i === tour.index ? 'w-6 bg-primary' : 'w-1.5 bg-line',
+                      )}
+                    />
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )
+        })()}
 
         {/* zoom indicator — doubles as click-to-reset */}
         <button

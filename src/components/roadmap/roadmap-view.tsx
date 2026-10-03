@@ -18,7 +18,7 @@ import type { LucideIcon } from 'lucide-react'
 
 import { api } from '@/lib/api'
 import { useAppStore } from '@/lib/store'
-import type { RoadmapPayload, RoadmapPhase } from '@/lib/types'
+import type { RoadmapPayload, RoadmapPhase, WeekDayPlan } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
@@ -28,6 +28,58 @@ const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1]
 type LoadState = 'loading' | 'ready' | 'error'
 
 const SPLIT_COLORS = ['bg-primary', 'bg-sev-ok', 'bg-sev-warn', 'bg-info', 'bg-muted-foreground/50'] as const
+
+// Week-planner block palette (kind → chip classes)
+const BLOCK_KIND: Record<string, { chip: string; bar: string; label: string }> = {
+  college: { chip: 'bg-info/10 text-info', bar: 'bg-info', label: 'College' },
+  questions: { chip: 'bg-primary/10 text-primary', bar: 'bg-primary', label: 'Questions' },
+  revision: { chip: 'bg-sev-warn/10 text-sev-warn', bar: 'bg-sev-warn', label: 'Revision' },
+  flashcards: { chip: 'bg-sev-ok/10 text-sev-ok', bar: 'bg-sev-ok', label: 'Recall' },
+  mocks: { chip: 'bg-sev-crit/10 text-sev-crit', bar: 'bg-sev-crit', label: 'Mocks' },
+  weakness: { chip: 'bg-sev-crit/10 text-sev-crit', bar: 'bg-sev-crit', label: 'Repair' },
+  rest: { chip: 'bg-surface-2 text-ink-soft', bar: 'bg-muted-foreground/50', label: 'Rest' },
+}
+
+function fmtDur(minutes: number): string {
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  if (h === 0) return `${m}m`
+  return m ? `${h}h ${m}m` : `${h}h`
+}
+
+function DayCard({ plan, index, reduce }: { plan: WeekDayPlan; index: number; reduce: boolean }) {
+  return (
+    <motion.li
+      initial={reduce ? false : { opacity: 0, y: 14 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-40px' }}
+      transition={{ duration: 0.4, delay: reduce ? 0 : index * 0.06, ease: EASE }}
+      className={cn(
+        'flex w-[172px] shrink-0 flex-col rounded-2xl border p-3 sm:w-auto',
+        plan.isWeekend ? 'border-amber-400/30 bg-amber-400/5' : 'border-line bg-surface-2/50',
+      )}
+    >
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-bold uppercase tracking-wide">{plan.short}</p>
+        <span className="rounded-full bg-surface-2 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-ink-soft">{plan.hours}h</span>
+      </div>
+      <ul className="mt-2 flex-1 space-y-2">
+        {plan.blocks.map((b, i) => {
+          const s = BLOCK_KIND[b.kind] ?? BLOCK_KIND.rest
+          return (
+            <li key={`${b.label}-${i}`} className="flex items-start gap-1.5">
+              <span aria-hidden className={cn('mt-0.5 h-4 w-1 shrink-0 rounded-full', s.bar)} />
+              <span className="min-w-0 flex-1">
+                <span className="block text-[10px] font-medium leading-snug">{b.label}</span>
+                <span className={cn('mt-0.5 inline-block rounded-full px-1.5 text-[9px] font-bold tabular-nums', s.chip)}>{fmtDur(b.minutes)}</span>
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+    </motion.li>
+  )
+}
 
 // ─── Primitives ──────────────────────────────────────────────────────────────
 
@@ -225,7 +277,7 @@ export function RoadmapView() {
   if (status === 'loading') return <RoadmapSkeleton />
   if (status === 'error' || !data) return <RoadmapError onRetry={retry} />
 
-  const { neetClock, weeklySplit, phases, currentStageLabel } = data
+  const { neetClock, weeklySplit, phases, currentStageLabel, weekPlan } = data
 
   return (
     <div className="mx-auto max-w-5xl space-y-8 p-4 md:p-6">
@@ -342,6 +394,41 @@ export function RoadmapView() {
           ))}
         </div>
       </motion.section>
+
+      {/* 2b · Your week, planned (spec §42/§43) */}
+      {weekPlan.length > 0 && (
+        <motion.section
+          initial={reduce ? false : { opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-60px' }}
+          transition={{ duration: 0.5, ease: EASE }}
+          className="glass rounded-2xl p-4 md:p-6"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-ink-soft">
+              Your week, planned
+              <span aria-hidden className="ml-1.5">🗓️</span>
+            </h2>
+            <span className="text-[11px] text-muted-foreground">
+              built from the {data.neetClock.stage.toLowerCase()} stage and your declared hours — Sunday evening is mock night
+            </span>
+          </div>
+          <ul className="med-scroll mt-4 flex gap-2 overflow-x-auto pb-1 md:grid md:grid-cols-7 md:overflow-visible">
+            {weekPlan.map((p, i) => (
+              <DayCard key={p.day} plan={p} index={i} reduce={reduce ?? false} />
+            ))}
+          </ul>
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-line pt-3 text-[10px] text-ink-soft">
+            {Object.entries(BLOCK_KIND).map(([kind, s]) => (
+              <span key={kind} className="inline-flex items-center gap-1">
+                <span aria-hidden className={cn('size-2 rounded-full', s.bar)} />
+                {s.label}
+              </span>
+            ))}
+            <span className="ml-auto">Saturday evening stays protected — burnout is a real syllabus risk 🌿</span>
+          </div>
+        </motion.section>
+      )}
 
       {/* 3 · Phases timeline */}
       <section className="space-y-4">

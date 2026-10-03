@@ -36,6 +36,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { MedicalMapCanvas } from '@/components/map/medical-map-view'
 import { BranchGalaxy } from '@/components/dashboard/branch-galaxy'
+import { InternshipPanel } from '@/components/dashboard/internship-panel'
 import { cn } from '@/lib/utils'
 
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1]
@@ -243,7 +244,9 @@ function StruggleZoneCard({ zone, index }: { zone: StruggleZone; index: number }
   return (
     <motion.li
       initial={false}
-      className="warm-card flex min-w-[240px] max-w-[260px] flex-col rounded-2xl p-3.5 sm:min-w-0"
+      whileHover={{ y: -3 }}
+      transition={{ duration: 0.2, ease: EASE }}
+      className="warm-card flex min-w-0 flex-col rounded-2xl p-3.5 transition-shadow hover:shadow-lg hover:shadow-rose-500/5"
       style={{ animationDelay: `${index * 0.08}s` }}
     >
       <div className="flex items-start justify-between gap-2">
@@ -266,14 +269,14 @@ function StruggleZoneCard({ zone, index }: { zone: StruggleZone; index: number }
           <Bar pct={zone.mastery} className="bg-sev-crit" delay={0.3 + index * 0.08} />
         </div>
       </div>
-      <div className="mt-3 flex items-center gap-1.5">
-        <Button size="sm" className="h-8 min-h-8 flex-1 gap-1 rounded-lg text-xs" onClick={practice}>
+      <div className="mt-3 grid grid-cols-2 gap-1.5">
+        <Button size="sm" className="h-8 min-h-8 gap-1 rounded-lg px-2 text-[11px]" onClick={practice}>
           <Play className="size-3" /> Practice
         </Button>
         <Button
           size="sm"
           variant="outline"
-          className="h-8 min-h-8 flex-1 gap-1 rounded-lg text-xs"
+          className="h-8 min-h-8 gap-1 rounded-lg px-2 text-[11px]"
           onClick={() => openConcept(zone.conceptId)}
         >
           <MapIcon className="size-3" /> Explore
@@ -492,7 +495,7 @@ export function DashboardView() {
                 </h3>
                 <p className="text-[11px] text-ink-soft">High difficulty × low mastery × high NEET-PG yield</p>
               </div>
-              <ul className="grid max-h-96 grid-cols-1 gap-3 overflow-y-auto pb-1 pr-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 med-scroll">
+              <ul className="grid max-h-[27rem] grid-cols-1 gap-3 overflow-y-auto pb-1 pr-1 med-scroll sm:grid-cols-2 lg:grid-cols-3">
                 {struggleZones.map((z, i) => (
                   <StruggleZoneCard key={z.conceptId} zone={z} index={i} />
                 ))}
@@ -501,6 +504,9 @@ export function DashboardView() {
           )}
         </section>
       </Reveal>
+
+      {/* 2b · Internship mode — rotation-based plan (renders only for year ≥ 5) */}
+      <InternshipPanel />
 
       {/* 3 · Branch galaxy */}
       <Reveal index={2}>

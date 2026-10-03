@@ -31,7 +31,7 @@ export const api = {
   concept: (id: string) => get<ConceptDetail>(`/api/concepts/${id}`),
   subjects: () => get<{ subjects: import('./types').SubjectSummary[] }>('/api/subjects'),
   subject: (id: string) => get<{ subject: import('./types').SubjectSummary; topics: import('./types').TopicSummary[] }>(`/api/subjects/${id}`),
-  questions: (params: { subjectCode?: string; system?: string; conceptId?: string; count?: number; qtype?: string; mode?: string }) => {
+  questions: (params: { subjectCode?: string; system?: string; conceptId?: string; count?: number; qtype?: string; mode?: string; mix?: 'random' | 'high-yield' | 'weak' }) => {
     const q = new URLSearchParams(Object.entries(params).filter(([, v]) => v != null).map(([k, v]) => [k, String(v)])).toString()
     return get<{ questions: QuestionClient[] }>(`/api/questions?${q}`)
   },
@@ -61,5 +61,6 @@ export const api = {
   roadmap: () => get<RoadmapPayload>('/api/roadmap'),
   progress: () => get<ProgressPayload>('/api/progress'),
   mapInsights: () => get<import('@/app/api/map-insights/route').MapInsights>('/api/map-insights'),
+  internship: () => get<import('@/app/api/internship/route').InternshipPayload>('/api/internship'),
   search: (q: string) => get<SearchResults>(`/api/search?q=${encodeURIComponent(q)}`),
 }
