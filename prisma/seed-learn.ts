@@ -14,7 +14,7 @@
 //   - src/lib/curriculum/types.ts    → shared content contracts
 
 import { PrismaClient, Prisma } from '@prisma/client'
-import { PACKS, allCurriculumRecords } from '../src/lib/curriculum/registry'
+import { PACKS, allCurriculumRecords, allSubjects } from '../src/lib/curriculum/registry'
 import { AI_MEDICINE_PAPERS } from '../src/lib/curriculum/papers'
 import { ATLAS_3D } from '../src/lib/curriculum/atlas'
 import type {
@@ -106,15 +106,16 @@ async function main() {
   }
 
   // ── 1 · Subjects (upsert by id; existing rows get full refresh) ───────────
-  for (const pack of packs) {
-    for (const s of pack.subjects) {
-      await db.subject.upsert({
-        where: { id: s.id },
-        create: { id: s.id, code: s.code, name: s.name, year: s.year, color: s.color, neetWeight: s.neetWeight, blurb: s.blurb },
-        update: { code: s.code, name: s.name, year: s.year, color: s.color, neetWeight: s.neetWeight, blurb: s.blurb },
-      })
-      counters.subjectsUpserted++
-    }
+  // allSubjects() = canonical taxonomy + pack-only additions, so the full
+  // global taxonomy (incl. new pre-clinical/frontier subjects) always lands
+  // before topics reference them.
+  for (const s of allSubjects() as SubjectTaxonomy[]) {
+    await db.subject.upsert({
+      where: { id: s.id },
+      create: { id: s.id, code: s.code, name: s.name, year: s.year, color: s.color, neetWeight: s.neetWeight, blurb: s.blurb },
+      update: { code: s.code, name: s.name, year: s.year, color: s.color, neetWeight: s.neetWeight, blurb: s.blurb },
+    })
+    counters.subjectsUpserted++
   }
 
   // ── 2 · Topics (upsert by id; keep original parent subject on collision) ──
