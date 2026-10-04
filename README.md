@@ -24,7 +24,7 @@ An AI-powered learning system that connects the MBBS curriculum, clinical reason
 
 | | |
 |:---:|:---:|
-| **Dashboard — *Namaste, Doctor* 🙏** <br/> *Universum Medicum* — 19 MBBS disciplines in orbit around you | **Learn — The Knowledge Engine** <br/> The whole curriculum as one living map |
+| **Dashboard — *Namaste, Doctor* 🙏** <br/> *Index Subjectarum* — every MBBS subject, one calm grid | **Learn — The Knowledge Engine** <br/> The whole curriculum as one living map |
 | ![Dashboard](docs/screenshots/dashboard.png) | ![Learn](docs/screenshots/learn.png) |
 | **Medical Map** <br/> Every subject, system and concept — connected | **Landing** <br/> *"Built on the NMC CBME curriculum · For every MBBS year → NEET-PG"* |
 | ![Medical Map](docs/screenshots/medical-map.png) | ![Landing](docs/screenshots/landing.png) |
@@ -43,7 +43,7 @@ Everything in the app feeds everything else — a concept you study in **Learn**
 
 | # | Instrument | What it does |
 |:---:|---|---|
-| 1 | 🗺️ **Medical Map** | A living galaxy of the entire MBBS curriculum — subjects orbiting around you, colored by mastery, drillable from subject → system → topic → concept |
+| 1 | 🗺️ **Medical Map** | A living graph of the entire MBBS curriculum — every concept a node, colored by mastery, drillable from subject → system → topic → concept |
 | 2 | 🧠 **Learn (Knowledge Engine)** | Deep, first-principles lessons for every concept — with mechanisms, differentials, mnemonics, 3D visualizations and a clinical reasoning stepper |
 | 3 | ❓ **Question Lab** | Adaptive MCQs and clinical vignettes that target exactly what you're about to forget |
 | 4 | 🏥 **Case Simulator** | Step-by-step clinical cases: present → investigate → diagnose → manage |
@@ -96,7 +96,7 @@ A full frontier track (25 lessons): LLMs in medicine, imaging AI, model evaluati
 
 | View | Description |
 |---|---|
-| 🏠 **Home** | The dashboard — *Namaste, Doctor*, your *Corpus Medicum* galaxy, mastery stats, readiness score, today's plan |
+| 🏠 **Home** | The dashboard — *Namaste, Doctor*, the *Index Subjectarum* subject grid, mastery stats, readiness score, today's plan |
 | 🗺️ **Medical Map** | Subject → system → topic → concept navigation with mastery heat-coloring and quiz handoffs |
 | 🧭 **Explore** | Browse medicine by specialty, disease, drug or mechanism — with AI-seeded deep dives |
 | 🔬 **Research** | The Research Hub — literature search, paper explainers and evidence summaries (AI-powered) |

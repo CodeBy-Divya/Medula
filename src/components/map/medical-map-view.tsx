@@ -8,13 +8,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import { animate, motion, useReducedMotion } from 'framer-motion'
 import {
-  Bone, Brain, Bug, Compass, Droplet, Droplets, Filter, Focus, HeartPulse, Map as MapIcon, Maximize2, Mountain, Play,
-  RotateCcw, Sparkles, TriangleAlert, Utensils, Waypoints, Wind, X, Zap, type LucideIcon,
+  Compass, Filter, Focus, Map as MapIcon, Maximize2, Mountain, Play,
+  RotateCcw, TriangleAlert, Waypoints, X, Zap,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { api } from '@/lib/api'
-import { KIND_META, SYSTEMS } from '@/lib/types'
+import { KIND_META } from '@/lib/types'
 import type { GraphPayload, SubjectSummary } from '@/lib/types'
 import type { StruggleZone, MapInsights } from '@/app/api/map-insights/route'
 import { forceLayout } from '@/lib/graph-layout'
@@ -155,10 +155,6 @@ const MAJOR_RADIUS = 26
 const LABEL_MAX_CHARS = 16
 const LABEL_COLLIDE_Y = 14 // layout-px y-band in which labels count as stacked
 
-const SYSTEM_ICONS: Record<string, LucideIcon> = {
-  HeartPulse, Wind, Droplets, Utensils, Sparkles, Brain, Droplet, Bug, Bone,
-}
-
 const STATUS_COLORS: Record<string, string> = {
   strong: 'var(--sev-ok)',
   unstable: 'var(--sev-warn)',
@@ -170,7 +166,7 @@ const STATUS_LABELS: Record<string, string> = {
   strong: 'Strong', unstable: 'Unstable', weak: 'Weak', new: 'New',
 }
 
-const STATUS_ORDER = ['strong', 'unstable', 'weak', 'new'] as const
+const STRUGGLE_EMOJI = '⚠️'
 
 // Friendly emoji living inside each node circle (kind-based)
 const KIND_EMOJI: Record<string, string> = {
@@ -178,8 +174,6 @@ const KIND_EMOJI: Record<string, string> = {
   physiology: '⚡', anatomy: '🦴', pathology: '🧫', pharmacology: '💉',
   microbiology: '🦠', clinical_skill: '🤲',
 }
-
-const STRUGGLE_EMOJI = '⚠️'
 
 function isStruggle(n: MapNode): boolean {
   return n.difficulty >= 4 && n.mastery < 45
@@ -623,46 +617,35 @@ export function MedicalMapCanvas({
         </header>
       )}
 
-      {/* ── Scope bar — row 1: organ-system filters as a single scroll strip ── */}
-      <div
-        className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 pb-1"
-        role="group"
-        aria-label="Filter map by organ system"
-      >
-        <ScopeChip active={scope === 'all'} onClick={() => setScope('all')} className="shrink-0">All</ScopeChip>
-        {SYSTEMS.map(sys => {
-          const Icon = SYSTEM_ICONS[sys.icon]
-          const active = scope === `system:${sys.id}`
-          return (
-            <ScopeChip key={sys.id} active={active} onClick={() => setScope(active ? 'all' : `system:${sys.id}`)} className="shrink-0">
-              {Icon && <Icon className="size-3.5" />}
-              {sys.label}
-            </ScopeChip>
-          )
-        })}
-      </div>
-
-      {/* ── Scope bar — row 2: status quick-filters + guided tour + subject ── */}
+      {/* ── ONE calm toolbar: status filters + guided tour + subject select ──
+          (organ-system chips and the emoji legend were removed — the subject
+          select covers scope filtering and tooltips explain each node) ── */}
       <div
         className="no-scrollbar -mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1"
         role="group"
-        aria-label="Map status filters and tools"
+        aria-label="Map filters and tools"
       >
-        <ScopeChip active={statusFilter === 'all'} onClick={() => setStatusFilter('all')} className="shrink-0">ALL</ScopeChip>
+        <ScopeChip
+          active={statusFilter === 'all' && scope === 'all'}
+          onClick={() => { setStatusFilter('all'); setScope('all') }}
+          className="shrink-0"
+        >
+          All
+        </ScopeChip>
         <ScopeChip active={statusFilter === 'struggle'} onClick={() => setStatusFilter(statusFilter === 'struggle' ? 'all' : 'struggle')} className="shrink-0">
           <Zap className="size-3.5 text-sev-warn" />
-          STRUGGLE ZONES
+          Struggle zones
           {struggleCount > 0 && (
             <span className="ml-0.5 rounded-full bg-sev-crit/15 px-1.5 text-[10px] font-bold text-sev-crit">{struggleCount}</span>
           )}
         </ScopeChip>
         <ScopeChip active={statusFilter === 'attention'} onClick={() => setStatusFilter('attention')} className="shrink-0">
           <span aria-hidden className="size-2 rounded-full" style={{ backgroundColor: 'var(--sev-warn)' }} />
-          NEEDS WORK
+          Needs work
         </ScopeChip>
         <ScopeChip active={statusFilter === 'unlearned'} onClick={() => setStatusFilter('unlearned')} className="shrink-0">
           <span aria-hidden className="size-2 rounded-full" style={{ backgroundColor: 'var(--muted-foreground)' }} />
-          NOT YET LEARNED
+          Not learned
         </ScopeChip>
         {/* guided tour — walks the most important stops, struggle zones first */}
         <ScopeChip
@@ -671,14 +654,14 @@ export function MedicalMapCanvas({
           className={cn('shrink-0', !tour && 'border-primary/40 text-primary hover:border-primary hover:text-primary')}
         >
           <Compass className="size-3.5" />
-          GUIDED TOUR
+          Guided tour
         </ScopeChip>
         <div className="shrink-0">
           <Select
             value={subjectSel}
             onValueChange={v => setScope(v === '__all__' ? 'all' : `subject:${v}`)}
           >
-            <SelectTrigger className="h-11 w-[160px] text-xs md:w-[210px]" aria-label="Filter map by subject">
+            <SelectTrigger className="h-11 w-[150px] text-xs md:w-[210px]" aria-label="Filter map by subject">
               <SelectValue placeholder="Subject view" />
             </SelectTrigger>
             <SelectContent>
@@ -688,38 +671,6 @@ export function MedicalMapCanvas({
               ))}
             </SelectContent>
           </Select>
-        </div>
-      </div>
-
-      {/* ── Legend + node count — one quiet horizontal strip on every screen ── */}
-      <div className="med-scroll -mx-1 overflow-x-auto px-1 pb-1">
-        <div className="flex flex-nowrap items-center gap-x-4 gap-y-2 whitespace-nowrap text-[11px] text-ink-soft">
-          <div className="flex shrink-0 items-center gap-x-3">
-            {Object.entries(KIND_META).map(([kind, meta]) => (
-              <span key={kind} className="inline-flex items-center gap-1">
-                <span aria-hidden className="text-[11px]">{KIND_EMOJI[kind]}</span>
-                {meta.label}
-              </span>
-            ))}
-          </div>
-          <span className="inline-flex shrink-0 items-center gap-x-3">
-            {STATUS_ORDER.map(s => (
-              <span key={s} className="inline-flex items-center gap-1">
-                <span className="size-2.5 rounded-full border-2 bg-transparent" style={{ borderColor: STATUS_COLORS[s] }} />
-                {STATUS_LABELS[s]}
-              </span>
-            ))}
-            <span className="inline-flex items-center gap-1">
-              <Mountain className="size-3 text-sev-crit" /> Struggle zone
-            </span>
-          </span>
-          {data && !loading && (
-            <span className="shrink-0 font-medium text-foreground/75">
-              {statusFilter === 'all'
-                ? `${nodes.length} nodes · ${edges.length} links`
-                : `${nodes.length} shown · ${data.nodes.length} mapped`}
-            </span>
-          )}
         </div>
       </div>
 
@@ -1103,9 +1054,16 @@ export function MedicalMapCanvas({
         )}
       </div>
 
-      {/* ── Footer hint ── */}
+      {/* ── Footer hint — quietly carries the live node count ── */}
       <p className="text-[11px] text-muted-foreground">
-        Click a node to open its explorer · Drag to pan · Scroll to zoom · ⚠️ = struggle zone (hard &amp; unmastered)
+        {data && !loading && (
+          <span className="font-medium text-foreground/75">
+            {statusFilter === 'all'
+              ? `${nodes.length} nodes · ${edges.length} links · `
+              : `${nodes.length} shown of ${data.nodes.length} mapped · `}
+          </span>
+        )}
+        Tap a node to open it · Drag to pan · Scroll to zoom · ⚠️ = struggle zone (hard &amp; unmastered)
       </p>
     </div>
   )

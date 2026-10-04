@@ -34,7 +34,7 @@ import type { DashboardPayload, PlanSegment } from '@/lib/types'
 import type { MapInsights } from '@/app/api/map-insights/route'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { BranchGalaxy } from '@/components/dashboard/branch-galaxy'
+import { SubjectIndex } from '@/components/dashboard/subject-index'
 import { InternshipPanel } from '@/components/dashboard/internship-panel'
 import { cn } from '@/lib/utils'
 
@@ -373,21 +373,9 @@ export function DashboardView() {
         </p>
       </Reveal>
 
-      {/* 2 · BRANCH GALAXY — the home centerpiece */}
+      {/* 2 · INDEX SUBJECTARUM — simple, calm subject index (galaxy removed) */}
       <Reveal index={1}>
-        <section className="relative overflow-hidden rounded-3xl" aria-label="Your medical universe">
-          {/* warm scenic frame around the galaxy */}
-          <div aria-hidden className="pointer-events-none absolute inset-0">
-            <SceneImage src="/scenes/dawn-meadow.jpg" alt="" />
-            <div className="scene-dawn absolute inset-0 opacity-70" />
-          </div>
-          <div className="relative">
-            <BranchGalaxy
-              onOpenMap={() => setView('map')}
-              focusCount={insights?.struggleZones.length ?? 0}
-            />
-          </div>
-        </section>
+        <SubjectIndex insights={insights} />
       </Reveal>
 
       {/* 2b · Internship mode — rotation-based plan (renders only for year ≥ 5) */}

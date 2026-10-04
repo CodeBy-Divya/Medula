@@ -4,13 +4,11 @@ import { useEffect, useRef, useState } from 'react'
 import { useAppStore } from '@/lib/store'
 import { useOnline } from '@/hooks/use-online'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { useTheme } from 'next-themes'
-import { Button } from '@/components/ui/button'
 import { Logo } from '@/components/brand/logo'
 import { cn } from '@/lib/utils'
 import {
   Home, Map as MapIcon, Brain, BookOpen, CircleHelp, Stethoscope, RefreshCcw,
-  Sparkles, UserRound, Search, Moon, SunMedium, Menu, X,
+  Sparkles, UserRound, Search, Menu, X,
   Keyboard, WifiOff, LayoutGrid, Compass, FlaskConical,
 } from 'lucide-react'
 import type { View } from '@/lib/types'
@@ -52,26 +50,7 @@ const MOBILE_NAV: { id: View; label: string; icon: typeof Home }[] = [
 const MORE_NAV = NAV.filter((item) => !MOBILE_NAV.some((m) => m.id === item.id))
 
 // Brand logo comes from @/components/brand/logo (imported above)
-
-function ThemeToggle() {
-  const { theme, setTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => {
-    const t = setTimeout(() => setMounted(true), 0)
-    return () => clearTimeout(t)
-  }, [])
-  return (
-    <Button
-      variant="ghost"
-      size="icon"
-      className="size-10"
-      aria-label="Toggle theme"
-      onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-    >
-      {mounted && theme === 'dark' ? <SunMedium className="size-4" /> : <Moon className="size-4" />}
-    </Button>
-  )
-}
+// Night mode removed by design — one signature theme, zero theme chrome.
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { view, setView, setSearchOpen, setShortcutsOpen, profile } = useAppStore()
@@ -230,7 +209,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             >
               <Keyboard className="size-4" />
             </button>
-            <ThemeToggle />
           </div>
         </header>
 

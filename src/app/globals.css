@@ -501,59 +501,6 @@ body::before {
 }
 .animate-leaf-drift { animation: leaf-drift 12s ease-in-out infinite; }
 
-/* 3D emoji sphere — glossy ball illusion */
-.sphere-3d {
-  position: relative;
-  transition: filter 0.25s ease;
-}
-.sphere-3d::after {
-  content: '';
-  position: absolute;
-  inset: 8% 12% 55% 12%;
-  border-radius: 9999px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.75), rgba(255,255,255,0.08) 80%, transparent);
-  filter: blur(1px);
-  pointer-events: none;
-}
-
-/* Branch sphere idle float */
-@keyframes sphere-float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-7px); }
-}
-.animate-sphere-float { animation: sphere-float 5.5s ease-in-out infinite; }
-
-/* Heartbeat ring for weak branches */
-@keyframes sphere-pulse {
-  0% { transform: scale(1); opacity: 0.8; }
-  70% { transform: scale(1.35); opacity: 0; }
-  100% { transform: scale(1.35); opacity: 0; }
-}
-.sphere-pulse { animation: sphere-pulse 2s ease-out infinite; }
-
-/* Galaxy aurora — calm multi-hue breathing glow */
-.galaxy-aurora {
-  background:
-    radial-gradient(ellipse 55% 45% at 20% 15%, color-mix(in oklab, #fbbf24 10%, transparent), transparent 65%),
-    radial-gradient(ellipse 50% 45% at 82% 20%, color-mix(in oklab, #34d399 10%, transparent), transparent 60%),
-    radial-gradient(ellipse 60% 50% at 50% 95%, color-mix(in oklab, #22d3ee 9%, transparent), transparent 70%);
-  animation: scene-float 14s ease-in-out infinite;
-}
-
-/* Galaxy core — warm sun glow */
-.galaxy-core {
-  position: absolute;
-  inset: -34px;
-  border-radius: 9999px;
-  background: radial-gradient(circle, color-mix(in oklab, #fcd34d 22%, transparent) 0%, transparent 65%);
-  animation: breathe 5s ease-in-out infinite;
-  pointer-events: none;
-}
-@keyframes breathe {
-  0%, 100% { transform: scale(1); opacity: 0.7; }
-  50% { transform: scale(1.12); opacity: 1; }
-}
-
 /* Warm mini-card (struggle zones) */
 .warm-card {
   background:
@@ -594,8 +541,8 @@ body::before {
 .no-scrollbar::-webkit-scrollbar { display: none; }
 
 @media (prefers-reduced-motion: reduce) {
-  .scene-float, .animate-leaf-drift, .animate-sphere-float, .sphere-pulse,
-  .galaxy-aurora, .galaxy-core, .warm-card { animation: none !important; }
+  .scene-float, .animate-leaf-drift,
+  .warm-card { animation: none !important; }
 }
 
 /* ═══ 3D VISUAL LEARNING (layered CSS-3D diagrams) ═══ */
@@ -677,24 +624,3 @@ body::before {
   .medos-flow, .medos-dash, .medos-anchor-pulse { animation: none !important; }
 }
 
-/* ── MEDULA galaxy premium layer ────────────────────────────────────── */
-@keyframes galaxy-rotate { to { transform: rotate(360deg); } }
-.galaxy-spin {
-  animation: galaxy-rotate 90s linear infinite;
-  transform-box: fill-box;
-  transform-origin: center;
-}
-@keyframes galaxy-rotate-rev { to { transform: rotate(-360deg); } }
-.galaxy-spin-rev {
-  animation: galaxy-rotate-rev 140s linear infinite;
-  transform-box: fill-box;
-  transform-origin: center;
-}
-@keyframes star-twinkle {
-  0%, 100% { opacity: 0.15; }
-  50% { opacity: 0.9; }
-}
-.star-twinkle { animation: star-twinkle var(--tw, 3s) ease-in-out infinite; }
-@media (prefers-reduced-motion: reduce) {
-  .galaxy-spin, .galaxy-spin-rev, .star-twinkle { animation: none !important; }
-}

@@ -899,3 +899,31 @@ Work Log:
 
 Stage Summary:
 - Phone UX of the two flagship surfaces (dashboard + Medical Map) rebuilt: one-line gradient hero, collision-free galaxy constellation, above-the-fold knowledge graph with two tidy filter strips. Zero desktop regressions. Screenshots: docs/screenshots/m-*-after.png, d-*-after.png (before/* kept).
+
+---
+Task ID: 23
+Agent: Z.ai Code (main)
+Task: "It's still so much messy — remove the medical map branch galaxy diagram from the homepage, make Index Subjectarum simpler, simplify the whole application, fix preview-vs-phone color mismatch (sky blue vs white), and remove the night mode option."
+
+Work Log:
+- CONTEXT: Task 22 tried to salvage the galaxy on phones (compact orbit mode) and split the map filters into two strips — user rejected both as still messy. This pass removes the complexity instead of tuning it.
+- ROOT-CAUSED the color mismatch: ThemeProvider had defaultTheme="dark" + enableSystem={false}, so fresh browsers (preview) get the signature midnight-sky theme; the user's phone carried a stale localStorage theme=light from the old header toggle → white. Users read the dark navy + cyan look as "sky blue" and the phone's light skin as "white".
+- THEME (night mode removed app-wide):
+  - layout.tsx: ThemeProvider now forcedTheme="dark" (pins the look on every device; no stored value can flip it), defaultTheme="dark", enableSystem={false}.
+  - app-shell.tsx: deleted ThemeToggle (Moon/SunMedium), removed useTheme + Button imports; header now hamburger + logo + search only.
+  - ui/sonner.tsx verified: resolves the forced theme — toasts stay dark.
+- HOMEPAGE (galaxy removed, Index Subjectarum rebuilt):
+  - NEW src/components/dashboard/subject-index.tsx: one calm glass card — "Index Subjectarum · All N subjects · Year 1 → Intern", quiet summary strip (avg mastery / strong / need attention), and a tidy grid (2 cols phone → 3 sm → 4 md → 5 lg) of subject buttons: emoji + readable name (text-xs, no 8px Latin), concept count, colored mastery bar + %. Tap → setMapScope(subject:id) + map view. No starfield, no orbits, no Latin nomenclature, no drill-down panel.
+  - dashboard-view.tsx: BranchGalaxy section (scene-dawn wrapper + galaxy) replaced with <SubjectIndex insights={insights} /> (reuses the dashboard's existing mapInsights fetch — no extra request).
+  - DELETED src/components/dashboard/branch-galaxy.tsx (689 lines); purged its CSS from globals.css (.sphere-3d, .animate-sphere-float, .sphere-pulse, .galaxy-aurora, .galaxy-core, breathe keyframe, .galaxy-spin/-rev, .star-twinkle + reduced-motion list).
+- MEDICAL MAP (3 stacked strips + legend → ONE toolbar):
+  - Removed the 9 organ-system ScopeChips row (redundant with the 31-subject Select; no view hands off system:* scopes — verified) and the emoji kind-legend strip entirely.
+  - Single horizontal toolbar: All (resets scope+filter) · Struggle zones (count) · Needs work · Not learned · Guided tour · Subject Select. Chips sentence-case, quieter.
+  - Node/link count moved into the footer hint line ("186 nodes · 294 links · Tap a node…").
+  - Cleaned dead imports (SYSTEMS, SYSTEM_ICONS, 9 system icons, STATUS_ORDER, LucideIcon type).
+- README: galaxy/orbit references replaced with Index Subjectarum wording; dashboard.png + medical-map.png re-shot at 1440px.
+- VERIFIED (agent-browser): 390×844 — Home: greeting → Index Subjectarum grid → Today's Mission → weaknesses → trust strip, scrollWidth 390 (zero overflow), theme toggle gone; Map: hero + one toolbar + graph above the fold, Struggle-zones filter isolates ⚠️ nodes, Guided tour card plays stop 1/6, Index Subjectarum tap-through ("Physiology" → #/map scoped, Select shows Physiology, struggle count re-scoped 11→2); Learn mobile spot-check clean. 1440×900 — Home 5-col grid, Map one-row toolbar + full graph, Landing unchanged. tsc src/ clean; lint 0 errors (2 pre-existing seed warnings); dev.log clean; no console errors.
+- Screenshots: agent-ctx/before-*.png vs after-{home,map}-mobile.png, after-{home,map,landing}-desktop.png; docs/screenshots/dashboard.png + medical-map.png refreshed for README.
+
+Stage Summary:
+- Homepage = greeting + simple subject index + mission/stats (galaxy gone; −689 LOC component + its CSS). Medical Map = hero + one toolbar + graph. One forced midnight-sky theme everywhere — no night mode, no toggle, no stale-light localStorage divergence between preview and phone. Desktop untouched visually except the removed toggle. Ready for the user's pending big LEARN engine spec (Request C) as the next major task.
