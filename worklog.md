@@ -744,3 +744,18 @@ Work Log:
 Stage Summary:
 - Navigation is now consistent with the Profile-hub IA: Progress and Roadmap are no longer sections anywhere (sidebar, drawer, More sheet); they exist only as drill-down detail pages owned by Profile, which stays highlighted while they're open.
 - No data/schema/API changes; nav-only refactor. Deep links and contextual handoffs preserved.
+
+---
+Task ID: 18
+Agent: Z.ai Code (main)
+Task: Sandbox-reset hardening — guarantee no work is lost across sandbox restarts
+
+Work Log:
+- Discovered the 15-min webDevReview cron job from Task 17 (job #435034) did NOT survive the between-turn window (cron list returned total:0) — direct evidence that scheduled jobs do not survive sandbox restarts. Recreated it: fixed_rate 900s, job #435040, prompt now also instructs to run scripts/restore.sh if the dev server is down and to git-commit all work after each phase.
+- Verified durability of everything else: working tree clean; latest code (incl. Task 17 nav changes, PARENT_OF map) present in git HEAD (auto-checkpoint commits); 264 files tracked; db/custom.db (672K, seeded demo data: profiles, attempts, sessions, revision items) is git-tracked → data survives resets; .gitignore only excludes build artifacts/logs (node_modules, .next, dev.log).
+- Wrote scripts/restore.sh (idempotent, executable): bun install if node_modules missing → prisma generate → uses git-tracked db/custom.db as-is (only rebuilds from schema if the file is missing) → starts `bun run dev` in background if :3000 not answering → final HTTP health check with clear ✅/❌ output. Tested live: all steps green, server already up, 200 OK.
+- Runtime state verified: next dev (v16.1.3) running on :3000, GET / → 200; no mini-services required by MEDULA (no websocket service in use).
+
+Stage Summary:
+- Recovery story is now: (1) code + DB live in git; (2) one command — `bash /home/z/my-project/scripts/restore.sh` — brings the runtime back; (3) the recreated 15-min webDevReview cron (#435040) both keeps improving the app and instructs future runs to re-check cron existence, git-commit work, and self-restore the dev server.
+- Known limitation: platform-level scheduled jobs and running processes cannot be prevented from dying on a reset — but with git + restore.sh the sandbox can be rebuilt to identical working state in under a minute.
