@@ -346,18 +346,20 @@ export function DashboardView() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 overflow-x-clip p-4 md:p-6">
-      {/* 1 · Warm greeting header */}
+      {/* 1 · Warm greeting header — "Namaste doctor" */}
       <Reveal index={0} className="space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
-            {greeting}, Dr. {name}.{' '}
+          <h1 className="text-4xl font-bold tracking-tight md:text-5xl">
+            <span className="bg-gradient-to-r from-primary via-fuchsia-400 to-amber-400 bg-clip-text text-transparent drop-shadow-sm">
+              Namaste, Doctor
+            </span>
             <motion.span
               aria-hidden
-              className="inline-block"
-              animate={{ rotate: [0, 12, -8, 0] }}
+              className="ml-2 inline-block align-middle text-2xl md:text-3xl"
+              animate={{ y: [0, -4, 0], rotate: [0, 8, 0] }}
               transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }}
             >
-              🌿
+              🙏
             </motion.span>
           </h1>
           <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-line bg-surface px-3 py-1.5 text-xs font-medium text-ink-soft">
@@ -367,7 +369,7 @@ export function DashboardView() {
         </div>
         <p className="flex flex-wrap items-center gap-2 text-sm text-ink-soft">
           <span aria-hidden className="text-base">🌤️</span>
-          Your 19-branch medical universe — organized, calm, and one glance away.
+          Your medical universe — organized, calm, and one glance away.
         </p>
       </Reveal>
 
