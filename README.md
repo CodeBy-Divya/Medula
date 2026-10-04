@@ -4,8 +4,6 @@
 
 ### The Medical Learning Operating System
 
-**Don't just study medicine. Build a medical brain.**
-
 An AI-powered learning system that connects the MBBS curriculum, clinical reasoning and NEET-PG preparation into one continuously evolving knowledge map.
 
 ![Next.js](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js)
