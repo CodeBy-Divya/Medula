@@ -11,6 +11,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { BookOpen, Loader2, Map as MapIcon, Play, RotateCcw, ShieldCheck, Waypoints, X } from 'lucide-react'
 import { api } from '@/lib/api'
 import { useAppStore } from '@/lib/store'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import type { MapBranch } from '@/app/api/map-insights/route'
@@ -70,10 +71,11 @@ interface Placed extends MapBranch {
   delay: number
 }
 
-function orbitLayout(branches: MapBranch[]): Placed[] {
+function orbitLayout(branches: MapBranch[], compact = false): Placed[] {
   // Two elliptical orbits: high-weight subjects inner, lighter ones outer.
   // x/y radii differ because the container is wider than tall — this keeps
   // circles evenly spaced visually (no clumping at top/bottom).
+  // compact (phone-width) shrinks the spheres so 19 orbits stay readable.
   const sorted = [...branches].sort((a, b) => b.neetWeight - a.neetWeight)
   const inner = sorted.slice(0, 8)
   const outer = sorted.slice(8)
@@ -85,7 +87,7 @@ function orbitLayout(branches: MapBranch[]): Placed[] {
       ...b,
       x: 50 + Math.cos(angle) * 24,
       y: 50 + Math.sin(angle) * 19,
-      size: 62,
+      size: compact ? 40 : 62,
       delay: i * 0.4,
     })
   })
@@ -95,7 +97,7 @@ function orbitLayout(branches: MapBranch[]): Placed[] {
       ...b,
       x: 50 + Math.cos(angle) * 41,
       y: 50 + Math.sin(angle) * 32,
-      size: 52,
+      size: compact ? 34 : 52,
       delay: i * 0.35 + 0.5,
     })
   })
@@ -287,7 +289,7 @@ function BranchPanel({ branch, onClose }: { branch: MapBranch; onClose: () => vo
   )
 }
 
-function BranchSphere({ b, reduce, active, onToggle }: { b: Placed; reduce: boolean | null; active: boolean; onToggle: () => void }) {
+function BranchSphere({ b, reduce, active, compact = false, onToggle }: { b: Placed; reduce: boolean | null; active: boolean; compact?: boolean; onToggle: () => void }) {
   const tone = STATUS_TONE[b.status]
   const [hover, setHover] = useState(false)
 
@@ -345,7 +347,7 @@ function BranchSphere({ b, reduce, active, onToggle }: { b: Placed; reduce: bool
         />
         {/* 3D sphere body */}
         <span
-          className="sphere-3d grid size-[78%] place-items-center rounded-full text-xl md:text-2xl"
+          className="sphere-3d grid size-[78%] place-items-center rounded-full text-base sm:text-xl md:text-2xl"
           style={{
             background: `radial-gradient(circle at 32% 28%, rgba(255,255,255,0.92), ${b.color}cc 45%, ${b.color} 70%, rgba(0,0,0,0.25) 130%)`,
             boxShadow: `0 6px 18px -6px ${b.color}88, inset 0 -4px 10px rgba(0,0,0,0.18), inset 0 3px 6px rgba(255,255,255,0.4)`,
@@ -384,11 +386,18 @@ function BranchSphere({ b, reduce, active, onToggle }: { b: Placed; reduce: bool
         </motion.div>
       )}
 
-      {/* always-visible name label — systematic, with Latin nomenclature */}
-      <div aria-hidden className="pointer-events-none absolute left-1/2 top-full mt-1 w-max max-w-[118px] -translate-x-1/2 text-center">
-        <p className="truncate text-[9.5px] font-semibold uppercase tracking-wide text-ink-soft">{b.name}</p>
-        <p className="truncate text-[8px] italic tracking-wide text-muted-foreground/80">{LATIN_NAMES[b.code] ?? ''}</p>
-      </div>
+      {/* name label — desktop keeps the always-visible systematic label with
+          Latin nomenclature. On phone widths 19 always-on labels collide, so
+          they are hidden; the subject-index grid below carries every name and
+          the active sphere reveals its own label. */}
+      {(!compact || active) && (
+        <div aria-hidden className="pointer-events-none absolute left-1/2 top-full mt-1 w-max max-w-[92px] -translate-x-1/2 text-center sm:max-w-[118px]">
+          <p className="truncate text-[9px] font-semibold uppercase tracking-wide text-ink-soft sm:text-[9.5px]">{b.name}</p>
+          {!compact && (
+            <p className="truncate text-[8px] italic tracking-wide text-muted-foreground/80">{LATIN_NAMES[b.code] ?? ''}</p>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -401,6 +410,7 @@ export function BranchGalaxy({
   focusCount?: number
 }) {
   const reduce = useReducedMotion()
+  const compact = useIsMobile() // phone-width: smaller spheres, single-line labels
   const [insights, setInsights] = useState<MapInsights | null>(null)
   const [failed, setFailed] = useState(false)
   const [selected, setSelected] = useState<MapBranch | null>(null)
@@ -413,7 +423,7 @@ export function BranchGalaxy({
   }, [retryTick])
 
   const branches = insights?.branches ?? []
-  const placed = useMemo(() => (branches.length ? orbitLayout(branches) : []), [branches])
+  const placed = useMemo(() => (branches.length ? orbitLayout(branches, compact) : []), [branches, compact])
   const avgMastery = insights?.totals.avgMastery ?? 0
   const strongCount = insights?.totals.strongCount ?? 0
   const weakCount = insights?.totals.weakCount ?? 0
@@ -430,13 +440,13 @@ export function BranchGalaxy({
       <div aria-hidden className="galaxy-aurora pointer-events-none absolute inset-0" />
 
       {/* professional header — title, stats, CTA */}
-      <div className="relative flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">Universum Medicum · Your medical universe</p>
-          <h2 className="mt-1 flex items-center gap-2 text-xl font-semibold tracking-tight md:text-2xl">
-            <Waypoints className="size-5 text-primary" aria-hidden />
-            Corpus Medicum
-            <span className="text-sm font-medium italic text-ink-soft">— the Branch Galaxy</span>
+      <div className="relative flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary sm:text-[11px] sm:tracking-[0.22em]">Universum Medicum · Your medical universe</p>
+          <h2 className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-lg font-semibold tracking-tight sm:text-xl md:text-2xl">
+            <Waypoints className="size-5 shrink-0 text-primary" aria-hidden />
+            <span className="whitespace-nowrap">Corpus Medicum</span>
+            <span className="text-xs font-medium italic text-ink-soft sm:text-sm">— the Branch Galaxy</span>
             <motion.span aria-hidden animate={reduce ? undefined : { y: [0, -3, 0] }} transition={{ duration: 2.6, repeat: Infinity }}>
               🌌
             </motion.span>
@@ -505,7 +515,7 @@ export function BranchGalaxy({
       {branches.length > 0 && (
         <div className="relative mx-auto max-w-2xl">
           <div
-            className="relative h-[360px] md:h-[470px]"
+            className="relative h-[420px] min-[420px]:h-[390px] sm:h-[400px] md:h-[470px]"
             role="group"
             aria-label="Subject branches"
           >
@@ -586,7 +596,7 @@ export function BranchGalaxy({
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
               <div aria-hidden className="galaxy-core" />
               <motion.div
-                className="relative grid size-16 place-items-center rounded-full border border-primary/40 bg-primary/15 text-2xl backdrop-blur md:size-20"
+                className="relative grid size-14 place-items-center rounded-full border border-primary/40 bg-primary/15 text-xl backdrop-blur md:size-20 md:text-2xl"
                 animate={reduce ? undefined : { scale: [1, 1.06, 1] }}
                 transition={reduce ? undefined : { duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
               >
@@ -602,6 +612,7 @@ export function BranchGalaxy({
                 b={b}
                 reduce={reduce}
                 active={selected?.id === b.id}
+                compact={compact}
                 onToggle={() => setSelected(cur => (cur?.id === b.id ? null : b))}
               />
             ))}
@@ -616,11 +627,11 @@ export function BranchGalaxy({
 
           {/* ORGANIZED SUBJECT INDEX — every branch in a tidy, systematic grid */}
           <div className="relative mt-5">
-            <div className="mb-2 flex items-center justify-between">
-              <h3 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-soft">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5">
+              <h3 className="min-w-0 text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-soft">
                 Index Subjectarum · Year 1 → Intern
               </h3>
-              <span className="text-[10px] text-muted-foreground">tap to inspect</span>
+              <span className="hidden text-[10px] text-muted-foreground sm:inline">tap to inspect</span>
             </div>
             <ul className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-7" aria-label="All subjects">
               {indexed.map(b => {

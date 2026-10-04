@@ -348,14 +348,14 @@ export function DashboardView() {
     <div className="mx-auto max-w-6xl space-y-6 overflow-x-clip p-4 md:p-6">
       {/* 1 · Warm greeting header — "Namaste doctor" */}
       <Reveal index={0} className="space-y-2">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-4xl font-bold tracking-tight md:text-5xl">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
             <span className="bg-gradient-to-r from-primary via-fuchsia-400 to-amber-400 bg-clip-text text-transparent drop-shadow-sm">
               Namaste, Doctor
             </span>
             <motion.span
               aria-hidden
-              className="ml-2 inline-block align-middle text-2xl md:text-3xl"
+              className="ml-1.5 inline-block align-middle text-xl sm:ml-2 sm:text-2xl md:text-3xl"
               animate={{ y: [0, -4, 0], rotate: [0, 8, 0] }}
               transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }}
             >
@@ -367,8 +367,8 @@ export function DashboardView() {
             {stageLabel} · {stageLabelText}
           </span>
         </div>
-        <p className="flex flex-wrap items-center gap-2 text-sm text-ink-soft">
-          <span aria-hidden className="text-base">🌤️</span>
+        <p className="text-sm text-ink-soft">
+          <span aria-hidden className="mr-1.5">🌤️</span>
           Your medical universe — organized, calm, and one glance away.
         </p>
       </Reveal>

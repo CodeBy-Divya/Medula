@@ -878,3 +878,24 @@ Work Log:
 
 Stage Summary:
 - Sign-in is now ALWAYS an explicit user action: no session = landing/full form; active session = one-tap "Welcome back" resume gate; 30-day TTL; deep links preserved through the gate; switch-account escape hatch. tsc src/ clean, lint 0 errors (2 pre-existing seed warnings), dev.log clean, no console errors. No backend changes; zero data touched.
+
+---
+Task ID: 22
+Agent: Z.ai Code (main)
+Task: "Homepage looks so much messy on the phone, the medical map also looks so messy — fix that." Mobile UX repair for dashboard + Medical Map.
+
+Work Log:
+- Sandbox had reset → ran scripts/restore.sh (server up in ~4s), recreated the 15-min webDevReview cron (platform jobs never survive resets; job #435411).
+- REPRODUCED at 390×844 with agent-browser screenshots (before/*): 
+  (a) Dashboard hero: "Namaste, Doctor 🙏" wrapped with the emoji orphaned on its own line; the 🌤️ glyph sat alone on a broken line above the subtitle (flex-wrap p turned the emoji + text into separate wrapping flex items); "Corpus Medicum — the Branch Galaxy 🌌" h2 squeezed into an internal "Corpus/Medicum" break; eyebrow + "Index Subjectarum · Year 1 → Intern" wrapped; "tap to inspect" floated misaligned.
+  (b) Branch galaxy: 19 fixed-size (62/52px) spheres + 2-line Latin labels crammed into a ~330×360 box → labels collided everywhere ("HISTOLOGY/ONCOLOGY/RADIOLOGY" stacked, "AI IN MEDICINE" over "PSYCHOLOGY").
+  (c) Medical Map: scope bar was one giant flex-wrap mixing 10 system chips + 4 status chips + tour + subject select across ~4 lines; legend (10 kinds + 5 statuses + struggle + counts) wrapped into 3 lines; graph pushed below the fold.
+- FIXES (3 files + globals.css utility):
+  - dashboard-view.tsx: h1 text-3xl→5xl responsive (fits one line at 390 with the emoji inline), subtitle switched from flex to inline flow, tighter gaps.
+  - branch-galaxy.tsx: added useIsMobile() compact mode — orbit spheres 62/52 → 40/34px, container h-360 → h-420/390 (more breathing room), core size-14; always-on name/Latin labels hidden on phone (they collided) with the ACTIVE sphere revealing its label — the Index Subjectarum grid right below is the full name key; desktop (≥768) keeps every Latin label; h2 flex-wrap + nowrap "Corpus Medicum"; eyebrow tracking 0.14em on mobile (one line); index header hides "tap to inspect" on phone.
+  - medical-map-view.tsx: scope bar split into TWO no-scrollbar horizontal strips (row 1 = organ-system chips, row 2 = status chips + guided tour + subject select, all shrink-0) instead of a 4-line wrap jumble; legend collapsed to ONE med-scroll nowrap strip (kinds · statuses · struggle · node count); Select h-9→h-11 (44px touch target); root overflow-x-clip to kill the 4px strip-bleed overflow (scrollWidth 394→390).
+  - globals.css: added .no-scrollbar utility (hidden scrollbar, keeps scroll).
+- VERIFIED: agent-browser E2E at 390×844 (after screenshots) — hero one line, galaxy a clean constellation (zero collisions), map shows graph above the fold, chip filter interaction works (Respiratory → filters → reset), scrollWidth 390 exact through ALL homepage scroll depths; desktop 1440×900 regression pass — home galaxy identical to before (labels/sizes untouched ≥768), map reads as two clean rows + one-line legend; Respiratory filter + reset tested live; tsc src/ clean; lint 0 errors (2 pre-existing seed warnings); dev.log clean.
+
+Stage Summary:
+- Phone UX of the two flagship surfaces (dashboard + Medical Map) rebuilt: one-line gradient hero, collision-free galaxy constellation, above-the-fold knowledge graph with two tidy filter strips. Zero desktop regressions. Screenshots: docs/screenshots/m-*-after.png, d-*-after.png (before/* kept).

@@ -609,7 +609,7 @@ export function MedicalMapCanvas({
     radiusOf(n) >= MAJOR_RADIUS || n.status === 'weak' || n.status === 'unstable' || isStruggle(n) || n.id === centerId
 
   return (
-    <div className={cn('space-y-3', className)}>
+    <div className={cn('space-y-3 overflow-x-clip', className)}>
       {/* ── Header (full variant only, can be suppressed) ── */}
       {!hero && withHeader && (
         <header className="flex items-start gap-3">
@@ -623,34 +623,44 @@ export function MedicalMapCanvas({
         </header>
       )}
 
-      {/* ── Scope bar ── */}
-      <div className="flex flex-wrap items-center gap-2">
-        <ScopeChip active={scope === 'all'} onClick={() => setScope('all')}>All</ScopeChip>
+      {/* ── Scope bar — row 1: organ-system filters as a single scroll strip ── */}
+      <div
+        className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 pb-1"
+        role="group"
+        aria-label="Filter map by organ system"
+      >
+        <ScopeChip active={scope === 'all'} onClick={() => setScope('all')} className="shrink-0">All</ScopeChip>
         {SYSTEMS.map(sys => {
           const Icon = SYSTEM_ICONS[sys.icon]
           const active = scope === `system:${sys.id}`
           return (
-            <ScopeChip key={sys.id} active={active} onClick={() => setScope(active ? 'all' : `system:${sys.id}`)}>
+            <ScopeChip key={sys.id} active={active} onClick={() => setScope(active ? 'all' : `system:${sys.id}`)} className="shrink-0">
               {Icon && <Icon className="size-3.5" />}
               {sys.label}
             </ScopeChip>
           )
         })}
-        {/* status quick-filter chips (client-side only) */}
-        <span aria-hidden className="mx-1 hidden h-6 w-px shrink-0 bg-line md:block" />
-        <ScopeChip active={statusFilter === 'all'} onClick={() => setStatusFilter('all')}>ALL</ScopeChip>
-        <ScopeChip active={statusFilter === 'struggle'} onClick={() => setStatusFilter(statusFilter === 'struggle' ? 'all' : 'struggle')}>
+      </div>
+
+      {/* ── Scope bar — row 2: status quick-filters + guided tour + subject ── */}
+      <div
+        className="no-scrollbar -mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1"
+        role="group"
+        aria-label="Map status filters and tools"
+      >
+        <ScopeChip active={statusFilter === 'all'} onClick={() => setStatusFilter('all')} className="shrink-0">ALL</ScopeChip>
+        <ScopeChip active={statusFilter === 'struggle'} onClick={() => setStatusFilter(statusFilter === 'struggle' ? 'all' : 'struggle')} className="shrink-0">
           <Zap className="size-3.5 text-sev-warn" />
           STRUGGLE ZONES
           {struggleCount > 0 && (
             <span className="ml-0.5 rounded-full bg-sev-crit/15 px-1.5 text-[10px] font-bold text-sev-crit">{struggleCount}</span>
           )}
         </ScopeChip>
-        <ScopeChip active={statusFilter === 'attention'} onClick={() => setStatusFilter('attention')}>
+        <ScopeChip active={statusFilter === 'attention'} onClick={() => setStatusFilter('attention')} className="shrink-0">
           <span aria-hidden className="size-2 rounded-full" style={{ backgroundColor: 'var(--sev-warn)' }} />
           NEEDS WORK
         </ScopeChip>
-        <ScopeChip active={statusFilter === 'unlearned'} onClick={() => setStatusFilter('unlearned')}>
+        <ScopeChip active={statusFilter === 'unlearned'} onClick={() => setStatusFilter('unlearned')} className="shrink-0">
           <span aria-hidden className="size-2 rounded-full" style={{ backgroundColor: 'var(--muted-foreground)' }} />
           NOT YET LEARNED
         </ScopeChip>
@@ -658,17 +668,17 @@ export function MedicalMapCanvas({
         <ScopeChip
           active={!!tour}
           onClick={() => (tour ? setTour(null) : startTour())}
-          className={cn(!tour && 'border-primary/40 text-primary hover:border-primary hover:text-primary')}
+          className={cn('shrink-0', !tour && 'border-primary/40 text-primary hover:border-primary hover:text-primary')}
         >
           <Compass className="size-3.5" />
           GUIDED TOUR
         </ScopeChip>
-        <div className="ml-auto">
+        <div className="shrink-0">
           <Select
             value={subjectSel}
             onValueChange={v => setScope(v === '__all__' ? 'all' : `subject:${v}`)}
           >
-            <SelectTrigger className="h-9 w-[170px] text-xs md:w-[210px]" aria-label="Filter map by subject">
+            <SelectTrigger className="h-11 w-[160px] text-xs md:w-[210px]" aria-label="Filter map by subject">
               <SelectValue placeholder="Subject view" />
             </SelectTrigger>
             <SelectContent>
@@ -681,34 +691,36 @@ export function MedicalMapCanvas({
         </div>
       </div>
 
-      {/* ── Legend + node count ── */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-ink-soft">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          {Object.entries(KIND_META).map(([kind, meta]) => (
-            <span key={kind} className="inline-flex items-center gap-1">
-              <span aria-hidden className="text-[11px]">{KIND_EMOJI[kind]}</span>
-              {meta.label}
+      {/* ── Legend + node count — one quiet horizontal strip on every screen ── */}
+      <div className="med-scroll -mx-1 overflow-x-auto px-1 pb-1">
+        <div className="flex flex-nowrap items-center gap-x-4 gap-y-2 whitespace-nowrap text-[11px] text-ink-soft">
+          <div className="flex shrink-0 items-center gap-x-3">
+            {Object.entries(KIND_META).map(([kind, meta]) => (
+              <span key={kind} className="inline-flex items-center gap-1">
+                <span aria-hidden className="text-[11px]">{KIND_EMOJI[kind]}</span>
+                {meta.label}
+              </span>
+            ))}
+          </div>
+          <span className="inline-flex shrink-0 items-center gap-x-3">
+            {STATUS_ORDER.map(s => (
+              <span key={s} className="inline-flex items-center gap-1">
+                <span className="size-2.5 rounded-full border-2 bg-transparent" style={{ borderColor: STATUS_COLORS[s] }} />
+                {STATUS_LABELS[s]}
+              </span>
+            ))}
+            <span className="inline-flex items-center gap-1">
+              <Mountain className="size-3 text-sev-crit" /> Struggle zone
             </span>
-          ))}
+          </span>
+          {data && !loading && (
+            <span className="shrink-0 font-medium text-foreground/75">
+              {statusFilter === 'all'
+                ? `${nodes.length} nodes · ${edges.length} links`
+                : `${nodes.length} shown · ${data.nodes.length} mapped`}
+            </span>
+          )}
         </div>
-        <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
-          {STATUS_ORDER.map(s => (
-            <span key={s} className="inline-flex items-center gap-1">
-              <span className="size-2.5 rounded-full border-2 bg-transparent" style={{ borderColor: STATUS_COLORS[s] }} />
-              {STATUS_LABELS[s]}
-            </span>
-          ))}
-          <span className="inline-flex items-center gap-1">
-            <Mountain className="size-3 text-sev-crit" /> Struggle zone
-          </span>
-        </span>
-        {data && !loading && (
-          <span className="ml-auto font-medium text-foreground/75">
-            {statusFilter === 'all'
-              ? `${nodes.length} nodes · ${edges.length} links`
-              : `${nodes.length} shown · ${data.nodes.length} mapped`}
-          </span>
-        )}
       </div>
 
       {/* ── Graph canvas ── */}
