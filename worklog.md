@@ -957,3 +957,20 @@ Stage Summary:
 - Homepage is a productive daily loop, not a dashboard museum; the galaxy junction is replaced by a doubt-first search that funnels into practice/revise/tutor/research.
 - Research is now visibly real-time (top-journal live feeds); nav is assimilated into 3 groups.
 - Suggested next: global search overlay (⌘K) could reuse the subject-scope chip; Explore ↔ Doubt Search cross-links.
+
+---
+Task ID: 25-b
+Agent: Z.ai Code (main)
+Task: Restart the dev server (user request; sandbox had cleared background processes)
+
+Work Log:
+- Found port 3000 free, no next/bun processes alive (sandbox restart killed everything; cron jobs also wiped).
+- Plain `nohup bun run dev &` and `setsid nohup … &` both died silently right after "Ready" — log showed no crash, process group was being reaped.
+- Working pattern: `cd /home/z/my-project && (bun run dev > /dev/null 2>&1 &)` (subshell-detached); package.json dev script already tees to dev.log.
+- Verified: HTTP 200 on /, title "MEDULA — The Medical Learning Operating System", GET / 200 (compile 6.6s first hit, then 65ms warm), no runtime errors in dev.log.
+- Recreated the 15-min webDevReview cron job (was wiped by sandbox reset) → job #435696, fixed_rate 900s.
+
+Stage Summary:
+- Dev server healthy on :3000; homepage serves the sky-blue light theme build (Task 25 work from prior session intact).
+- Use `(bun run dev > /dev/null 2>&1 &)` for future restarts; plain nohup/setsid without subshell gets killed in this sandbox.
+- Cron #435696 will pick up Task 25 verification + polish loop every 15 min.
