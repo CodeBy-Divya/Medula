@@ -8,7 +8,7 @@ import type { Profile, View } from './types'
 // the doctor back where they left off, and mirror to the URL hash (#/map)
 // so a reload keeps the same view.
 export const APP_VIEWS: readonly View[] = [
-  'home', 'map', 'understand', 'learn', 'questions', 'cases', 'revise', 'tutor', 'progress', 'roadmap', 'profile',
+  'home', 'map', 'explore', 'research', 'understand', 'learn', 'questions', 'cases', 'revise', 'tutor', 'progress', 'roadmap', 'profile',
 ] as const
 
 export const LAST_VIEW_KEY = 'medos:last-view'
@@ -62,7 +62,7 @@ export function viewFromHash(hash?: string): View | null {
 
 export function viewToLabel(v: View): string {
   const labels: Partial<Record<View, string>> = {
-    home: 'Home', map: 'the Medical Map', understand: 'Understand Your Topic', learn: 'Learn', questions: 'the Question Lab',
+    home: 'Home', map: 'the Medical Map', explore: 'Explore Medicine', research: 'the Research Hub', understand: 'Understand Your Topic', learn: 'Learn', questions: 'the Question Lab',
     cases: 'the Case Simulator', revise: 'Revise', tutor: 'the AI Tutor',
     progress: 'Progress', roadmap: 'Roadmap', profile: 'Profile',
   }
@@ -80,6 +80,7 @@ interface AppState {
   shortcutsOpen: boolean // keyboard cheat-sheet overlay (?)
   mapScope: string | null // pending scope to apply in the map view (e.g. "subject:anatomy")
   quizPreset: { subjectCode?: string; system?: string; conceptId?: string; count?: number; pairId?: string; pairLabel?: string } | null
+  researchSeedQuery: string | null // query handed from Explore → Research Hub
   setView: (v: View) => void
   setProfile: (p: Profile | null) => void
   setHydrated: (v: boolean) => void
@@ -90,6 +91,7 @@ interface AppState {
   setShortcutsOpen: (v: boolean) => void
   setMapScope: (s: string | null) => void
   setQuizPreset: (p: AppState['quizPreset']) => void
+  setResearchSeedQuery: (q: string | null) => void
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -103,6 +105,7 @@ export const useAppStore = create<AppState>((set) => ({
   shortcutsOpen: false,
   mapScope: null,
   quizPreset: null,
+  researchSeedQuery: null,
   setView: (v) => {
     if (isAppView(v)) {
       try { window.localStorage.setItem(LAST_VIEW_KEY, v) } catch { /* private mode */ }
@@ -118,4 +121,5 @@ export const useAppStore = create<AppState>((set) => ({
   setShortcutsOpen: (v) => set({ shortcutsOpen: v }),
   setMapScope: (s) => set({ mapScope: s }),
   setQuizPreset: (p) => set({ quizPreset: p }),
+  setResearchSeedQuery: (q) => set({ researchSeedQuery: q }),
 }))

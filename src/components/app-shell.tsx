@@ -11,13 +11,15 @@ import { cn } from '@/lib/utils'
 import {
   Home, Map as MapIcon, Brain, BookOpen, CircleHelp, Stethoscope, RefreshCcw,
   Sparkles, LineChart, Route, UserRound, Search, Moon, SunMedium, Menu, X,
-  Keyboard, WifiOff, LayoutGrid,
+  Keyboard, WifiOff, LayoutGrid, Compass, FlaskConical,
 } from 'lucide-react'
 import type { View } from '@/lib/types'
 
 const NAV: { id: View; label: string; icon: typeof Home; hint?: string }[] = [
   { id: 'home', label: 'Home', icon: Home },
   { id: 'map', label: 'Medical Map', icon: MapIcon },
+  { id: 'explore', label: 'Explore', icon: Compass },
+  { id: 'research', label: 'Research', icon: FlaskConical },
   { id: 'understand', label: 'Understand', icon: Brain },
   { id: 'learn', label: 'Learn', icon: BookOpen },
   { id: 'questions', label: 'Questions', icon: CircleHelp },

@@ -43,6 +43,7 @@ model StudentProfile {
   errorPatterns   ErrorPattern[]
   caseRuns        CaseRun[]
   resourceLogs    ResourceLog[]
+  savedPapers     SavedPaper[]
 }
 
 // ───────────────────────── CURRICULUM GRAPH ─────────────────────────
@@ -291,6 +292,31 @@ model ResourceLog {
   item      String
   done      Boolean  @default(false)
   createdAt DateTime @default(now())
+}
+
+// ───────────────────────── RESEARCH HUB (Knowledge OS) ─────────────────────────
+// Metadata layer only — we never reproduce full copyrighted papers. Every
+// record stores its provenance (`source`) and links back to the original.
+
+model SavedPaper {
+  id         String         @id @default(cuid())
+  profileId  String
+  profile    StudentProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  pmid       String // Europe PMC external id (source-scoped unique key)
+  doi        String?
+  title      String
+  journal    String   @default("")
+  pubYear    String   @default("")
+  authors    String   @default("")
+  abstract   String   @default("")
+  url        String   @default("")
+  source     String   @default("EUROPE_PMC") // metadata provenance
+  tags       Json     @default("[]")
+  note       String   @default("")
+  createdAt  DateTime @default(now())
+
+  @@unique([profileId, pmid])
+  @@index([profileId])
 }
 
 model LogbookEntry {

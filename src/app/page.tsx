@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { readStoredSession, useAppStore, viewFromHash } from '@/lib/store'
+import { readStoredSession, useAppStore, viewFromHash, isAppView } from '@/lib/store'
 import { api } from '@/lib/api'
 import { AppShell } from '@/components/app-shell'
 import { RegisterSW } from '@/components/pwa/register-sw'
@@ -23,10 +23,19 @@ import { ConceptExplorer } from '@/components/concept/concept-explorer'
 import { SearchOverlay } from '@/components/search/search-overlay'
 import { ShortcutsOverlay } from '@/components/shortcuts/shortcuts-overlay'
 import { AuditView } from '@/components/audit/audit-view'
+import { ExploreView } from '@/components/explore/explore-view'
+import { ResearchView } from '@/components/research/research-view'
 import { Loader2 } from 'lucide-react'
 
 export default function Home() {
-  const { view, setView, profile, setProfile } = useAppStore()
+  const { view, setView, profile, setProfile, researchSeedQuery, setResearchSeedQuery } = useAppStore()
+
+  // Explore → other surfaces: hand the query to the Research Hub (seeded
+  // search) and route to any app view the Explore view requests.
+  const handleExploreNav = (target: string, payload?: string) => {
+    if (target === 'research' && payload) setResearchSeedQuery(payload)
+    if (isAppView(target)) setView(target)
+  }
 
   // Capture the deep-link hash synchronously on first client render — the
   // landing-state effect below strips the hash before hydration resolves.
@@ -100,6 +109,8 @@ export default function Home() {
       <RegisterSW />
       {view === 'home' && <DashboardView />}
       {view === 'map' && <MedicalMapView />}
+      {view === 'explore' && <ExploreView onNavigate={handleExploreNav} />}
+      {view === 'research' && <ResearchView initialQuery={researchSeedQuery ?? undefined} />}
       {view === 'understand' && <UnderstandView />}
       {view === 'learn' && <LearnView />}
       {view === 'questions' && <QuestionsIndex />}
