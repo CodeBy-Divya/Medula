@@ -9,7 +9,7 @@
  *  - API routes (/api/*): network-only  (live study data must stay fresh)
  *  - Everything else:    network (no explicit caching)
  */
-const VERSION = 'medos-v1'
+const VERSION = 'medula-sky-v2' // v2: forced sky-blue light theme (purges any cached dark shell)
 const SHELL = '/'
 
 self.addEventListener('install', (event) => {

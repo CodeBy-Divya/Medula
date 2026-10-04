@@ -74,7 +74,7 @@ export function viewFromHash(hash?: string): View | null {
 
 export function viewToLabel(v: View): string {
   const labels: Partial<Record<View, string>> = {
-    home: 'Home', map: 'the Medical Map', explore: 'Explore Medicine', research: 'the Research Hub', understand: 'Understand Your Topic', learn: 'Learn', questions: 'the Question Lab',
+    home: 'Home', map: 'Doubt Search', explore: 'Explore Medicine', research: 'the Research Hub', understand: 'Understand Your Topic', learn: 'Learn', questions: 'the Question Lab',
     cases: 'the Case Simulator', revise: 'Revise', tutor: 'the AI Tutor',
     progress: 'Progress', roadmap: 'Roadmap', profile: 'Profile',
   }

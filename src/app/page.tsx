@@ -8,7 +8,7 @@ import { LandingPage } from '@/components/landing/landing-page'
 import { SignInView } from '@/components/auth/signin-view'
 import { OnboardingWizard } from '@/components/onboarding/onboarding-wizard'
 import { DashboardView } from '@/components/dashboard/dashboard-view'
-import { MedicalMapView } from '@/components/map/medical-map-view'
+import { DoubtSearchView } from '@/components/search/doubt-search-view'
 import { UnderstandView } from '@/components/understand/understand-view'
 import { LearnView } from '@/components/learn/learn-view'
 import { QuestionsIndex } from '@/components/questions/questions-index'
@@ -96,7 +96,7 @@ export default function Home() {
     <AppShell>
       <RegisterSW />
       {view === 'home' && <DashboardView />}
-      {view === 'map' && <MedicalMapView />}
+      {view === 'map' && <DoubtSearchView />}
       {view === 'explore' && <ExploreView onNavigate={handleExploreNav} />}
       {view === 'research' && <ResearchView initialQuery={researchSeedQuery ?? undefined} />}
       {view === 'understand' && <UnderstandView />}

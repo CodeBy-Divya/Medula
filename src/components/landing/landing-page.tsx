@@ -214,10 +214,10 @@ function Constellation() {
 const FEATURES = [
   {
     icon: MapIcon,
-    title: 'Medical Map',
-    latin: 'Atlas Medicus',
+    title: 'Doubt Search',
+    latin: 'Quaestio Tua',
     hue: 'cyan',
-    desc: "Google Maps for medicine — every subject, topic and concept as a navigable knowledge graph, with your mastery painted on top.",
+    desc: "Type the topic you're confused about — get the concept, practice questions, flashcards and cases together in one clean answer.",
   },
   {
     icon: Network,
@@ -312,7 +312,7 @@ export function LandingPage() {
           <div className="hidden items-center gap-7 text-sm text-ink-soft md:flex">
             {[
               ['Philosophy', '#philosophy'],
-              ['Medical Map', '#features'],
+              ['Doubt Search', '#features'],
               ['AI Tutor', '#ai-tutor'],
               ['Roadmap', '#roadmap'],
             ].map(([label, href]) => (
@@ -415,7 +415,7 @@ export function LandingPage() {
                   setView('signin')
                 }}
               >
-                EXPLORE THE MEDICAL MAP
+                SEARCH ANY DOUBT, FREE
               </Button>
             </motion.div>
 
@@ -457,7 +457,7 @@ export function LandingPage() {
               {FEATURES.map((f, i) => (
                 <Reveal key={f.title} delay={i * 0.06}>
                   <motion.div
-                    id={f.title === 'Medical Map' ? 'medical-map' : f.title === 'AI Study Coach' ? 'ai-tutor' : undefined}
+                    id={f.title === 'Doubt Search' ? 'medical-map' : f.title === 'AI Study Coach' ? 'ai-tutor' : undefined}
                     whileHover={{ scale: 1.02 }}
                     transition={{ duration: 0.25, ease: 'easeOut' }}
                     className="group glass h-full scroll-mt-32 rounded-2xl p-6 transition-all duration-300 hover:border-cyan-400/30 hover:shadow-[0_10px_44px_-16px_rgba(34,211,238,0.35)]"

@@ -80,7 +80,7 @@ const ROTATIONS: Omit<InternshipRotation, 'questionCount' | 'subjectName'>[] = [
     id: 'orth', name: 'Orthopaedics', emoji: '🦿', days: 30, monthsLabel: '1 month (incl. PMR)',
     subjectCode: 'orth',
     duties: ['Fracture clinic & plaster room', 'Trauma assisting', 'Reduction & splinting basics', 'PMR exposure'],
-    neetTip: 'Nerve-injury pairing with fractures is a classic — link each fracture to its nerve on the Medical Map.',
+    neetTip: 'Nerve-injury pairing with fractures is a classic — link each fracture to its nerve via Doubt Search.',
     logbookHint: 'Log casts applied and reductions assisted.',
   },
   {

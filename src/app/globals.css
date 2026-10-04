@@ -53,10 +53,12 @@
   --color-info: var(--info);
 }
 
-/* ── MEDOS Light (sky-warm daylight) ── */
+/* ── MEDULA Light — one signature SKY-BLUE daylight theme ──
+   Night mode has been removed entirely: there is no .dark palette,
+   no theme toggle, and the provider force-pins "light" on every device. */
 :root {
   --radius: 0.75rem;
-  --background: oklch(0.972 0.014 225); /* light sky-blue wash */
+  --background: oklch(0.955 0.024 222); /* clear sky-blue wash */
   --foreground: oklch(0.18 0.03 250);
   --card: oklch(0.995 0.004 220);
   --card-foreground: oklch(0.18 0.03 250);
@@ -101,55 +103,6 @@
   --sev-warn: oklch(0.75 0.14 75);
   --sev-crit: oklch(0.58 0.21 25);
   --info: oklch(0.62 0.12 220);
-}
-
-/* ── MEDOS Dark (midnight medical) ── */
-.dark {
-  --background: oklch(0.16 0.026 248); /* midnight with a sky tint */
-  --foreground: oklch(0.93 0.008 230);
-  --card: oklch(0.20 0.026 255);
-  --card-foreground: oklch(0.93 0.008 230);
-  --popover: oklch(0.21 0.028 255);
-  --popover-foreground: oklch(0.93 0.008 230);
-  --primary: oklch(0.78 0.125 200); /* clinical cyan */
-  --primary-foreground: oklch(0.14 0.03 255);
-  --secondary: oklch(0.25 0.03 255);
-  --secondary-foreground: oklch(0.92 0.01 230);
-  --muted: oklch(0.24 0.026 255);
-  --muted-foreground: oklch(0.66 0.02 240);
-  --accent: oklch(0.26 0.04 235);
-  --accent-foreground: oklch(0.93 0.01 230);
-  --destructive: oklch(0.62 0.2 25);
-  --border: oklch(1 0 0 / 9%);
-  --input: oklch(1 0 0 / 13%);
-  --ring: oklch(0.72 0.11 200);
-  --chart-1: oklch(0.78 0.125 200);
-  --chart-2: oklch(0.72 0.14 150);
-  --chart-3: oklch(0.78 0.13 80);
-  --chart-4: oklch(0.72 0.16 305);
-  --chart-5: oklch(0.65 0.2 25);
-  --sidebar: oklch(0.18 0.024 255);
-  --sidebar-foreground: oklch(0.92 0.008 230);
-  --sidebar-primary: oklch(0.78 0.125 200);
-  --sidebar-primary-foreground: oklch(0.14 0.03 255);
-  --sidebar-accent: oklch(0.25 0.03 255);
-  --sidebar-accent-foreground: oklch(0.92 0.01 230);
-  --sidebar-border: oklch(1 0 0 / 8%);
-  --sidebar-ring: oklch(0.72 0.11 200);
-  /* semantic */
-  --ink: oklch(0.93 0.008 230);
-  --ink-soft: oklch(0.67 0.02 240);
-  --surface: oklch(1 0 0 / 5.5%);
-  --surface-2: oklch(1 0 0 / 3%);
-  --line: oklch(1 0 0 / 9%);
-  /* claymorphism tokens (soft 3D clay, dark) */
-  --clay-hi: oklch(1 0 0 / 14%);
-  --clay-lo: oklch(0 0 0 / 38%);
-  --clay-glow: oklch(0.78 0.11 210 / 22%);
-  --sev-ok: oklch(0.72 0.15 155);
-  --sev-warn: oklch(0.79 0.14 78);
-  --sev-crit: oklch(0.65 0.2 25);
-  --info: oklch(0.74 0.11 220);
 }
 
 @layer base {
@@ -322,7 +275,7 @@
   box-shadow: inset 2px 3px 7px -2px var(--clay-lo), inset -2px -2px 6px -2px var(--clay-hi);
 }
 
-/* Ambient page backdrop — sky-blue → warm dawn wash (light), deep sky aurora (dark) */
+/* Ambient page backdrop — clear sky-blue → warm dawn wash (light only) */
 body::before {
   content: '';
   position: fixed;
@@ -334,12 +287,6 @@ body::before {
     radial-gradient(ellipse 52% 40% at 92% 4%, color-mix(in oklab, #fcd34d 14%, transparent), transparent 60%),
     radial-gradient(ellipse 70% 46% at 50% 108%, color-mix(in oklab, #6ee7b7 13%, transparent), transparent 66%);
   opacity: 0.85;
-}
-.dark body::before {
-  background:
-    radial-gradient(ellipse 60% 44% at 12% -4%, color-mix(in oklab, #0ea5e9 16%, transparent), transparent 62%),
-    radial-gradient(ellipse 52% 40% at 92% 4%, color-mix(in oklab, #f59e0b 7%, transparent), transparent 60%),
-    radial-gradient(ellipse 70% 46% at 50% 108%, color-mix(in oklab, #10b981 9%, transparent), transparent 66%);
 }
 
 /* ── Glass surfaces ── */

@@ -927,3 +927,33 @@ Work Log:
 
 Stage Summary:
 - Homepage = greeting + simple subject index + mission/stats (galaxy gone; −689 LOC component + its CSS). Medical Map = hero + one toolbar + graph. One forced midnight-sky theme everywhere — no night mode, no toggle, no stale-light localStorage divergence between preview and phone. Desktop untouched visually except the removed toggle. Ready for the user's pending big LEARN engine spec (Request C) as the next major task.
+
+---
+Task ID: 25
+Agent: main
+Task: Sky-blue theme restore (root cause), strict homepage redesign, Medical Map → Doubt Search, All Subjects simplification, live top-journal research feeds, nav consolidation
+
+Work Log:
+- ROOT CAUSE (theme): layout.tsx had `<ThemeProvider defaultTheme="dark" forcedTheme="dark">` + viewport themeColor #0b1220 + manifest colors #0b1220 → every device (incl. user's phone) was forced midnight dark. User wanted sky blue like earlier.
+- Theme fix: forcedTheme="light", themeColor/manifest → #ddf1fc, statusBarStyle "default", deleted the entire `.dark {...}` palette + `.dark body::before` override from globals.css, strengthened --background to oklch(0.955 0.024 222), SW VERSION bumped to medula-sky-v2 so PWA phones purge the cached dark shell.
+- Medical Map → DOUBT SEARCH: new `src/components/search/doubt-search-view.tsx` (big doubt bar, debounced /api/search, grouped results Concepts/Topics/Subjects/Questions/Flashcards/Cases, why/how/what → AI-tutor hand-off via medos:tutor-question, "Practice 8 questions on this", "query in live research papers" → researchSeedQuery, recent doubts in localStorage medula:recent-doubts, subject-scoped study menu via mapScope "subject:{id}" → api.subject topics list). Deleted `src/components/map/medical-map-view.tsx` (1160-line galaxy) + `src/lib/graph-layout.ts` (only consumer). page.tsx swaps MedicalMapView → DoubtSearchView (view id 'map' preserved for deep links).
+- Nav: NAV relabeled map → "Search"; desktop sidebar + drawer grouped into 3 sections (Daily study / Clinical & deep dives / Discover) via NAV_GROUPS; profile stays in sidebar footer + More sheet; mobile bottom bar = Home, Search, Questions, Revise, More (Tutor moved to More).
+- Homepage strict redesign (dashboard-view.tsx rewritten): greeting (sky gradient) + streak chip → TODAY'S MISSION warm-scene hero (progress, next-best-action as one quiet line, ≤4 plan segments, Start/Revise) → 4 stat tiles (readiness, due Qs, due cards, revision debt) → first-run audit banner (only when 0 concepts mapped) → Focus now (top-3 weaknesses + Practice) → All Subjects → Internship (yr≥5) → one-line source footer. REMOVED: knowledge-split mega panel, readiness components table, next-best-action mega card, method toggles, decorative trust banner.
+- Index Subjectarum → "All Subjects" (subject-index.tsx rewritten): heading + "31 subjects · tap to open", 2-col phone grid, card = emoji + name + mastery bar + %, tap → Doubt Search scoped. No summary strip, no map button.
+- Research real-time: /api/research/papers gains `journal` param (JOURNALS map: nejm/lancet/jama/bmj/natmed/annals/ijmr/japi/cochrane → Europe PMC JOURNAL:"..." queries; '*' wildcard accepted for journal-only feeds). Research view: "Top journals" chip row with live badge, changeJournal sets sort=date + wildcard fallback, meta line shows "Live journal feed". Verified live: NEJM feed 11,946 papers (real 2025-26 trials).
+- Copy sweep: landing feature card + nav + hero CTA ("SEARCH ANY DOUBT, FREE"), audit-view button, store viewToLabel, internship/readiness API strings.
+- Lint fixes: doubt-search-view removed synchronous setState in effects (lazy useState init for recents; scopedData carries its subject id; results carry resultsFor=query; render gating instead of effect resets).
+
+Verification (agent-browser):
+- Mobile 390×844: landing sky-blue, resume card "Picks up at Doubt Search", home = mission hero + stats + Focus now + All Subjects, zero overflow (scrollW 390 == innerW 390).
+- Subject tap Physiology → #/map scoped chip "Physiology only" + 8-topic study menu with mastery.
+- Search "nephrotic" → 3 concepts + 3 practice questions + flashcards; "why does nephrotic syndrome cause edema" → Ask-the-tutor card.
+- Desktop 1440: grouped sidebar, search results, NEJM live feed (Survodutide / Giredestrant trials), More sheet lists Learn/Understand/Cases/Research/Explore/AI Tutor/Profile.
+- bunx tsc --noEmit: 0 src errors; bun run lint: 0 errors (2 pre-existing prisma/seed warnings). No runtime errors in agent-browser console.
+- Screenshots: agent-ctx/task24-01…18-*.png.
+
+Stage Summary:
+- One signature SKY-BLUE light theme, pinned on all devices; night mode is gone from code and can't return via stale cache (SW v2).
+- Homepage is a productive daily loop, not a dashboard museum; the galaxy junction is replaced by a doubt-first search that funnels into practice/revise/tutor/research.
+- Research is now visibly real-time (top-journal live feeds); nav is assimilated into 3 groups.
+- Suggested next: global search overlay (⌘K) could reuse the subject-scope chip; Explore ↔ Doubt Search cross-links.

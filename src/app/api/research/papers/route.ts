@@ -18,12 +18,27 @@ const FILTERS: Record<string, string> = {
   reviews: '(PUB_TYPE:"Review")',
 }
 
+// Top reputed journals — Europe PMC journal-abbreviation queries. Students
+// can read the latest from the world's best colleges in one tap, live.
+const JOURNALS: Record<string, string> = {
+  nejm: 'N Engl J Med',
+  lancet: 'Lancet',
+  jama: 'JAMA',
+  bmj: 'BMJ',
+  natmed: 'Nat Med',
+  annals: 'Ann Intern Med',
+  ijmr: 'Indian J Med Res',
+  japi: 'J Assoc Physicians India',
+  cochrane: 'Cochrane Database Syst Rev',
+}
+
 export async function GET(req: NextRequest) {
   try {
     const sp = req.nextUrl.searchParams
 
     const q = asTrimmed(sp.get('q'), 120)
-    if (!q || q.length < 2) {
+    // '*' is the Europe PMC wildcard — used by the live top-journal feeds
+    if (!q || (q.length < 2 && q !== '*')) {
       return NextResponse.json(
         { error: 'INVALID_QUERY', hint: 'q is required — 2 to 120 characters.' },
         { status: 400 },
@@ -38,9 +53,14 @@ export async function GET(req: NextRequest) {
     const rawSort = sp.get('sort') ?? 'relevance'
     const sort = rawSort === 'date' ? 'date' : 'relevance'
 
+    // Optional top-journal scope (nejm | lancet | jama | …)
+    const rawJournal = sp.get('journal') ?? ''
+    const journal = rawJournal in JOURNALS ? rawJournal : ''
+
     // base query always requires an abstract (so the UI always has real text)
     let eq = `${q} AND HAS_ABSTRACT:Y`
     if (filter !== 'all') eq += ` AND ${FILTERS[filter]}`
+    if (journal) eq += ` AND JOURNAL:"${JOURNALS[journal]}"`
 
     const { hitCount, papers } = await searchEuropePmcPaged(eq, {
       pageSize: PAGE_SIZE,
@@ -48,7 +68,7 @@ export async function GET(req: NextRequest) {
       sort,
     })
 
-    return NextResponse.json({ query: q, page, filter, sort, hitCount, papers })
+    return NextResponse.json({ query: q, page, filter, sort, journal, hitCount, papers })
   } catch (err) {
     if (err instanceof EuropePmcError) {
       console.error(`[api/research/papers] upstream ${err.kind}:`, err.message)

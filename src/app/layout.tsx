@@ -29,13 +29,13 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent",
+    statusBarStyle: "default",
     title: "MEDULA",
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0b1220",
+  themeColor: "#ddf1fc",
   width: "device-width",
   initialScale: 1,
 };
@@ -50,10 +50,10 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
-        {/* Night mode removed — MEDULA ships one signature midnight-sky theme.
-            forcedTheme pins the look on every device (no stale localStorage
-            theme can flip phones to the old light skin). */}
-        <ThemeProvider attribute="class" defaultTheme="dark" forcedTheme="dark" enableSystem={false} disableTransitionOnChange>
+        {/* One signature SKY-BLUE daylight theme — night mode is gone for good.
+            forcedTheme pins the look on every device, so no stale localStorage
+            theme or OS dark preference can ever flip phones to a dark skin. */}
+        <ThemeProvider attribute="class" defaultTheme="light" forcedTheme="light" enableSystem={false} disableTransitionOnChange>
           {children}
           <Toaster />
         </ThemeProvider>

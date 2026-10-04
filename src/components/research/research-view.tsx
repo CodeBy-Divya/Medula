@@ -63,6 +63,7 @@ interface PapersResponse {
   page: number
   filter: string
   sort: string
+  journal?: string
   hitCount: number
   papers: Paper[]
 }
@@ -105,6 +106,20 @@ const FILTER_CHIPS = [
 const SORT_CHIPS = [
   { id: 'relevance', label: 'Relevance' },
   { id: 'date', label: 'Newest' },
+] as const
+
+// Top reputed journals / colleges — one tap → the latest papers, live from
+// Europe PMC. Covers the world's leading journals plus India's best.
+const JOURNAL_CHIPS = [
+  { id: 'nejm', label: 'NEJM' },
+  { id: 'lancet', label: 'The Lancet' },
+  { id: 'jama', label: 'JAMA' },
+  { id: 'bmj', label: 'BMJ' },
+  { id: 'natmed', label: 'Nature Medicine' },
+  { id: 'annals', label: 'Ann Intern Med' },
+  { id: 'ijmr', label: 'Indian J Med Res' },
+  { id: 'japi', label: 'JAPI' },
+  { id: 'cochrane', label: 'Cochrane' },
 ] as const
 
 const PROVENANCE =
@@ -310,6 +325,7 @@ function ResearchViewInner({ initialQuery }: { initialQuery?: string }) {
   const [page, setPage] = useState(1)
   const [filter, setFilter] = useState<(typeof FILTER_CHIPS)[number]['id']>('all')
   const [sort, setSort] = useState<(typeof SORT_CHIPS)[number]['id']>('relevance')
+  const [journal, setJournal] = useState<string>('')
   const [inputHint, setInputHint] = useState<string | null>(null)
 
   const [result, setResult] = useState<PapersResponse | null>(null)
@@ -343,7 +359,7 @@ function ResearchViewInner({ initialQuery }: { initialQuery?: string }) {
     }
   }, [])
 
-  const runSearch = useCallback(async (q: string, f: string, s: string, p: number) => {
+  const runSearch = useCallback(async (q: string, f: string, s: string, p: number, j: string) => {
     searchAbort.current?.abort()
     const ctrl = new AbortController()
     searchAbort.current = ctrl
@@ -351,6 +367,7 @@ function ResearchViewInner({ initialQuery }: { initialQuery?: string }) {
     setError(null)
     try {
       const params = new URLSearchParams({ q, page: String(p), filter: f, sort: s })
+      if (j) params.set('journal', j)
       const res = await fetch(`/api/research/papers?${params.toString()}`, { signal: ctrl.signal })
       const data = await getJson<PapersResponse & { hint?: string }>(res)
       if (ctrl.signal.aborted) return
@@ -372,11 +389,12 @@ function ResearchViewInner({ initialQuery }: { initialQuery?: string }) {
     }
   }, [])
 
-  // the single fetcher for the Discover tab: submit, chips, sort and paging
-  // all just update state below — this effect does the actual request
+  // the single fetcher for the Discover tab: submit, chips, sort, journal and
+  // paging all just update state below — this effect does the actual request
+  // ('*' is the Europe PMC wildcard used by journal-only feeds)
   useEffect(() => {
-    if (submittedQuery.length >= 2) void runSearch(submittedQuery, filter, sort, page)
-  }, [submittedQuery, filter, sort, page, nonce, runSearch])
+    if (submittedQuery.length >= 1) void runSearch(submittedQuery, filter, sort, page, journal)
+  }, [submittedQuery, filter, sort, page, journal, nonce, runSearch])
 
   const submitSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -405,10 +423,19 @@ function ResearchViewInner({ initialQuery }: { initialQuery?: string }) {
     setPage(1)
   }
 
+  const changeJournal = (j: string) => {
+    setJournal((cur) => (cur === j ? '' : j))
+    // switching to a journal feed → newest first reads naturally
+    setSort('date')
+    setPage(1)
+    // no query typed yet → wildcard so the journal feed still runs live
+    if (submittedQuery.length < 2) setSubmittedQuery('*')
+  }
+
   const maxPage = result ? Math.min(50, Math.max(1, Math.ceil(result.hitCount / PAGE_SIZE))) : 1
 
   const retrySearch = () => {
-    if (submittedQuery.length >= 2) void runSearch(submittedQuery, filter, sort, page)
+    if (submittedQuery.length >= 2) void runSearch(submittedQuery, filter, sort, page, journal)
   }
 
   // ── paper of the day (lazy-loaded on first tab open) ──
@@ -618,6 +645,38 @@ function ResearchViewInner({ initialQuery }: { initialQuery?: string }) {
               </p>
             )}
 
+            {/* Top journals — live feeds from the world's best + India's finest */}
+            <div className="mt-3" role="group" aria-label="Top journals (live)">
+              <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-soft">
+                Top journals
+                <span className="inline-flex items-center gap-1 rounded-full bg-sev-ok/10 px-1.5 py-0.5 text-[9px] font-bold normal-case tracking-normal text-sev-ok">
+                  <span className="size-1.5 animate-pulse rounded-full bg-sev-ok" aria-hidden />
+                  live
+                </span>
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {JOURNAL_CHIPS.map((j) => {
+                  const active = journal === j.id
+                  return (
+                    <button
+                      key={j.id}
+                      type="button"
+                      onClick={() => changeJournal(j.id)}
+                      aria-pressed={active}
+                      className={cn(
+                        'min-h-9 rounded-full border px-3 text-xs font-medium transition-all',
+                        active
+                          ? 'border-primary/50 bg-primary/10 text-primary'
+                          : 'border-line bg-card/60 text-ink-soft hover:border-primary/40 hover:text-foreground',
+                      )}
+                    >
+                      {j.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
             <div className="mt-3 flex flex-wrap gap-1.5" role="group" aria-label="Filter results">
               {FILTER_CHIPS.map((f) => {
                 const active = filter === f.id
@@ -662,7 +721,8 @@ function ResearchViewInner({ initialQuery }: { initialQuery?: string }) {
           {/* result meta line */}
           {result && !loading && !error && (
             <p className="text-xs text-ink-soft" aria-live="polite">
-              {result.hitCount.toLocaleString('en-IN')} results in Europe PMC · showing {result.papers.length} ·
+              {result.journal ? 'Live journal feed' : 'Europe PMC'} ·{' '}
+              {result.hitCount.toLocaleString('en-IN')} results · showing {result.papers.length} ·
               page {result.page} of {maxPage}
             </p>
           )}

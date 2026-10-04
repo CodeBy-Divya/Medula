@@ -323,7 +323,7 @@ export function AuditView() {
                         className="min-h-11 flex-1"
                         onClick={() => { setView('map'); setAuditOpen(false) }}
                       >
-                        <MapIcon className="mr-2 size-4" /> View on Medical Map
+                        <MapIcon className="mr-2 size-4" /> Search your doubts
                       </Button>
                     </div>
                     <button

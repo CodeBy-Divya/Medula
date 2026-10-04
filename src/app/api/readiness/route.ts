@@ -75,7 +75,7 @@ export async function GET() {
       {
         key: 'coverage', label: 'Syllabus coverage', weight: 35, value: coverage,
         note: `${touched.size} of ${concepts.length} concepts engaged, weighted by NEET-PG yield`,
-        suggestion: coverage < 60 ? 'Widen your base — use Learn + the Medical Map to touch high-yield concepts first.' : 'Coverage is healthy — protect it with spaced revision.',
+        suggestion: coverage < 60 ? 'Widen your base — use Learn + Doubt Search to touch high-yield concepts first.' : 'Coverage is healthy — protect it with spaced revision.',
       },
       {
         key: 'accuracy', label: 'Question accuracy', weight: 30, value: accuracy,
