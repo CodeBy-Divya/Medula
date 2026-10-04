@@ -1,5 +1,22 @@
 // ─── MEDOS shared types ───
 
+// Lesson content contracts live in the curriculum layer; the client mirrors
+// them here (type-only re-export — no runtime import cycle).
+import type {
+  ConceptLesson as ConceptLessonContract,
+  PaperExplainer as PaperExplainerContract,
+  Asset3DRecord as Asset3DRecordContract,
+  SubjectTaxonomy as SubjectTaxonomyContract,
+  CurriculumRecord as CurriculumRecordContract,
+} from './curriculum/types'
+
+export type ConceptLesson = ConceptLessonContract
+export type PaperExplainer = PaperExplainerContract
+export type Asset3DRecord = Asset3DRecordContract
+export type SubjectTaxonomy = SubjectTaxonomyContract
+export type CurriculumRecord = CurriculumRecordContract
+export type Phase = SubjectTaxonomyContract['phase']
+
 export type View =
   | 'landing' | 'signin' | 'onboarding' | 'home' | 'map' | 'explore' | 'research' | 'understand' | 'learn' | 'questions'
   | 'cases' | 'revise' | 'tutor' | 'progress' | 'roadmap' | 'profile'
@@ -64,6 +81,8 @@ export interface ConceptDetail {
   whyChain: { stage: string; label: string; conceptId?: string }[]
   flashcards: { id: string; front: string; back: string }[]
   questionCount: number
+  /** Full structured lesson (curriculum packs) — null when the concept has none. */
+  lesson?: ConceptLesson | null
 }
 
 export interface QuestionClient {
@@ -240,6 +259,83 @@ export interface LogbookEntryClient {
   id: string; caseType: string; system: string; diagnosis: string
   learned: string; createdAt: string
 }
+
+// ─── LEARN client payloads (mirror the /api/learn/* response shapes) ───
+
+export interface LearnHomeSubject {
+  id: string; code: string; name: string; color: string; year: number
+  topicCount: number; conceptCount: number; mastery: number
+  neetWeight: number; systems: string[]
+}
+
+export interface LearnHomePhase { phase: Phase; label: string; subjects: LearnHomeSubject[] }
+
+export interface LearnHomeSystem {
+  system: string; label: string
+  subjectCount: number; topicCount: number; conceptCount: number
+  subjects: string[]
+}
+
+export interface LearnHomeTotals {
+  subjects: number; topics: number; concepts: number; lessons: number
+  diagrams3d: number; papers: number; aiConcepts: number
+}
+
+/** /api/learn/home — LearnHomePayload + optional `degraded` flag. */
+export interface LearnHomeClient {
+  continueLearning: {
+    conceptId: string; conceptName: string; subjectName: string; subjectColor: string
+    mastery: number; estRecall: number; reason: string
+  }[]
+  recommendedNext: {
+    conceptId: string; conceptName: string; subjectName: string
+    reason: string; examWeight: number
+  } | null
+  weakConcepts: { conceptId: string; conceptName: string; subjectName: string; mastery: number }[]
+  recentlyStudied: { conceptId: string; conceptName: string; at: string }[]
+  phases: LearnHomePhase[]
+  systems: LearnHomeSystem[]
+  hasLessonCoverage: number
+  totals: LearnHomeTotals
+  degraded?: boolean
+}
+
+/** /api/learn/curriculum (no params) — full curriculum browse map. */
+export interface CurriculumBrowsePayload {
+  phases: { phase: Phase; label: string; description: string }[]
+  subjects: (SubjectTaxonomy & {
+    topicCount: number; conceptCount: number; mastery: number
+  })[]
+  systems: LearnHomeSystem[]
+  registry: CurriculumRecord[]
+  totals: LearnHomeTotals
+}
+
+/** /api/learn/curriculum?subject=<id> — one subject's topics with coverage. */
+export interface SubjectTopicsPayload {
+  subject: {
+    id: string; code: string; name: string; phase: Phase; year: number
+    color: string; blurb: string; neetWeight: number; systems: string[]
+    topicCount: number; conceptCount: number; mastery: number
+  }
+  topics: {
+    id: string; name: string; system: string | null; importance: number
+    description: string; conceptCount: number; lessonCoverage: number
+  }[]
+}
+
+/** /api/learn/atlas — 3D atlas list item (honest labels, teaching answers). */
+export interface AtlasListItem {
+  diagramKey: string; title: string; system: string; handcrafted: boolean
+  conceptIds: string[]
+  teachingAnswers: Asset3DRecord['teachingAnswers'] | null
+  hasQuiz: boolean; hasSteps: boolean; layerCount: number
+}
+
+export interface AtlasListPayload { source: string; total: number; assets: AtlasListItem[] }
+
+/** /api/learn/papers — grounded research-paper explainers. */
+export interface PapersListPayload { papers: PaperExplainer[]; total: number; note?: string }
 
 export const SYSTEMS = [
   { id: 'cardiovascular', label: 'Cardiovascular', icon: 'HeartPulse' },

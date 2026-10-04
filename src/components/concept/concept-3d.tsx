@@ -99,8 +99,11 @@ export function Concept3D({ detail, compact = false }: { detail: ConceptDetail; 
   const stepLayer = stepMode && steps ? diagram.layers.find(l => l.id === steps[stepIndex]?.layerId) ?? null : null
   const stepLayerId = stepLayer?.id ?? null
 
-  // reset the viewer whenever the underlying diagram changes
-  useEffect(() => {
+  // reset the viewer whenever the underlying diagram changes — done during
+  // render (React's derived-state-reset pattern) to avoid effect cascades
+  const [prevDiagramKey, setPrevDiagramKey] = useState(diagram)
+  if (prevDiagramKey !== diagram) {
+    setPrevDiagramKey(diagram)
     setActiveId(diagram.layers[0]?.id ?? null)
     setRot({ x: -14, y: 22 })
     setAutoOrbit(false)
@@ -109,14 +112,18 @@ export function Concept3D({ detail, compact = false }: { detail: ConceptDetail; 
     setStepMode(false)
     setStepIndex(0)
     setQuizOpen(false)
-  }, [diagram])
+  }
 
-  // guided mode: the current step drives the highlighted layer
-  useEffect(() => {
-    if (!stepMode || !steps) return
-    const target = steps[stepIndex]?.layerId
-    if (target && diagram.layers.some(l => l.id === target)) setActiveId(target)
-  }, [stepMode, stepIndex, steps, diagram])
+  // guided mode: the current step drives the highlighted layer — also applied
+  // during render via the same pattern
+  const stepTargetId = stepMode && steps ? steps[stepIndex]?.layerId ?? null : null
+  const stepTargetValid =
+    stepTargetId !== null && diagram.layers.some((l) => l.id === stepTargetId)
+  const [appliedStepTarget, setAppliedStepTarget] = useState<string | null>(null)
+  if (stepTargetValid && stepTargetId !== appliedStepTarget) {
+    setAppliedStepTarget(stepTargetId)
+    setActiveId(stepTargetId)
+  }
 
   // guided mode keyboard: ← → navigate · Escape exits
   useEffect(() => {

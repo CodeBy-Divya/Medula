@@ -21,6 +21,8 @@ async function post<T>(url: string, body: unknown): Promise<T> {
 import type {
   Profile, DashboardPayload, GraphPayload, ConceptDetail, QuestionClient, AttemptResult,
   RevisionPayload, ProgressPayload, RoadmapPayload, SearchResults,
+  LearnHomeClient, CurriculumBrowsePayload, SubjectTopicsPayload,
+  AtlasListPayload, PapersListPayload,
 } from './types'
 
 export const api = {
@@ -77,4 +79,21 @@ export const api = {
   mapInsights: () => get<import('@/app/api/map-insights/route').MapInsights>('/api/map-insights'),
   internship: () => get<import('@/app/api/internship/route').InternshipPayload>('/api/internship'),
   search: (q: string) => get<SearchResults>(`/api/search?q=${encodeURIComponent(q)}`),
+
+  // ── LEARN engine ──
+  // Learn homepage: personalized state + registry totals (never 500s — degraded
+  // payloads carry `degraded: true`).
+  learnHome: () => get<LearnHomeClient>('/api/learn/home'),
+  // Without subjectId → full curriculum browse map; with subjectId → that
+  // subject's topics with lesson coverage.
+  learnCurriculum: (subjectId?: string): Promise<CurriculumBrowsePayload | SubjectTopicsPayload> =>
+    subjectId
+      ? get<SubjectTopicsPayload>(`/api/learn/curriculum?subject=${encodeURIComponent(subjectId)}`)
+      : get<CurriculumBrowsePayload>('/api/learn/curriculum'),
+  // 3D atlas assets (optional organ-system filter).
+  learnAtlas: (system?: string) =>
+    get<AtlasListPayload>(`/api/learn/atlas${system ? `?system=${encodeURIComponent(system)}` : ''}`),
+  // Grounded research-paper explainers (optional field filter).
+  learnPapers: (field?: string) =>
+    get<PapersListPayload>(`/api/learn/papers${field ? `?field=${encodeURIComponent(field)}` : ''}`),
 }

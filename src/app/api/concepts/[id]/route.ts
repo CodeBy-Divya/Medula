@@ -2,7 +2,9 @@ import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { DAY, estimatedRecall } from '@/lib/engine'
 import { getDemoProfile } from '@/lib/profile'
+import { DIAGRAMS_3D } from '@/lib/visual3d'
 import type { ConceptDetail, Section } from '@/lib/types'
+import type { ConceptLesson } from '@/lib/curriculum/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -74,7 +76,20 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const knowledge = stateMap.get(concept.id)
   const detail = (concept.detail as unknown as Section[]) ?? null
 
-  const payload: ConceptDetail = {
+  // ── Learn-engine additions (Task 19-g, additive — existing fields untouched) ──
+  // lesson: the Concept row's serialized ConceptLesson, or null when absent.
+  // The key is ALWAYS present so clients can rely on its shape.
+  const lessonRaw = concept.lesson as unknown
+  const lesson: ConceptLesson | null =
+    typeof lessonRaw === 'object' && lessonRaw !== null && !Array.isArray(lessonRaw)
+      ? (lessonRaw as ConceptLesson)
+      : null
+  // has3d: a handcrafted 3D diagram exists when the concept id is a key in
+  // DIAGRAMS_3D — exactly how visual3d.getDiagram3D distinguishes handcrafted
+  // scenes from its generated fallback (DIAGRAMS_3D[id] ?? buildFallback).
+  const has3d = concept.id in DIAGRAMS_3D
+
+  const payload: ConceptDetail & { lesson: ConceptLesson | null; has3d: boolean } = {
     id: concept.id, name: concept.name, kind: concept.kind, summary: concept.summary,
     whyMatters: concept.whyMatters, mnemonic: concept.mnemonic,
     difficulty: concept.difficulty, examRelevance: concept.examRelevance, clinicalRelevance: concept.clinicalRelevance,
@@ -89,6 +104,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     whyChain,
     flashcards: concept.flashcards.map(f => ({ id: f.id, front: f.front, back: f.back })),
     questionCount: concept.questions.length,
+    lesson,
+    has3d,
   }
   return NextResponse.json(payload)
 }

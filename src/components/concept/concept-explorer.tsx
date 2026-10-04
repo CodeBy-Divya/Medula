@@ -9,7 +9,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import {
   Activity, ArrowLeft, Biohazard, Bone, Bug, ChevronDown, GraduationCap, Hand,
   Lightbulb, MessageCircle, Microscope, Pill, RotateCcw, Stethoscope, Syringe,
-  TriangleAlert, X, type LucideIcon,
+  Timer, TriangleAlert, X, Zap, type LucideIcon,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { api } from '@/lib/api'
@@ -17,6 +17,7 @@ import { KIND_META } from '@/lib/types'
 import type { ConceptDetail } from '@/lib/types'
 import { useAppStore } from '@/lib/store'
 import { Concept3D } from '@/components/concept/concept-3d'
+import { LessonSections } from '@/components/learn/lesson-sections'
 import { cn } from '@/lib/utils'
 
 const KIND_ICONS: Record<string, LucideIcon> = {
@@ -344,6 +345,14 @@ export function ConceptExplorer() {
     closeConcept()
   }, [detail, setQuizPreset, setView, closeConcept])
 
+  // 'Test me' from the 30-second lesson card — 5 questions per the lesson spec
+  const lessonQuizMe = useCallback(() => {
+    if (!detail) return
+    setQuizPreset({ conceptId: detail.id, count: 5 })
+    setView('questions')
+    closeConcept()
+  }, [detail, setQuizPreset, setView, closeConcept])
+
   const practiceNow = useCallback(() => {
     if (!detail) return
     setQuizPreset({ conceptId: detail.id, count: 6 })
@@ -455,17 +464,40 @@ export function ConceptExplorer() {
                     </div>
                   </header>
 
-                  {/* 2 · WHY THIS MATTERS */}
-                  <section className="rounded-2xl border border-line border-l-4 border-l-primary bg-surface-2 p-4 md:p-5">
-                    <h3 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Why this matters</h3>
-                    {detail.whyMatters ? (
-                      <p className="mt-2 text-sm leading-relaxed text-foreground/90">{detail.whyMatters}</p>
-                    ) : (
-                      <p className="mt-2 text-sm italic leading-relaxed text-muted-foreground">
-                        Anchor concept of {detail.topic.name} — {detail.summary}
-                      </p>
-                    )}
-                  </section>
+                  {/* 1b · 30-SECOND VERSION — pinned, from the full lesson */}
+                  {detail.lesson && (
+                    <section className="clay-in flex flex-col gap-3 rounded-2xl p-4 md:flex-row md:items-center md:gap-5 md:p-5">
+                      <div className="min-w-0 flex-1">
+                        <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
+                          <Timer className="size-3" aria-hidden /> 30-second version
+                        </p>
+                        <p className="mt-2 text-sm leading-relaxed md:text-[15px]">{detail.lesson.explain30s}</p>
+                      </div>
+                      <Button onClick={lessonQuizMe} className="shrink-0 tracking-wide">
+                        <Zap className="mr-1.5 size-4" /> Test me
+                      </Button>
+                    </section>
+                  )}
+
+                  {/* 1c · FULL LESSON — structured curriculum content (replaces the
+                      legacy why-matters / detail / mnemonic sections when present) */}
+                  {detail.lesson && (
+                    <LessonSections lesson={detail.lesson} compact onOpenConcept={navigateTo} />
+                  )}
+
+                  {/* 2 · WHY THIS MATTERS — legacy rendering, kept when no lesson */}
+                  {!detail.lesson && (
+                    <section className="rounded-2xl border border-line border-l-4 border-l-primary bg-surface-2 p-4 md:p-5">
+                      <h3 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Why this matters</h3>
+                      {detail.whyMatters ? (
+                        <p className="mt-2 text-sm leading-relaxed text-foreground/90">{detail.whyMatters}</p>
+                      ) : (
+                        <p className="mt-2 text-sm italic leading-relaxed text-muted-foreground">
+                          Anchor concept of {detail.topic.name} — {detail.summary}
+                        </p>
+                      )}
+                    </section>
+                  )}
 
                   {/* 2b · 3D VISUAL — every topic as a layered 3D diagram */}
                   <section className="overflow-hidden rounded-2xl border border-line bg-surface-2/60">
@@ -530,8 +562,8 @@ export function ConceptExplorer() {
                     </section>
                   )}
 
-                  {/* 4 · DETAIL SECTIONS */}
-                  {detail.detail && detail.detail.length > 0 && (
+                  {/* 4 · DETAIL SECTIONS — legacy rendering, kept when no lesson */}
+                  {!detail.lesson && detail.detail && detail.detail.length > 0 && (
                     <section className="space-y-5">
                       <SectionTitle>Deep dive</SectionTitle>
                       {detail.detail.map((sec, i) => (
@@ -622,8 +654,8 @@ export function ConceptExplorer() {
                     <Button onClick={practiceNow} className="shrink-0 tracking-wide">PRACTICE NOW</Button>
                   </section>
 
-                  {/* 8 · MNEMONIC */}
-                  {detail.mnemonic && (
+                  {/* 8 · MNEMONIC — legacy rendering, kept when no lesson */}
+                  {!detail.lesson && detail.mnemonic && (
                     <section className="flex gap-3 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4">
                       <Lightbulb className="mt-0.5 size-4 shrink-0 text-amber-400" />
                       <div>
