@@ -334,9 +334,9 @@ export function MedicalMapCanvas({
   useEffect(() => { void load(scope) }, [scope, load])
 
   // Pending scope handed over from the dashboard Branch Galaxy / Roadmap.
-  // 'tour' is NOT a scope — it's consumed by the auto-tour effect below.
+  // 'tour' and 'weakest' are NOT scopes — they're consumed by the effects below.
   useEffect(() => {
-    if (!mapScope || mapScope === 'tour') return
+    if (!mapScope || mapScope === 'tour' || mapScope === 'weakest') return
     setScope(mapScope)
     setMapScope(null)
   }, [mapScope, setMapScope])
@@ -569,6 +569,35 @@ export function MedicalMapCanvas({
     setMapScope(null)
     startTour()
   }, [mapScope, data, setMapScope, startTour])
+
+  // Pending scope 'weakest' → open the concept explorer on THE weakest node:
+  // lowest mastery first; ties broken by difficulty × examRelevance (repair the
+  // costliest gap). Falls back to the guided tour only on a perfect tie.
+  useEffect(() => {
+    if (mapScope !== 'weakest' || !data) return
+    setMapScope(null)
+    const candidates = data.nodes.filter(n => n.mastery < 60)
+    if (candidates.length === 0) {
+      startTour()
+      return
+    }
+    const ranked = [...candidates].sort(
+      (a, b) =>
+        a.mastery - b.mastery ||
+        b.difficulty * b.examRelevance - a.difficulty * a.examRelevance,
+    )
+    const weakest = ranked[0]
+    const runnerUp = ranked[1]
+    const clearWinner =
+      !runnerUp ||
+      weakest.mastery < runnerUp.mastery ||
+      weakest.difficulty * weakest.examRelevance > runnerUp.difficulty * runnerUp.examRelevance
+    if (clearWinner) {
+      openConcept(weakest.id)
+    } else {
+      startTour()
+    }
+  }, [mapScope, data, setMapScope, startTour, openConcept])
 
   const centerId = scope.startsWith('concept:') ? scope.slice(8) : null
   const centerName = centerId ? data?.nodes.find(n => n.id === centerId)?.name ?? 'Focused concept' : null

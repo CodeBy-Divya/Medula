@@ -20,6 +20,7 @@ import { RoadmapView } from '@/components/roadmap/roadmap-view'
 import { ProfileView } from '@/components/profile/profile-view'
 import { ConceptExplorer } from '@/components/concept/concept-explorer'
 import { SearchOverlay } from '@/components/search/search-overlay'
+import { ShortcutsOverlay } from '@/components/shortcuts/shortcuts-overlay'
 import { AuditView } from '@/components/audit/audit-view'
 import { Loader2 } from 'lucide-react'
 
@@ -101,6 +102,7 @@ export default function Home() {
       <ConceptExplorer />
       <SearchOverlay />
       <AuditView />
+      <ShortcutsOverlay />
     </AppShell>
   )
 }

@@ -9,6 +9,7 @@ import {
   Check,
   CheckCircle2,
   FlaskConical,
+  Lightbulb,
   Loader2,
   Play,
   RefreshCw,
@@ -77,6 +78,19 @@ interface QuizPresetParams {
   pairLabel?: string
 }
 
+// Confusion-pair debrief payload (mirrors /api/confusion-pairs)
+interface PairDebriefData {
+  id: string
+  a: string
+  b: string
+  aCode: string
+  bCode: string
+  aPoints: string[]
+  bPoints: string[]
+  mnemonic: string
+  subjectCode: string
+}
+
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1]
 
 const MODES: { value: '' | 'rapid' | 'vignette'; label: string }[] = [
@@ -141,6 +155,75 @@ function PairBanner({ label }: { label: string }) {
         <span className="font-medium">{label}</span>
       </p>
     </div>
+  )
+}
+
+function PairDebrief({ pair, onDrillAgain, onViewProgress }: { pair: PairDebriefData; onDrillAgain: () => void; onViewProgress: () => void }) {
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: EASE }}
+      className="glass space-y-4 rounded-2xl p-5 md:p-7"
+      aria-label="Confusion-pair debrief"
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <Zap className="size-4 shrink-0 text-sev-warn" />
+        <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-ink-soft">
+          The distinction, side by side
+        </h2>
+        <span className="rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-bold tracking-wide text-primary">
+          {pair.subjectCode}
+        </span>
+      </div>
+
+      {/* a vs b comparison */}
+      <div className="overflow-hidden rounded-xl border border-line">
+        <div className="grid grid-cols-2">
+          <div className="bg-primary/15 px-3 py-2.5 text-center text-sm font-bold leading-tight tracking-tight text-primary">
+            {pair.a}
+          </div>
+          <div className="border-l border-line bg-sev-warn/15 px-3 py-2.5 text-center text-sm font-bold leading-tight tracking-tight text-sev-warn">
+            {pair.b}
+          </div>
+        </div>
+        <div className="grid grid-cols-2 divide-x divide-line border-t border-line">
+          <ul className="space-y-2 p-3.5">
+            {pair.aPoints.map((pt) => (
+              <li key={pt} className="flex gap-2 text-xs leading-snug text-ink-soft">
+                <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary/70" />
+                {pt}
+              </li>
+            ))}
+          </ul>
+          <ul className="space-y-2 p-3.5">
+            {pair.bPoints.map((pt) => (
+              <li key={pt} className="flex gap-2 text-xs leading-snug text-ink-soft">
+                <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-sev-warn/70" />
+                {pt}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      {/* mnemonic */}
+      {pair.mnemonic && (
+        <div className="flex items-start gap-2 rounded-lg bg-accent/60 px-3.5 py-2.5">
+          <Lightbulb className="mt-0.5 size-3.5 shrink-0 text-sev-warn" />
+          <p className="text-xs italic leading-relaxed text-ink-soft">{pair.mnemonic}</p>
+        </div>
+      )}
+
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Button variant="outline" className="min-h-10 gap-1.5 text-xs font-semibold" onClick={onDrillAgain}>
+          <RefreshCw className="size-3.5" /> Drill this pair again
+        </Button>
+        <Button variant="outline" className="min-h-10 gap-1.5 text-xs font-semibold" onClick={onViewProgress}>
+          <ArrowRight className="size-3.5" /> All pairs on Progress
+        </Button>
+      </div>
+    </motion.section>
   )
 }
 
@@ -266,6 +349,9 @@ export function QuizView() {
   // Run state
   const [runStatus, setRunStatus] = useState<RunStatus>('loading')
   const [pairLabel, setPairLabel] = useState<string | null>(null)
+  const [activePairId, setActivePairId] = useState<string | null>(null)
+  const [pairDebrief, setPairDebrief] = useState<PairDebriefData | null>(null)
+  const [pairDebriefLoading, setPairDebriefLoading] = useState(false)
   const [questions, setQuestions] = useState<QuestionClient[]>([])
   const [qIndex, setQIndex] = useState(0)
   const [selected, setSelected] = useState<string | null>(null)
@@ -273,6 +359,7 @@ export function QuizView() {
   const [attempt, setAttempt] = useState<AttemptResult | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(false)
+  const [endOpen, setEndOpen] = useState(false) // "End session?" confirm dialog (Esc in run)
   const [errorType, setErrorType] = useState<string | null>(null)
   const [errorSaved, setErrorSaved] = useState(false)
   const [results, setResults] = useState<ResultEntry[]>([])
@@ -327,6 +414,9 @@ export function QuizView() {
     setErrorSaved(false)
     setLastKnowledge(null)
     setPairLabel(params.pairId ? (params.pairLabel ?? 'a confusable pair') : null)
+    setActivePairId(params.pairId ?? null)
+    setPairDebrief(null)
+    setPairDebriefLoading(!!params.pairId)
     if (params.conceptId) {
       setFocusLabel('Focused concept')
       api.concept(params.conceptId).then(
@@ -374,6 +464,26 @@ export function QuizView() {
     return () => window.clearTimeout(t)
   }, [startRun, setQuizPreset])
 
+  // Pair-drill debrief — fetch the pair's comparison table once the run completes
+  // (loading flag is armed in startRun; this effect only resolves it async — lint-clean)
+  useEffect(() => {
+    if (phase !== 'results' || !activePairId) return
+    let cancelled = false
+    api.confusionPair(activePairId)
+      .then((res) => {
+        if (!cancelled) setPairDebrief(res.pair)
+      })
+      .catch(() => {
+        if (!cancelled) setPairDebrief(null)
+      })
+      .finally(() => {
+        if (!cancelled) setPairDebriefLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [phase, activePairId])
+
   // Session timer (subtle tick while the run is active)
   useEffect(() => {
     if (phase !== 'run' || runStatus !== 'active') return
@@ -391,6 +501,11 @@ export function QuizView() {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null
       if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setExitOpen(true) // asks to confirm before abandoning the run
+        return
+      }
       const keys = ['1', '2', '3', '4', 'a', 'b', 'c', 'd']
       const idx = keys.indexOf(e.key.toLowerCase())
       if (idx < 0) return
@@ -984,6 +1099,28 @@ export function QuizView() {
           </div>
         )}
       </section>
+
+      {/* Pair-drill debrief — the distinction, side by side */}
+      {activePairId &&
+        (pairDebriefLoading ? (
+          <section className="glass rounded-2xl p-5 md:p-7" aria-label="Loading pair debrief">
+            <p className="flex items-center gap-2.5 text-sm text-ink-soft">
+              <Loader2 className="size-4 animate-spin" /> Loading the pair breakdown…
+            </p>
+          </section>
+        ) : pairDebrief ? (
+          <PairDebrief
+            pair={pairDebrief}
+            onDrillAgain={() =>
+              startRun({
+                pairId: activePairId,
+                pairLabel: pairLabel ?? undefined,
+                count: lastParamsRef.current?.count ?? 6,
+              })
+            }
+            onViewProgress={() => setView('progress')}
+          />
+        ) : null)}
 
       {/* Missed questions + teaching */}
       <section className="glass space-y-4 rounded-2xl p-5 md:p-7">

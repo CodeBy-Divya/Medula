@@ -15,6 +15,7 @@ export const dynamic = 'force-dynamic'
 type Mix = 'random' | 'high-yield' | 'weak'
 
 const MAX_SUBJECT_FILTERS = 25 // hard cap on the comma-separated subjects list
+const MAX_COUNT = 100 // hard cap on questions per run (Grand Mock 100)
 
 export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams
@@ -25,7 +26,7 @@ export async function GET(req: NextRequest) {
   const qtype = sp.get('qtype') ?? undefined
   const pairId = sp.get('pair') ?? undefined
   const mix = (sp.get('mix') ?? 'random') as Mix
-  const count = Math.min(50, Math.max(1, Number(sp.get('count') ?? 10)))
+  const count = Math.min(MAX_COUNT, Math.max(1, Number(sp.get('count') ?? 10)))
 
   const where: Record<string, unknown> = {}
   if (subjectCode) {

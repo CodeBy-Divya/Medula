@@ -454,9 +454,9 @@ export function RoadmapView() {
           setView('revise')
           break
         case 'weakness':
-          // Hand off to the Medical Map with its guided tour — struggle zones
-          // first, then the highest-leverage hub concepts.
-          setMapScope('tour')
+          // Hand off to the Medical Map: opens the single weakest concept when
+          // there's a clear #1, otherwise auto-runs the struggle-zone tour.
+          setMapScope('weakest')
           setView('map')
           break
       }

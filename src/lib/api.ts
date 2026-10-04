@@ -37,6 +37,8 @@ export const api = {
   },
   attempt: (body: { questionId: string; selected: string; timeMs?: number; confidence?: number }) =>
     post<AttemptResult>('/api/attempts', body),
+  confusionPair: (id: string) =>
+    get<{ pair: { id: string; a: string; b: string; aCode: string; bCode: string; aPoints: string[]; bPoints: string[]; mnemonic: string; subjectCode: string } }>(`/api/confusion-pairs?id=${encodeURIComponent(id)}`),
   logErrorType: (body: { questionId: string; errorType: string }) =>
     post<{ ok: boolean }>('/api/attempts/error-type', body),
   revision: () => get<RevisionPayload>('/api/revision'),

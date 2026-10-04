@@ -2,12 +2,15 @@
 
 import { useEffect, useState } from 'react'
 import { useAppStore } from '@/lib/store'
+import { useOnline } from '@/hooks/use-online'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import {
   Home, Map as MapIcon, BookOpen, CircleHelp, Stethoscope, RefreshCcw,
   Sparkles, LineChart, Route, UserRound, Search, Moon, SunMedium, Menu, X,
+  Keyboard, WifiOff,
 } from 'lucide-react'
 import type { View } from '@/lib/types'
 
@@ -64,8 +67,10 @@ function ThemeToggle() {
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { view, setView, setSearchOpen, profile } = useAppStore()
+  const { view, setView, setSearchOpen, setShortcutsOpen, profile } = useAppStore()
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const online = useOnline()
+  const reduce = useReducedMotion()
 
   // Cmd/Ctrl+K opens search
   useEffect(() => {
@@ -162,6 +167,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             >
               <Search className="size-4" />
             </button>
+            <button
+              onClick={() => setShortcutsOpen(true)}
+              className="hidden size-10 items-center justify-center rounded-xl text-ink-soft transition-colors hover:bg-surface-2 hover:text-foreground sm:flex"
+              aria-label="Keyboard shortcuts (?)"
+              title="Keyboard shortcuts (?)"
+            >
+              <Keyboard className="size-4" />
+            </button>
             <ThemeToggle />
           </div>
         </header>
@@ -189,6 +202,31 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </nav>
           </div>
         )}
+
+        {/* Offline banner — calm, never blocks; everything loaded keeps working */}
+        <AnimatePresence>
+          {!online && (
+            <motion.div
+              key="offline-banner"
+              initial={reduce ? false : { height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={reduce ? { opacity: 0 } : { height: 0, opacity: 0 }}
+              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+              className="overflow-hidden"
+            >
+              <div
+                role="status"
+                className="flex items-center justify-center gap-2 border-b border-sev-warn/30 bg-sev-warn/10 px-4 py-2 text-xs font-medium text-sev-warn"
+              >
+                <WifiOff className="size-3.5 shrink-0" aria-hidden />
+                <span>
+                  You&apos;re offline — everything you&apos;ve already loaded keeps working. Progress
+                  syncs when you&apos;re back.
+                </span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Content */}
         <main className="flex-1 pb-20 lg:pb-0">{children}</main>

@@ -15,6 +15,7 @@ import {
   BookmarkCheck,
   CheckCircle2,
   ChevronDown,
+  FilePenLine,
   GraduationCap,
   Loader2,
   Play,
@@ -55,7 +56,7 @@ interface MockAnswer {
   teaching?: string
 }
 
-const SIZES = [10, 15, 20, 50] as const
+const SIZES = [10, 15, 20, 50, 100] as const
 const SEC_PER_Q = 60 // NEET-PG pace: ~1 min per question
 
 // Paper-mix presets — how the question set is composed
@@ -69,6 +70,7 @@ const MIXES = [
 // One-tap quick starts — jump straight into a run without touching the config
 const QUICK_STARTS = [
   { label: 'Full Mock 50', emoji: '🏛️', desc: 'The real-feel paper — 50 questions weighted across the whole bank', size: 50, mix: 'high-yield' },
+  { label: 'Grand Mock 100', emoji: '👑', desc: 'The biggest paper in MEDOS — 100 questions, 100 minutes, every subject in play', size: 100, mix: 'high-yield' },
   { label: 'Rapid Fire 20', emoji: '⚡', desc: 'A 20-minute mixed bag at exam pace', size: 20, mix: 'random' },
   { label: 'Weak-Spot 10', emoji: '🎯', desc: 'Ten questions aimed at your flagged weak concepts', size: 10, mix: 'weak' },
 ] as const
@@ -309,7 +311,7 @@ export function MockTestView() {
             <label className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-soft">
               Start straight away
             </label>
-            <div className="grid gap-2 sm:grid-cols-3">
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
               {QUICK_STARTS.map((qk) => (
                 <button
                   key={qk.label}
@@ -689,9 +691,14 @@ export function MockTestView() {
               <p className="text-xs text-ink-soft">{questions.length} questions · {fmtTime(size * SEC_PER_Q - secondsLeft)} used</p>
             </div>
           </div>
-          <Button variant="outline" className="min-h-11 gap-2" onClick={() => startTest()}>
-            <RotateCcw className="size-4" /> New mock
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" className="min-h-11 gap-2" onClick={() => setPhase('config')}>
+              <FilePenLine className="size-4" /> Change paper
+            </Button>
+            <Button variant="outline" className="min-h-11 gap-2" onClick={() => startTest()}>
+              <RotateCcw className="size-4" /> Retry same paper
+            </Button>
+          </div>
         </header>
 
         {/* Score card */}

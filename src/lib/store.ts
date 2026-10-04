@@ -49,6 +49,7 @@ interface AppState {
   conceptFocus: string | null // concept explorer target
   searchOpen: boolean
   auditOpen: boolean
+  shortcutsOpen: boolean // keyboard cheat-sheet overlay (?)
   mapScope: string | null // pending scope to apply in the map view (e.g. "subject:anatomy")
   quizPreset: { subjectCode?: string; system?: string; conceptId?: string; count?: number; pairId?: string; pairLabel?: string } | null
   setView: (v: View) => void
@@ -58,6 +59,7 @@ interface AppState {
   closeConcept: () => void
   setSearchOpen: (v: boolean) => void
   setAuditOpen: (v: boolean) => void
+  setShortcutsOpen: (v: boolean) => void
   setMapScope: (s: string | null) => void
   setQuizPreset: (p: AppState['quizPreset']) => void
 }
@@ -70,6 +72,7 @@ export const useAppStore = create<AppState>((set) => ({
   conceptFocus: null,
   searchOpen: false,
   auditOpen: false,
+  shortcutsOpen: false,
   mapScope: null,
   quizPreset: null,
   setView: (v) => {
@@ -84,6 +87,7 @@ export const useAppStore = create<AppState>((set) => ({
   closeConcept: () => set({ conceptFocus: null }),
   setSearchOpen: (v) => set({ searchOpen: v }),
   setAuditOpen: (v) => set({ auditOpen: v }),
+  setShortcutsOpen: (v) => set({ shortcutsOpen: v }),
   setMapScope: (s) => set({ mapScope: s }),
   setQuizPreset: (p) => set({ quizPreset: p }),
 }))
