@@ -713,3 +713,19 @@ Stage Summary:
 - MEDULA now answers the five Knowledge-OS questions for its first vertical: where (Explore grouped search) · trust (verified badges + provenance + retrievalAt) · connection (curriculum graph hit + AI "what to learn next") · what to learn (grounded summaries, learn group) · what next (handoffs: Explore→Research→original source; Learn→Understand/Map).
 - Honest-data guarantees shipped in code: never fabricate (pending badges, UNKNOWN access), metadata-only + link-out (no reproduction), AI locked to retrieved text, deterministic paper-of-day disclosed as non-editorial.
 - Known gaps (flagged P2): WHO + 5 AIIMS domains pending verification; source-pipeline/admin review queue OFF; mentorship OFF (needs real auth); explain uses abstract-only context (full-text ingestion is a pipeline phase); single-tenant demo auth unchanged.
+
+---
+Task ID: 16
+Agent: Z.ai Code (main)
+Task: Compile Progress + Roadmap into the Profile view as a systematically arranged hub; fix mobile overflow bugs surfaced during QC
+
+Work Log:
+- Rebuilt src/components/profile/profile-view.tsx into "Your Medical Profile Hub": numbered section system (01 Identity · 02 Preparation · 03 Readiness snapshot · 04 Progress digest · 05 Roadmap digest in main col; 06 Exam mode · 07 Resources · 08 Account · 09 Data & disclaimer in side col), Card shell extended with index/id/scroll-mt, hub quick-nav chip row (anchor jump-links, scroll verified inView).
+- New self-fetching digest cards (own skeletons/error states, honest "no numbers rather than invented ones" copy): ReadinessCard = /api/readiness ring+band+weighted component bars+focus subjects+dataBasis+methodology <details>, merged with /api/dashboard (streak, dues, topics-at-risk, next-best-action → openConcept); ProgressDigestCard = /api/progress accuracy/mastery/trend/consistency, week-vs-week, narrative quote, top-3 error patterns (raw counts, widths relative to max via MiniBar pct); RoadmapDigestCard = /api/roadmap currentStageLabel, NBEMS-estimate badge, exam clock stats, plan-start phase+milestone, weekly split bars, ≈Xh/7-day line; both with full-view CTAs (setView progress/roadmap). Removed the fabricated "Renal pathology lecture" follow-up block from Resources (honest-data rule).
+- BUG HUNT (agent-browser, 390×844): found Profile min-content overflow — root cause: shadcn Button's whitespace-nowrap on long SectionCta labels (433–458px unbreakable) forced the implicit mobile grid track to 475px → fixed with whitespace-normal+text-left on SectionCta. Also fixed PRE-EXISTING dashboard mobile overflow (docW 550): (a) implicit md:grid-cols-2 tracks → grid grid-cols-1 (minmax(0,1fr) at all widths) ×2, (b) decorative galaxy-aurora glow bleed → overflow-x-clip on dashboard root. Verified docW 390 on BOTH /#/home and /#/profile.
+- Verification: lint 0 errors; tsc src/ clean; agent-browser E2E — profile hub renders all 9 numbered sections + digests with real numbers (readiness 67 "On track", 27-day streak, accuracy 79% vs 63% prior week, +14 pts trend, exam clock 1306d est. / 189 wks, weekly split, ≈41h plan); quick-nav anchor scroll works (inView true); full-page mobile screenshot screenshots/16-mobile-profile-hub.png; console errors 0.
+
+Stage Summary:
+- Profile is now the single systematically-arranged control page: identity → preparation → readiness → progress → roadmap → settings, with digests compiled from live APIs (no duplicated interactive views, no fabricated data) and deep links into full Progress/Roadmap/Concept views.
+- Two latent mobile-overflow root causes fixed app-wide-pattern-wise: nowrap buttons in single-column implicit grids, and implicit auto tracks — pattern documented here for future views (use grid-cols-1 + whitespace-normal on wide CTAs).
+- No schema/API changes; additive UI only. Screenshots: 16-mobile-profile-hub.png (full page).

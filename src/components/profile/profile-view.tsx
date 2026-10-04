@@ -8,18 +8,24 @@ import {
   CalendarDays,
   CalendarClock,
   Check,
-  Clock3,
   CloudOff,
+  Flame,
+  Gauge,
   GraduationCap,
   Hourglass,
   Info,
+  LineChart,
   Loader2,
   LogOut,
   Palette,
   Pencil,
+  Route,
   ShieldAlert,
   Target,
+  TrendingUp,
   UserRound,
+  ArrowRight,
+  CircleHelp,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { api } from '@/lib/api'
@@ -33,8 +39,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton'
 import { Slider } from '@/components/ui/slider'
 import { Switch } from '@/components/ui/switch'
-import { PREP_STAGE_LABELS, YEAR_LABELS } from '@/lib/types'
-import type { Profile } from '@/lib/types'
+import { ERROR_TYPE_LABELS, PREP_STAGE_LABELS, YEAR_LABELS } from '@/lib/types'
+import type { DashboardPayload, Profile, ProgressPayload, RoadmapPayload } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1]
@@ -76,6 +82,18 @@ const DISCLAIMER_BULLETS = [
   'MEDULA is for educational use only — never a substitute for clinical judgment.',
 ]
 
+// Systematic hub ordering — each section is numbered and jump-linked.
+const HUB_SECTIONS: { href: string; label: string }[] = [
+  { href: '#pf-identity', label: '01 · Identity' },
+  { href: '#pf-preparation', label: '02 · Preparation' },
+  { href: '#pf-readiness', label: '03 · Readiness' },
+  { href: '#pf-progress', label: '04 · Progress' },
+  { href: '#pf-roadmap', label: '05 · Roadmap' },
+  { href: '#pf-exam', label: 'Settings' },
+]
+
+type ReadinessPayload = Awaited<ReturnType<typeof api.readiness>>
+
 function initialsOf(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean)
   if (parts.length === 0) return 'DR'
@@ -88,20 +106,32 @@ function initialsOf(name: string): string {
 function Card({
   icon: Icon,
   title,
+  index,
+  id,
   action,
   children,
   className,
 }: {
   icon: LucideIcon
   title: string
+  index?: string
+  id?: string
   action?: ReactNode
   children: ReactNode
   className?: string
 }) {
   return (
-    <section className={cn('glass rounded-2xl p-5', className)}>
+    <section id={id} className={cn('glass scroll-mt-20 rounded-2xl p-5', className)}>
       <header className="mb-4 flex items-center justify-between gap-3">
         <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-ink-soft">
+          {index && (
+            <span
+              aria-hidden
+              className="grid size-6 shrink-0 place-items-center rounded-lg border border-primary/30 bg-primary/10 font-mono text-[10px] font-bold text-primary"
+            >
+              {index}
+            </span>
+          )}
           <Icon className="size-4 text-primary" aria-hidden />
           {title}
         </h2>
@@ -216,10 +246,10 @@ function InfoRow({ icon: Icon, label, value, extra }: { icon: LucideIcon; label:
   )
 }
 
-function StatBlock({ value, label }: { value: string; label: string }) {
+function StatBlock({ value, label, accent }: { value: string; label: string; accent?: string }) {
   return (
     <div className="rounded-xl border border-line bg-surface-2 px-3 py-2.5 text-center">
-      <p className="text-lg font-semibold tabular-nums text-foreground">{value}</p>
+      <p className={cn('text-lg font-semibold tabular-nums', accent ?? 'text-foreground')}>{value}</p>
       <p className="mt-0.5 text-[11px] leading-snug text-ink-soft">{label}</p>
     </div>
   )
@@ -235,6 +265,401 @@ function ChipRow({ items, emptyLabel }: { items: string[]; emptyLabel: string })
         </span>
       ))}
     </div>
+  )
+}
+
+function ScoreRing({ value, band }: { value: number; band: string }) {
+  const r = 34
+  const c = 2 * Math.PI * r
+  const filled = Math.max(0, Math.min(100, value)) / 100
+  return (
+    <div className="flex items-center gap-4">
+      <div className="relative grid size-24 shrink-0 place-items-center">
+        <svg viewBox="0 0 80 80" className="size-24 -rotate-90" role="img" aria-label={`Readiness ${value} out of 100`}>
+          <circle cx="40" cy="40" r={r} fill="none" stroke="currentColor" className="text-line" strokeWidth="7" />
+          <circle
+            cx="40"
+            cy="40"
+            r={r}
+            fill="none"
+            stroke="currentColor"
+            className="text-primary"
+            strokeWidth="7"
+            strokeLinecap="round"
+            strokeDasharray={`${filled * c} ${c}`}
+          />
+        </svg>
+        <div className="absolute text-center">
+          <p className="text-xl font-bold tabular-nums text-foreground">{value}</p>
+          <p className="text-[10px] uppercase tracking-wide text-ink-soft">/100</p>
+        </div>
+      </div>
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-foreground">NEET-PG Readiness</p>
+        <p className="mt-0.5 text-xs font-medium text-primary">{band}</p>
+        <p className="mt-1 text-[11px] leading-relaxed text-ink-soft">
+          A learning-analytics composite — not a rank or score prediction.
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function MiniBar({ label, weight, value, pct, note }: { label: string; weight?: number; value: number; pct?: number; note?: string }) {
+  const width = Math.max(0, Math.min(100, pct ?? value))
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-2 text-xs">
+        <span className="font-medium text-foreground">
+          {label}
+          {weight != null && <span className="text-ink-soft"> · {weight}%</span>}
+        </span>
+        <span className="font-semibold tabular-nums text-foreground">{value}</span>
+      </div>
+      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface-2" role="presentation">
+        <div className="h-full rounded-full bg-primary/70" style={{ width: `${width}%` }} />
+      </div>
+      {note && <p className="mt-1 text-[11px] leading-snug text-ink-soft">{note}</p>}
+    </div>
+  )
+}
+
+function SectionCta({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    // whitespace-normal: shadcn Buttons ship with whitespace-nowrap — without
+    // this, long CTA labels force a 430px+ min-content track on mobile grids.
+    <Button
+      variant="outline"
+      onClick={onClick}
+      className="mt-4 min-h-11 w-full gap-2 whitespace-normal text-left text-sm leading-snug"
+    >
+      {label}
+      <ArrowRight className="size-4 shrink-0" aria-hidden />
+    </Button>
+  )
+}
+
+function DigestSkeleton({ rows = 3 }: { rows?: number }) {
+  return (
+    <div className="space-y-3" aria-live="polite" aria-busy="true">
+      <div className="flex items-center gap-4">
+        <Skeleton className="size-24 rounded-full" />
+        <div className="flex-1 space-y-2">
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-3 w-52" />
+        </div>
+      </div>
+      {Array.from({ length: rows }).map((_, i) => (
+        <Skeleton key={i} className="h-10 rounded-xl" />
+      ))}
+    </div>
+  )
+}
+
+function DigestError({ hint, onOpen }: { hint: string; onOpen: () => void }) {
+  return (
+    <div className="rounded-xl border border-sev-warn/30 bg-sev-warn/10 px-3.5 py-3">
+      <p className="text-xs leading-relaxed text-sev-warn">
+        This digest is unavailable right now — no numbers are shown rather than stale or invented ones.
+      </p>
+      <Button variant="outline" onClick={onOpen} className="mt-2.5 min-h-9 gap-2 text-xs">
+        {hint}
+        <ArrowRight className="size-3.5" aria-hidden />
+      </Button>
+    </div>
+  )
+}
+
+// ─── 03 · Readiness snapshot (compiled from /api/readiness + /api/dashboard) ──
+
+function ReadinessCard() {
+  const setView = useAppStore((s) => s.setView)
+  const openConcept = useAppStore((s) => s.openConcept)
+  const [state, setState] = useState<'loading' | 'error' | 'ready'>('loading')
+  const [readiness, setReadiness] = useState<ReadinessPayload | null>(null)
+  const [dash, setDash] = useState<DashboardPayload | null>(null)
+
+  useEffect(() => {
+    let ok = true
+    Promise.all([api.readiness(), api.dashboard()])
+      .then(([r, d]) => {
+        if (!ok) return
+        setReadiness(r)
+        setDash(d)
+        setState('ready')
+      })
+      .catch(() => {
+        if (ok) setState('error')
+      })
+    return () => {
+      ok = false
+    }
+  }, [])
+
+  return (
+    <Card
+      icon={Gauge}
+      index="03"
+      id="pf-readiness"
+      title="Readiness snapshot"
+      action={
+        <button
+          onClick={() => setView('progress')}
+          className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+        >
+          Full breakdown <ArrowRight className="size-3.5" aria-hidden />
+        </button>
+      }
+    >
+      {state === 'loading' && <DigestSkeleton rows={4} />}
+      {state === 'error' && <DigestError hint="Open Progress" onOpen={() => setView('progress')} />}
+      {state === 'ready' && readiness && dash && (
+        <div className="space-y-5">
+          <ScoreRing value={readiness.overall} band={readiness.band} />
+
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <StatBlock value={String(dash.stats.streak)} label="Day streak" accent="text-primary" />
+            <StatBlock value={String(dash.stats.dueQuestions)} label="Due questions" />
+            <StatBlock value={String(dash.stats.dueFlashcards)} label="Due flashcards" />
+            <StatBlock value={String(dash.stats.topicsAtRisk)} label="Topics at risk" accent="text-sev-warn" />
+          </div>
+
+          <div className="space-y-3">
+            {readiness.components.map((c) => (
+              <MiniBar key={c.key} label={c.label} weight={c.weight} value={Math.round(c.value)} note={c.note} />
+            ))}
+          </div>
+
+          {readiness.focusSubjects.length > 0 && (
+            <div>
+              <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-ink-soft">Focus subjects</p>
+              <div className="flex flex-wrap gap-1.5">
+                {readiness.focusSubjects.slice(0, 4).map((s) => (
+                  <span key={s.code} className="rounded-full border border-line bg-surface-2 px-2.5 py-1 text-xs text-foreground">
+                    {s.name} · <span className="tabular-nums text-primary">{s.readiness}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {dash.nextAction && (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-primary/25 bg-primary/5 px-3.5 py-3">
+              <div className="min-w-0">
+                <p className="text-[11px] uppercase tracking-wide text-ink-soft">Next best action</p>
+                <p className="truncate text-sm font-medium text-foreground">{dash.nextAction.conceptName}</p>
+              </div>
+              <Button
+                size="sm"
+                onClick={() => openConcept(dash.nextAction!.conceptId)}
+                className="min-h-9 gap-1.5"
+              >
+                Open <ArrowRight className="size-3.5" aria-hidden />
+              </Button>
+            </div>
+          )}
+
+          <p className="text-[11px] leading-relaxed text-ink-soft">
+            Basis: {readiness.dataBasis.engaged}/{readiness.dataBasis.concepts} concepts engaged ·{' '}
+            {readiness.dataBasis.attemptsConsidered} attempts · {readiness.dataBasis.activeDaysLast14} active days (last 14).
+          </p>
+
+          <details className="group rounded-xl border border-line bg-surface-2/60 px-3.5 py-2.5">
+            <summary className="cursor-pointer list-none text-xs font-medium text-foreground marker:hidden">
+              Methodology <span className="text-ink-soft group-open:hidden">(tap to expand)</span>
+            </summary>
+            <p className="mt-2 text-[11px] leading-relaxed text-ink-soft">{readiness.methodology}</p>
+            <p className="mt-1.5 text-[11px] leading-relaxed text-ink-soft">{readiness.disclaimer}</p>
+          </details>
+        </div>
+      )}
+    </Card>
+  )
+}
+
+// ─── 04 · Progress digest (compiled from /api/progress) ─────────────────────
+
+function ProgressDigestCard() {
+  const setView = useAppStore((s) => s.setView)
+  const [state, setState] = useState<'loading' | 'error' | 'ready'>('loading')
+  const [data, setData] = useState<ProgressPayload | null>(null)
+
+  useEffect(() => {
+    let ok = true
+    api
+      .progress()
+      .then((d) => {
+        if (!ok) return
+        setData(d)
+        setState('ready')
+      })
+      .catch(() => {
+        if (ok) setState('error')
+      })
+    return () => {
+      ok = false
+    }
+  }, [])
+
+  const maxError = useMemo(
+    () => (data ? Math.max(1, ...data.errorPatterns.map((e) => e.count)) : 1),
+    [data],
+  )
+
+  return (
+    <Card
+      icon={LineChart}
+      index="04"
+      id="pf-progress"
+      title="Progress digest"
+      action={
+        <button
+          onClick={() => setView('progress')}
+          className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+        >
+          Full view <ArrowRight className="size-3.5" aria-hidden />
+        </button>
+      }
+    >
+      {state === 'loading' && <DigestSkeleton rows={3} />}
+      {state === 'error' && <DigestError hint="Open Progress" onOpen={() => setView('progress')} />}
+      {state === 'ready' && data && (
+        <div className="space-y-5">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <StatBlock value={`${data.overall.accuracy}%`} label="Accuracy" accent="text-primary" />
+            <StatBlock value={`${data.overall.mastery}%`} label="Avg mastery" />
+            <StatBlock
+              value={`${data.overall.trend >= 0 ? '+' : ''}${data.overall.trend} pts`}
+              label="Trend"
+              accent={data.overall.trend >= 0 ? 'text-sev-ok' : 'text-sev-crit'}
+            />
+            <StatBlock value={`${data.weeklyReport.consistency}%`} label="Consistency (14d)" />
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-2">
+            <InfoRow icon={TrendingUp} label="This week vs last" value={`${data.weeklyReport.accuracyNow}% vs ${data.weeklyReport.accuracyPrev}%`} />
+            <InfoRow icon={CircleHelp} label="Top mistake pattern" value={data.weeklyReport.topMistake || 'Not enough attempts yet'} />
+          </div>
+
+          {data.weeklyReport.narrative.length > 0 && (
+            <blockquote className="rounded-xl border border-line bg-surface-2/60 px-3.5 py-3 text-xs leading-relaxed text-foreground">
+              “{data.weeklyReport.narrative[0]}”
+            </blockquote>
+          )}
+
+          {data.errorPatterns.length > 0 && (
+            <div className="space-y-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-ink-soft">Error patterns (all-time counts)</p>
+              {data.errorPatterns.slice(0, 3).map((e) => (
+                <MiniBar
+                  key={e.errorType}
+                  label={ERROR_TYPE_LABELS[e.errorType] ?? e.errorType}
+                  value={e.count}
+                  pct={Math.round((e.count / maxError) * 100)}
+                  note={e.examples.length > 0 ? `e.g. ${e.examples[0].concept}` : undefined}
+                />
+              ))}
+            </div>
+          )}
+          <SectionCta label="Open full Progress — subjects, heatmap & confusions" onClick={() => setView('progress')} />
+        </div>
+      )}
+    </Card>
+  )
+}
+
+// ─── 05 · Roadmap digest (compiled from /api/roadmap) ───────────────────────
+
+function RoadmapDigestCard() {
+  const setView = useAppStore((s) => s.setView)
+  const [state, setState] = useState<'loading' | 'error' | 'ready'>('loading')
+  const [data, setData] = useState<RoadmapPayload | null>(null)
+
+  useEffect(() => {
+    let ok = true
+    api
+      .roadmap()
+      .then((d) => {
+        if (!ok) return
+        setData(d)
+        setState('ready')
+      })
+      .catch(() => {
+        if (ok) setState('error')
+      })
+    return () => {
+      ok = false
+    }
+  }, [])
+
+  const weekHours = useMemo(
+    () => (data ? Math.round(data.weekPlan.reduce((sum, d) => sum + d.hours, 0) * 10) / 10 : 0),
+    [data],
+  )
+
+  return (
+    <Card
+      icon={Route}
+      index="05"
+      id="pf-roadmap"
+      title="Roadmap digest"
+      action={
+        <button
+          onClick={() => setView('roadmap')}
+          className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+        >
+          Full roadmap <ArrowRight className="size-3.5" aria-hidden />
+        </button>
+      }
+    >
+      {state === 'loading' && <DigestSkeleton rows={3} />}
+      {state === 'error' && <DigestError hint="Open Roadmap" onOpen={() => setView('roadmap')} />}
+      {state === 'ready' && data && (
+        <div className="space-y-5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+              {data.currentStageLabel}
+            </span>
+            <span className="rounded-full border border-line bg-surface-2 px-3 py-1 text-xs text-ink-soft">
+              {data.horizonYears}-year horizon
+            </span>
+            {data.isEstimate && (
+              <span className="rounded-full border border-sev-warn/40 bg-sev-warn/10 px-3 py-1 text-[11px] font-medium text-sev-warn">
+                Estimates — verify with NBEMS
+              </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <StatBlock value={String(data.neetClock.daysLeft)} label="Days to exam (est.)" accent="text-primary" />
+            <StatBlock value={String(data.neetClock.weeksLeft)} label="Weeks left" />
+            <StatBlock value={`${data.neetClock.weeklyTarget}`} label="Questions / week target" />
+            <StatBlock value={String(data.neetClock.revisionCyclesLeft)} label="Revision cycles left" />
+          </div>
+
+          {data.phases.length > 0 && (
+            <div className="rounded-xl border border-line bg-surface-2/60 px-3.5 py-3">
+              <p className="text-[11px] uppercase tracking-wide text-ink-soft">Plan start · {data.phases[0].timeframe}</p>
+              <p className="mt-0.5 text-sm font-medium text-foreground">{data.phases[0].phase}</p>
+              <p className="mt-1 text-xs leading-relaxed text-ink-soft">Milestone: {data.phases[0].milestone}</p>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <p className="text-xs font-medium uppercase tracking-wide text-ink-soft">Weekly split</p>
+            {data.weeklySplit.map((w) => (
+              <MiniBar key={w.label} label={w.label} value={w.pct} />
+            ))}
+          </div>
+
+          <p className="text-[11px] leading-relaxed text-ink-soft">
+            This week&apos;s plan: ≈ {weekHours} h across {data.weekPlan.length} days.
+          </p>
+
+          <SectionCta label="Open full Roadmap — phases, weekly planner & actions" onClick={() => setView('roadmap')} />
+        </div>
+      )}
+    </Card>
   )
 }
 
@@ -271,7 +696,7 @@ function ExamModeCard({ profile, onSaved }: { profile: Profile; onSaved: (p: Pro
   }
 
   return (
-    <Card icon={CalendarClock} title="Exam mode">
+    <Card icon={CalendarClock} index="06" id="pf-exam" title="Exam mode">
       <label className="flex cursor-pointer items-start justify-between gap-3">
         <span>
           <span className="block text-sm font-medium text-foreground">College exam priority</span>
@@ -318,7 +743,7 @@ function ExamModeCard({ profile, onSaved }: { profile: Profile; onSaved: (p: Pro
   )
 }
 
-// ─── Offline & install status ───────────────────────────────────────────────────
+// ─── Offline & install status ───────────────────────────────────────────────
 
 const SW_STATUS_META: Record<SWStatus, { label: string; detail: string; ok: boolean }> = {
   checking: { label: 'Checking…', detail: 'Reading the offline-shell status.', ok: true },
@@ -566,16 +991,19 @@ export function ProfileView() {
   }
 
   const stageLabel = PREP_STAGE_LABELS[profile.prepStage] ?? profile.prepStage
-  const primaryResource = profile.resources[0] ?? 'Marrow'
+  const primaryResource = profile.resources[0] ?? null
   const profileWeeklyHours = Math.round((profile.weekdayHours * 5 + profile.weekendHours * 2) * 10) / 10
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 md:px-6">
       {/* Page header */}
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Profile</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight md:text-3xl">Your Medical Profile</h1>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Profile · Progress · Roadmap</p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight md:text-3xl">Your Medical Profile Hub</h1>
+          <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-ink-soft">
+            Who you are, how you&apos;re preparing, and where you stand — arranged in one systematic view.
+          </p>
         </div>
         {!editing && (
           <Button variant="outline" onClick={() => startEdit(profile)} className="min-h-11 gap-2">
@@ -584,6 +1012,19 @@ export function ProfileView() {
           </Button>
         )}
       </div>
+
+      {/* Hub quick-nav — numbered jump links, mirrors the section order below */}
+      <nav aria-label="Profile sections" className="mb-6 flex flex-wrap gap-2">
+        {HUB_SECTIONS.map((s) => (
+          <a
+            key={s.href}
+            href={s.href}
+            className="inline-flex min-h-9 items-center rounded-full border border-line bg-surface-2 px-3.5 py-2 text-xs font-medium text-ink-soft transition-colors hover:border-primary/40 hover:text-foreground"
+          >
+            {s.label}
+          </a>
+        ))}
+      </nav>
 
       {/* Edit action bar */}
       {editing && (
@@ -618,10 +1059,10 @@ export function ProfileView() {
       )}
 
       <div className="grid gap-5 md:grid-cols-3">
-        {/* ── Main column ── */}
+        {/* ── Main column: 01 → 05 ── */}
         <div className="space-y-5 md:col-span-2">
-          {/* IDENTITY */}
-          <Card icon={UserRound} title="Identity">
+          {/* 01 · IDENTITY */}
+          <Card icon={UserRound} index="01" id="pf-identity" title="Identity">
             {editing ? (
               <div className="space-y-4">
                 <div className="space-y-1.5">
@@ -746,8 +1187,8 @@ export function ProfileView() {
             )}
           </Card>
 
-          {/* PREPARATION */}
-          <Card icon={Target} title="Preparation">
+          {/* 02 · PREPARATION */}
+          <Card icon={Target} index="02" id="pf-preparation" title="Preparation">
             {editing ? (
               <div className="space-y-5">
                 <div className="space-y-2">
@@ -855,38 +1296,41 @@ export function ProfileView() {
                 </div>
                 <div>
                   <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-ink-soft">
-                    <Clock3 className="size-3.5" aria-hidden /> Weekly capacity
+                    <Flame className="size-3.5" aria-hidden /> Weekly capacity
                   </p>
                   <p className="text-sm text-foreground">≈ {profileWeeklyHours} hours per week</p>
                 </div>
               </div>
             )}
           </Card>
+
+          {/* 03 · READINESS SNAPSHOT — compiled live from readiness + dashboard APIs */}
+          <ReadinessCard />
+
+          {/* 04 · PROGRESS DIGEST — compiled live from the progress API */}
+          <ProgressDigestCard />
+
+          {/* 05 · ROADMAP DIGEST — compiled live from the roadmap API */}
+          <RoadmapDigestCard />
         </div>
 
-        {/* ── Side column ── */}
+        {/* ── Side column: 06 → settings & account ── */}
         <div className="space-y-5">
           <ExamModeCard profile={profile} onSaved={onExamSaved} />
 
-          {/* RESOURCES */}
-          <Card icon={BookOpenCheck} title="Resources">
+          {/* 07 · RESOURCES */}
+          <Card icon={BookOpenCheck} index="07" title="Resources">
             <ChipRow items={profile.resources} emptyLabel="No resources selected — edit profile to add them." />
+            {primaryResource && (
+              <p className="mt-3 text-xs text-ink-soft">
+                Primary platform: <span className="font-semibold text-foreground">{primaryResource}</span>
+              </p>
+            )}
             <p className="mt-3 text-xs leading-relaxed text-ink-soft">{RESOURCE_NOTE}</p>
-            <div className="mt-3 rounded-xl border border-line bg-surface-2 p-3">
-              <p className="flex flex-wrap items-center gap-1.5 text-xs text-foreground">
-                <span className="font-semibold">{primaryResource}</span>
-                <span className="text-ink-soft">· Renal pathology lecture</span>
-                <Check className="size-3.5 text-sev-ok" aria-hidden />
-              </p>
-              <p className="mt-1.5 flex items-start gap-1.5 text-[11px] leading-snug text-ink-soft">
-                <CalendarClock className="mt-0.5 size-3 shrink-0 text-primary" aria-hidden />
-                Platform follow-up: 20 min recall · 10 questions · 1 case
-              </p>
-            </div>
           </Card>
 
-          {/* ACCOUNT SESSION */}
-          <Card icon={UserRound} title="Account session">
+          {/* 08 · ACCOUNT SESSION */}
+          <Card icon={UserRound} index="08" id="pf-account" title="Account session">
             <div className="flex items-start gap-3 rounded-xl border border-line bg-surface-2 p-3">
               <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-primary/30 bg-primary/10 font-mono text-sm font-bold text-primary">
                 M
@@ -913,8 +1357,8 @@ export function ProfileView() {
             </Button>
           </Card>
 
-          {/* DATA & DISCLAIMER */}
-          <Card icon={ShieldAlert} title="Data & disclaimer">
+          {/* 09 · DATA & DISCLAIMER */}
+          <Card icon={ShieldAlert} index="09" title="Data & disclaimer">
             <ul className="space-y-2.5">
               {DISCLAIMER_BULLETS.map((b) => (
                 <li key={b} className="flex items-start gap-2 text-xs leading-relaxed text-ink-soft">

@@ -237,7 +237,7 @@ function DashboardSkeleton() {
         <Skeleton className="shimmer h-60 rounded-2xl md:col-span-2" />
       </div>
       <Skeleton className="shimmer h-72 rounded-2xl" />
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Skeleton className="shimmer h-44 rounded-2xl" />
         <Skeleton className="shimmer h-44 rounded-2xl" />
       </div>
@@ -345,7 +345,7 @@ export function DashboardView() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-6">
+    <div className="mx-auto max-w-6xl space-y-6 overflow-x-clip p-4 md:p-6">
       {/* 1 · Warm greeting header */}
       <Reveal index={0} className="space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -646,7 +646,7 @@ export function DashboardView() {
 
       {/* 8 · Revision debt + weaknesses */}
       <Reveal index={7}>
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <section className="glass flex h-full flex-col rounded-2xl p-6">
             <div className="flex items-center gap-2">
               <span className="grid size-8 place-items-center rounded-lg bg-sev-warn/10">
