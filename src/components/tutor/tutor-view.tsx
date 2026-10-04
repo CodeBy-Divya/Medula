@@ -19,6 +19,7 @@ import {
   Sparkles,
   Stethoscope,
   TriangleAlert,
+  X,
   Zap,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -66,11 +67,24 @@ const SENSITIVE_NOTICE =
 const FOOTER_TEXT =
   'Educational content only — not for real-patient decisions. The AI can be wrong; verify against standard textbooks.'
 
-// Session-storage key written by the global search overlay ("Ask the tutor" hand-off).
+// Session-storage keys written by hand-off points:
+// TUTOR_QUESTION_KEY ← global search overlay ("Ask the tutor" row)
+// TUTOR_PAIR_KEY     ← quiz results pair debrief ("Socratic drill" button)
 const TUTOR_QUESTION_KEY = 'medos:tutor-question'
+const TUTOR_PAIR_KEY = 'medos:tutor-pair'
+
+interface DrillPair {
+  id: string
+  a: string
+  b: string
+}
 
 let msgSeq = 0
 const nextId = (role: string) => `${role}-${Date.now()}-${msgSeq++}`
+
+// A Socratic drill needs at least this many probes to count as a completed
+// review in the knowledge engine (matches the API's MIN_PROBES).
+const DRILL_MIN_PROBES = 4
 
 // Markdown styling: compact headings, scrollable tables, tight lists. Code is not expected.
 const MD_COMPONENTS: Components = {
@@ -141,6 +155,7 @@ function ThinkingDots() {
 
 export function TutorView() {
   const [mode, setMode] = useState<TutorMode>('exam')
+  const [drillPair, setDrillPair] = useState<DrillPair | null>(null)
   const [messages, setMessages] = useState<TutorMessage[]>([])
   const [input, setInput] = useState('')
   const [thinking, setThinking] = useState(false)
@@ -151,6 +166,10 @@ export function TutorView() {
   const bootRef = useRef(false)
   // Latest in-flight request wins; stale replies are dropped.
   const reqRef = useRef(0)
+  // Socratic drill progress: each user answer counts as one probe. Ending the
+  // drill with ≥ DRILL_MIN_PROBES probes logs the outcome to the knowledge engine.
+  const drillProbesRef = useRef(0)
+  const [drillProbes, setDrillProbes] = useState(0)
 
   const autosize = useCallback(() => {
     const el = textareaRef.current
@@ -167,6 +186,10 @@ export function TutorView() {
 
       const userMsg: TutorMessage = { id: nextId('user'), role: 'user', content, sensitive: SENSITIVE_RE.test(content) }
       const outgoing = [...history, userMsg]
+      if (drillPair) {
+        drillProbesRef.current += 1
+        setDrillProbes(drillProbesRef.current)
+      }
 
       setMessages(outgoing)
       setInput('')
@@ -176,8 +199,9 @@ export function TutorView() {
       try {
         const res = await api.tutor({
           messages: outgoing.slice(-10).map((m) => ({ role: m.role, content: m.content })),
-          mode,
+          mode: drillPair ? 'socratic' : mode,
           conceptId: undefined,
+          pairId: drillPair?.id,
         })
         if (reqRef.current !== req) return
         setMessages((prev) => [
@@ -191,8 +215,56 @@ export function TutorView() {
         if (reqRef.current === req) setThinking(false)
       }
     },
-    [mode],
+    [mode, drillPair],
   )
+
+  // Opening move of a Socratic pair drill — no user message yet, the API injects
+  // the internal opening instruction and replies with the first probe.
+  const startDrill = useCallback(async (pair: DrillPair) => {
+    const req = ++reqRef.current
+    setMessages([])
+    setError(null)
+    setThinking(true)
+    drillProbesRef.current = 0
+    setDrillProbes(0)
+    try {
+      const res = await api.tutor({ messages: [], mode: 'socratic', pairId: pair.id })
+      if (reqRef.current !== req) return
+      setMessages([{ id: nextId('assistant'), role: 'assistant', content: res.reply }])
+    } catch {
+      if (reqRef.current !== req) return
+      setError(`Could not start the drill on “${pair.a} vs ${pair.b}” — try the button again.`)
+      setDrillPair(null)
+    } finally {
+      if (reqRef.current === req) setThinking(false)
+    }
+  }, [])
+
+  // Socratic drill handed off from the quiz pair debrief.
+  useEffect(() => {
+    let p: string | null = null
+    try {
+      p = sessionStorage.getItem(TUTOR_PAIR_KEY)
+      if (p) sessionStorage.removeItem(TUTOR_PAIR_KEY)
+    } catch {
+      p = null
+    }
+    if (!p) return
+    let cancelled = false
+    api.confusionPair(p)
+      .then((res) => {
+        if (cancelled) return
+        const pair: DrillPair = { id: res.pair.id, a: res.pair.a, b: res.pair.b }
+        setDrillPair(pair)
+        void startDrill(pair)
+      })
+      .catch(() => {
+        if (!cancelled) setError('That confusion pair could not be loaded — start it again from the drill results.')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [startDrill])
 
   // Question handed off from the global search palette ("Ask the tutor" row).
   useEffect(() => {
@@ -231,6 +303,44 @@ export function TutorView() {
     setInput('')
     setError(null)
     setThinking(false)
+    setDrillPair(null)
+  }
+
+  // Ending a drill with enough probes closes the loop: the knowledge engine
+  // refreshes recall on BOTH concepts of the pair and logs a study session.
+  const endDrill = () => {
+    reqRef.current++
+    const pair = drillPair
+    const probes = drillProbesRef.current
+    setDrillPair(null)
+    drillProbesRef.current = 0
+    setDrillProbes(0)
+    if (!pair || probes < DRILL_MIN_PROBES) return
+    const summary: TutorMessage = {
+      id: nextId('assistant'),
+      role: 'assistant',
+      content: `🏁 **Drill complete — ${probes} probes on “${pair.a} vs ${pair.b}”.**`,
+    }
+    setMessages((prev) => [...prev, summary])
+    api.drillComplete({ pairId: pair.id, probes })
+      .then((res) => {
+        const sides = res.updated
+          .map((u) => `mastery ~${u.mastery}%`)
+          .join(' · ')
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: nextId('assistant'),
+            role: 'assistant',
+            content: sides
+              ? `Your knowledge engine refreshed both sides of the distinction — ${sides}. The Map, Progress and your Next Best Action already reflect it.`
+              : `Session logged (${res.minutes ?? probes * 2} min). This pair has no linked concepts yet, so only study time was recorded.`,
+          },
+        ])
+      })
+      .catch(() => {
+        /* engine logging is best-effort — the drill itself already succeeded */
+      })
   }
 
   const empty = messages.length === 0 && !thinking
@@ -258,31 +368,62 @@ export function TutorView() {
         )}
       </header>
 
-      {/* Mode selector */}
-      <div role="radiogroup" aria-label="Tutor mode" className="flex flex-wrap gap-2">
-        {MODES.map((m) => {
-          const active = mode === m.id
-          return (
-            <button
-              key={m.id}
-              type="button"
-              role="radio"
-              aria-checked={active}
-              title={m.desc}
-              onClick={() => setMode(m.id)}
-              className={cn(
-                'inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3.5 text-sm font-medium transition-all',
-                active
-                  ? 'border-primary/60 bg-primary/15 text-primary shadow-[0_0_20px_-8px_rgba(34,211,238,0.55)]'
-                  : 'border-line bg-surface-2 text-ink-soft hover:border-primary/40 hover:text-foreground',
-              )}
-            >
-              <m.icon className="size-4" aria-hidden />
-              {m.label}
-            </button>
-          )
-        })}
-      </div>
+      {/* Socratic drill banner — active drill replaces the mode picker */}
+      {drillPair ? (
+        <div
+          className="flex flex-wrap items-center gap-2.5 rounded-xl border border-sev-warn/40 bg-sev-warn/10 px-4 py-3"
+          role="status"
+          aria-label={`Socratic drill on ${drillPair.a} versus ${drillPair.b}`}
+        >
+          <Zap className="size-4 shrink-0 text-sev-warn" aria-hidden />
+          <p className="min-w-0 flex-1 text-sm leading-snug">
+            <span className="font-semibold text-sev-warn">Socratic drill</span>
+            <span className="text-ink-soft"> — one question at a time: </span>
+            <span className="font-medium">{drillPair.a}</span>
+            <span className="text-ink-soft"> vs </span>
+            <span className="font-medium">{drillPair.b}</span>
+            <span className="ml-2 inline-flex items-center rounded-full border border-sev-warn/30 bg-sev-warn/10 px-2 py-0.5 align-middle text-[10px] font-semibold uppercase tracking-wide text-sev-warn">
+              {drillProbes >= DRILL_MIN_PROBES
+                ? `${drillProbes} probes · counts toward mastery`
+                : `${drillProbes}/${DRILL_MIN_PROBES} probes`}
+            </span>
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={endDrill}
+            className="min-h-9 gap-1.5 border-sev-warn/40 px-2.5 text-xs text-sev-warn hover:bg-sev-warn/10 hover:text-sev-warn"
+          >
+            <X className="size-3.5" aria-hidden /> End drill
+          </Button>
+        </div>
+      ) : (
+        /* Mode selector */
+        <div role="radiogroup" aria-label="Tutor mode" className="flex flex-wrap gap-2">
+          {MODES.map((m) => {
+            const active = mode === m.id
+            return (
+              <button
+                key={m.id}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                title={m.desc}
+                onClick={() => setMode(m.id)}
+                className={cn(
+                  'inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3.5 text-sm font-medium transition-all',
+                  active
+                    ? 'border-primary/60 bg-primary/15 text-primary shadow-[0_0_20px_-8px_rgba(34,211,238,0.55)]'
+                    : 'border-line bg-surface-2 text-ink-soft hover:border-primary/40 hover:text-foreground',
+                )}
+              >
+                <m.icon className="size-4" aria-hidden />
+                {m.label}
+              </button>
+            )
+          })}
+        </div>
+      )}
 
       {/* Thread */}
       <div

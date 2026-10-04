@@ -7,6 +7,7 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   BookOpen,
+  Brain,
   CalendarDays,
   Clock,
   History,
@@ -688,21 +689,39 @@ export function ProgressView() {
                     </div>
 
                     {/* pair drill hand-off */}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        setQuizPreset({ pairId: c.id, pairLabel: `${c.a} vs ${c.b}`, count: 6 })
-                        setView('questions')
-                      }}
-                      className={cn(
-                        'mt-2.5 min-h-9 w-full gap-1.5 text-xs',
-                        c.detected && 'border-sev-crit/40 text-sev-crit hover:bg-sev-crit/10',
-                      )}
-                    >
-                      <Zap className="size-3.5" />
-                      {c.detected ? 'You mixed these up — drill now' : 'Drill this pair'}
-                    </Button>
+                    <div className="mt-2.5 grid gap-2 sm:grid-cols-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setQuizPreset({ pairId: c.id, pairLabel: `${c.a} vs ${c.b}`, count: 6 })
+                          setView('questions')
+                        }}
+                        className={cn(
+                          'min-h-9 gap-1.5 text-xs',
+                          c.detected && 'border-sev-crit/40 text-sev-crit hover:bg-sev-crit/10',
+                        )}
+                      >
+                        <Zap className="size-3.5" />
+                        {c.detected ? 'You mixed these up — drill now' : 'Drill this pair'}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          try {
+                            sessionStorage.setItem('medos:tutor-pair', c.id)
+                          } catch {
+                            /* storage unavailable — the tutor view simply won't auto-open the drill */
+                          }
+                          setView('tutor')
+                        }}
+                        className="min-h-9 gap-1.5 text-xs"
+                      >
+                        <Brain className="size-3.5" />
+                        Socratic AI drill
+                      </Button>
+                    </div>
                   </li>
                 ))}
               </ul>

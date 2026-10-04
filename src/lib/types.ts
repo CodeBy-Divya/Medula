@@ -70,6 +70,7 @@ export interface QuestionClient {
   id: string; stem: string
   options: { id: string; text: string }[]
   difficulty: number; qtype: string; subjectCode: string; system: string
+  conceptId?: string
 }
 
 export interface AttemptResult {

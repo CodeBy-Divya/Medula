@@ -51,8 +51,10 @@ export const api = {
     post<{ correct: boolean; answerId: number; teaching: string }>(`/api/cases/${id}/step`, body),
   caseComplete: (id: string, body: { correctSteps: number; totalSteps: number; detail: unknown[] }) =>
     post<{ score: number }>(`/api/cases/${id}/complete`, body),
-  tutor: (body: { messages: { role: 'user' | 'assistant'; content: string }[]; mode: string; conceptId?: string }) =>
+  tutor: (body: { messages: { role: 'user' | 'assistant'; content: string }[]; mode: string; conceptId?: string; pairId?: string }) =>
     post<{ reply: string }>('/api/tutor', body),
+  drillComplete: (body: { pairId: string; probes: number }) =>
+    post<{ ok: boolean; reason?: string; updated: { conceptId: string; mastery: number; status: string }[]; minutes?: number; label?: string }>('/api/tutor-drill', body),
   auditStart: () => post<import('./types').AuditPayload>('/api/audit', {}),
   auditSubmit: (body: { results: { questionId: string; selected: string }[] }) =>
     post<import('./types').AuditResultPayload>('/api/audit/submit', body),

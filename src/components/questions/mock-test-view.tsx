@@ -17,6 +17,7 @@ import {
   ChevronDown,
   FilePenLine,
   GraduationCap,
+  ListFilter,
   Loader2,
   Play,
   RotateCcw,
@@ -132,7 +133,7 @@ export function MockTestView() {
       }
       setSubmitOpen(false)
       setPhase('submitting')
-      const totalSec = size * SEC_PER_Q - secondsLeft
+      const totalSec = questions.length * SEC_PER_Q - secondsLeft
       // Post every attempt (sequential — engine updates knowledge states)
       const entries = Object.values(answers)
       for (const a of entries) {
@@ -151,7 +152,7 @@ export function MockTestView() {
       setPhase('results')
       submittingRef.current = false
     },
-    [answers, secondsLeft, size],
+    [answers, secondsLeft, questions],
   )
 
   useEffect(() => {
@@ -197,6 +198,23 @@ export function MockTestView() {
         setPhase('run')
       })
       .catch(() => setLoadState('error'))
+  }
+
+  // Retry only what went wrong — wrong AND skipped questions from the last paper,
+  // rebuilt client-side (no fetch needed; the full question objects are still here)
+  const retryWrong = () => {
+    const retryRows = questions.filter((qq) => {
+      const a = answers[qq.id]
+      return !a || a.correct === false
+    })
+    if (!retryRows.length) return
+    setQuestions(retryRows)
+    setAnswers({})
+    setMarked(new Set())
+    setQIndex(0)
+    setSecondsLeft(retryRows.length * SEC_PER_Q)
+    questionStartRef.current = Date.now()
+    setPhase('run')
   }
 
   const pick = (optionId: string) => {
@@ -276,6 +294,8 @@ export function MockTestView() {
   const graded = results.filter((r) => r.a?.correct !== undefined)
   const correctCount = graded.filter((r) => r.a?.correct).length
   const accuracy = graded.length ? Math.round((correctCount / graded.length) * 100) : 0
+  // wrong + skipped — exactly what "retry my wrong ones" re-serves
+  const retryCount = results.filter((r) => !r.a || r.a.correct === false).length
 
   const bySubject = useMemo(() => {
     const m = new Map<string, { total: number; correct: number }>()
@@ -688,13 +708,22 @@ export function MockTestView() {
             </span>
             <div>
               <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">Mock report</h1>
-              <p className="text-xs text-ink-soft">{questions.length} questions · {fmtTime(size * SEC_PER_Q - secondsLeft)} used</p>
+              <p className="text-xs text-ink-soft">{questions.length} questions · {fmtTime(questions.length * SEC_PER_Q - secondsLeft)} used</p>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" className="min-h-11 gap-2" onClick={() => setPhase('config')}>
               <FilePenLine className="size-4" /> Change paper
             </Button>
+            {retryCount > 0 && (
+              <Button
+                variant="outline"
+                className="min-h-11 gap-2 border-sev-crit/40 text-sev-crit hover:bg-sev-crit/10 hover:text-sev-crit"
+                onClick={retryWrong}
+              >
+                <ListFilter className="size-4" /> Retry my wrong ones ({retryCount})
+              </Button>
+            )}
             <Button variant="outline" className="min-h-11 gap-2" onClick={() => startTest()}>
               <RotateCcw className="size-4" /> Retry same paper
             </Button>

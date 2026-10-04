@@ -133,6 +133,7 @@ export async function GET(req: NextRequest) {
     id: q.id, stem: q.stem,
     options: (q.options as { id: string; text: string }[]),
     difficulty: q.difficulty, qtype: q.qtype, subjectCode: q.subjectCode, system: q.system,
+    conceptId: q.conceptId ?? undefined,
   }))
   return NextResponse.json({ questions, available: all.length })
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
   AlertTriangle,
@@ -8,6 +8,7 @@ import {
   Brain,
   Check,
   CheckCircle2,
+  Crosshair,
   FlaskConical,
   Lightbulb,
   Loader2,
@@ -67,6 +68,7 @@ interface ResultEntry {
   teaching: string
   difficulty: number
   qtype: string
+  conceptId?: string
 }
 
 interface QuizPresetParams {
@@ -158,7 +160,39 @@ function PairBanner({ label }: { label: string }) {
   )
 }
 
-function PairDebrief({ pair, onDrillAgain, onViewProgress }: { pair: PairDebriefData; onDrillAgain: () => void; onViewProgress: () => void }) {
+// Your-side error pattern: how the run's misses split across the pair's two halves
+interface PairErrorPattern {
+  aTotal: number
+  aWrong: number
+  bTotal: number
+  bWrong: number
+}
+
+function PairDebrief({
+  pair,
+  errorPattern,
+  onDrillAgain,
+  onViewProgress,
+  onSocraticDrill,
+}: {
+  pair: PairDebriefData
+  errorPattern: PairErrorPattern | null
+  onDrillAgain: () => void
+  onViewProgress: () => void
+  onSocraticDrill: () => void
+}) {
+  const hasTries = !!errorPattern && errorPattern.aTotal + errorPattern.bTotal > 0
+  const aWrong = errorPattern?.aWrong ?? 0
+  const bWrong = errorPattern?.bWrong ?? 0
+  const diagnosis = !hasTries
+    ? null
+    : aWrong === 0 && bWrong === 0
+      ? 'Both sides clean this run — the distinction is holding.'
+      : aWrong > bWrong
+        ? `Your slips lean toward the “${pair.a}” side — start the table from that column.`
+        : bWrong > aWrong
+          ? `Your slips lean toward the “${pair.b}” side — start the table from that column.`
+          : 'Misses split evenly across both sides — drill the mnemonic below.'
   return (
     <motion.section
       initial={{ opacity: 0, y: 14 }}
@@ -176,6 +210,57 @@ function PairDebrief({ pair, onDrillAgain, onViewProgress }: { pair: PairDebrief
           {pair.subjectCode}
         </span>
       </div>
+
+      {/* YOUR error pattern — which side of the pair actually hurts */}
+      {hasTries && errorPattern && (
+        <div className="rounded-xl border border-sev-warn/30 bg-sev-warn/5 px-4 py-3.5">
+          <div className="flex items-center gap-2">
+            <Crosshair className="size-3.5 shrink-0 text-sev-warn" />
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-sev-warn">
+              Your error pattern — this run
+            </p>
+          </div>
+          <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
+            {(
+              [
+                { side: pair.a, total: errorPattern.aTotal, wrong: errorPattern.aWrong, dot: 'bg-primary/70', bar: 'bg-primary' },
+                { side: pair.b, total: errorPattern.bTotal, wrong: errorPattern.bWrong, dot: 'bg-sev-warn/70', bar: 'bg-sev-warn' },
+              ] as const
+            ).map((row) => {
+              const wrongPct = row.total > 0 ? Math.round((row.wrong / row.total) * 100) : 0
+              return (
+                <div key={row.side} className="rounded-lg bg-surface-2/60 px-3 py-2.5">
+                  <div className="flex items-center gap-1.5 text-[11px] font-semibold leading-tight">
+                    <span className={cn('size-1.5 shrink-0 rounded-full', row.dot)} />
+                    <span className="truncate">{row.side}</span>
+                    <span className="ml-auto shrink-0 tabular-nums text-ink-soft">
+                      {row.total > 0 ? `${row.total - row.wrong}/${row.total} clean` : 'not tested'}
+                    </span>
+                  </div>
+                  <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-foreground/10">
+                    <motion.div
+                      className={cn('h-full rounded-full', row.bar)}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${wrongPct}%` }}
+                      transition={{ duration: 0.7, ease: EASE }}
+                    />
+                  </div>
+                  <p className="mt-1 text-[10px] leading-tight text-ink-soft">
+                    {row.total === 0
+                      ? 'No questions from this side in this run'
+                      : row.wrong === 0
+                        ? 'No misses on this side'
+                        : `${row.wrong} miss${row.wrong > 1 ? 'es' : ''} on this side`}
+                  </p>
+                </div>
+              )
+            })}
+          </div>
+          {diagnosis && (
+            <p className="mt-2.5 text-xs font-medium leading-snug text-ink-soft">{diagnosis}</p>
+          )}
+        </div>
+      )}
 
       {/* a vs b comparison */}
       <div className="overflow-hidden rounded-xl border border-line">
@@ -216,6 +301,9 @@ function PairDebrief({ pair, onDrillAgain, onViewProgress }: { pair: PairDebrief
       )}
 
       <div className="flex flex-col gap-2 sm:flex-row">
+        <Button variant="outline" className="min-h-10 gap-1.5 text-xs font-semibold" onClick={onSocraticDrill}>
+          <Brain className="size-3.5" /> Socratic AI drill on this pair
+        </Button>
         <Button variant="outline" className="min-h-10 gap-1.5 text-xs font-semibold" onClick={onDrillAgain}>
           <RefreshCw className="size-3.5" /> Drill this pair again
         </Button>
@@ -540,6 +628,7 @@ export function QuizView() {
             teaching: res.teaching,
             difficulty: q.difficulty,
             qtype: q.qtype,
+            conceptId: q.conceptId,
           },
         ])
         if (!res.correct && res.errorTypeSuggestion) setErrorType(res.errorTypeSuggestion)
@@ -628,6 +717,22 @@ export function QuizView() {
   const accuracy = total > 0 ? Math.round((correctCount / total) * 100) : 0
   const avgSec = total > 0 ? Math.round(results.reduce((a, r) => a + r.timeMs, 0) / total / 1000) : 0
   const wrongs = results.filter((r) => !r.correct)
+  // YOUR error pattern for the pair drill — misses split across the pair's two concepts
+  const pairErrorPattern = useMemo<PairErrorPattern | null>(() => {
+    if (!pairDebrief) return null
+    const a = pairDebrief.aCode
+    const b = pairDebrief.bCode
+    if (!a && !b) return null
+    const aQs = a ? results.filter((r) => r.conceptId === a) : []
+    const bQs = b ? results.filter((r) => r.conceptId === b) : []
+    if (!aQs.length && !bQs.length) return null
+    return {
+      aTotal: aQs.length,
+      aWrong: aQs.filter((r) => !r.correct).length,
+      bTotal: bQs.length,
+      bWrong: bQs.filter((r) => !r.correct).length,
+    }
+  }, [pairDebrief, results])
   const byDiff = [1, 2, 3].map((d) => {
     const rows = results.filter((r) => r.difficulty === d)
     return {
@@ -1111,6 +1216,7 @@ export function QuizView() {
         ) : pairDebrief ? (
           <PairDebrief
             pair={pairDebrief}
+            errorPattern={pairErrorPattern}
             onDrillAgain={() =>
               startRun({
                 pairId: activePairId,
@@ -1118,6 +1224,14 @@ export function QuizView() {
                 count: lastParamsRef.current?.count ?? 6,
               })
             }
+            onSocraticDrill={() => {
+              try {
+                sessionStorage.setItem('medos:tutor-pair', activePairId)
+              } catch {
+                /* storage unavailable — the tutor view simply won't auto-open the drill */
+              }
+              setView('tutor')
+            }}
             onViewProgress={() => setView('progress')}
           />
         ) : null)}
