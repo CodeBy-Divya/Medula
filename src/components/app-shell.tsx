@@ -10,11 +10,14 @@ import { Logo } from '@/components/brand/logo'
 import { cn } from '@/lib/utils'
 import {
   Home, Map as MapIcon, Brain, BookOpen, CircleHelp, Stethoscope, RefreshCcw,
-  Sparkles, LineChart, Route, UserRound, Search, Moon, SunMedium, Menu, X,
+  Sparkles, UserRound, Search, Moon, SunMedium, Menu, X,
   Keyboard, WifiOff, LayoutGrid, Compass, FlaskConical,
 } from 'lucide-react'
 import type { View } from '@/lib/types'
 
+// Progress & Roadmap are NOT top-level sections — their digests live inside
+// the Profile hub (sections 03–05), which also links to the full views as
+// drill-downs. Navigation therefore exposes Profile as their parent.
 const NAV: { id: View; label: string; icon: typeof Home; hint?: string }[] = [
   { id: 'home', label: 'Home', icon: Home },
   { id: 'map', label: 'Medical Map', icon: MapIcon },
@@ -26,14 +29,20 @@ const NAV: { id: View; label: string; icon: typeof Home; hint?: string }[] = [
   { id: 'cases', label: 'Cases', icon: Stethoscope },
   { id: 'revise', label: 'Revise', icon: RefreshCcw },
   { id: 'tutor', label: 'AI Tutor', icon: Sparkles },
-  { id: 'progress', label: 'Progress', icon: LineChart },
-  { id: 'roadmap', label: 'Roadmap', icon: Route },
   { id: 'profile', label: 'Profile', icon: UserRound },
 ]
 
+// Views that open as drill-downs of a parent section keep the parent
+// highlighted in every nav surface (sidebar, drawer, More sheet).
+const PARENT_OF: Partial<Record<View, View>> = {
+  progress: 'profile',
+  roadmap: 'profile',
+}
+const sectionOf = (v: View): View => PARENT_OF[v] ?? v
+
 // Mobile bottom bar — curated daily loop (Home/Questions/Revise/Tutor) plus a
-// "More" button that opens a bottom sheet with the remaining views. The
-// desktop sidebar keeps all 11 items unchanged.
+// "More" button that opens a bottom sheet with the remaining sections. The
+// desktop sidebar keeps all sections unchanged.
 const MOBILE_NAV: { id: View; label: string; icon: typeof Home }[] = [
   { id: 'home', label: 'Home', icon: Home },
   { id: 'questions', label: 'Questions', icon: CircleHelp },
@@ -144,23 +153,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-line bg-sidebar/80 backdrop-blur-xl lg:flex">
         <div className="p-5"><button onClick={() => setView('landing')} aria-label="MEDULA home" className="rounded-xl"><Logo /></button></div>
         <nav className="flex-1 space-y-1 px-3" aria-label="Main navigation">
-          {NAV.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => go(item.id)}
-              aria-current={view === item.id ? 'page' : undefined}
-              className={cn(
-                'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors min-h-11',
-                view === item.id
-                  ? 'bg-primary/12 font-medium text-primary'
-                  : 'text-ink-soft hover:bg-surface-2 hover:text-foreground',
-              )}
-            >
-              <item.icon className="size-4" />
-              {item.label}
-              {view === item.id && <span className="ml-auto size-1.5 rounded-full bg-primary" />}
-            </button>
-          ))}
+          {NAV.map((item) => {
+            const active = sectionOf(view) === item.id
+            return (
+              <button
+                key={item.id}
+                onClick={() => go(item.id)}
+                aria-current={active ? 'page' : undefined}
+                className={cn(
+                  'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors min-h-11',
+                  active
+                    ? 'bg-primary/12 font-medium text-primary'
+                    : 'text-ink-soft hover:bg-surface-2 hover:text-foreground',
+                )}
+              >
+                <item.icon className="size-4" />
+                {item.label}
+                {active && <span className="ml-auto size-1.5 rounded-full bg-primary" />}
+              </button>
+            )
+          })}
         </nav>
         <div className="border-t border-line p-4">
           <button
@@ -235,7 +247,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     onClick={() => go(item.id)}
                     className={cn(
                       'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm min-h-11',
-                      view === item.id ? 'bg-primary/12 font-medium text-primary' : 'text-ink-soft hover:bg-surface-2',
+                      sectionOf(view) === item.id ? 'bg-primary/12 font-medium text-primary' : 'text-ink-soft hover:bg-surface-2',
                     )}
                   >
                     <item.icon className="size-4" /> {item.label}
@@ -335,23 +347,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-line" aria-hidden />
             <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-soft">All sections</p>
             <div className="space-y-1">
-              {MORE_NAV.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => go(item.id)}
-                  aria-current={view === item.id ? 'page' : undefined}
-                  className={cn(
-                    'flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm transition-colors',
-                    view === item.id
-                      ? 'bg-primary/12 font-medium text-primary'
-                      : 'text-ink-soft hover:bg-surface-2 hover:text-foreground',
-                  )}
-                >
-                  <item.icon className="size-4" />
-                  {item.label}
-                  {view === item.id && <span className="ml-auto size-1.5 rounded-full bg-primary" />}
-                </button>
-              ))}
+              {MORE_NAV.map((item) => {
+                const active = sectionOf(view) === item.id
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => go(item.id)}
+                    aria-current={active ? 'page' : undefined}
+                    className={cn(
+                      'flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm transition-colors',
+                      active
+                        ? 'bg-primary/12 font-medium text-primary'
+                        : 'text-ink-soft hover:bg-surface-2 hover:text-foreground',
+                    )}
+                  >
+                    <item.icon className="size-4" />
+                    {item.label}
+                    {active && <span className="ml-auto size-1.5 rounded-full bg-primary" />}
+                  </button>
+                )
+              })}
             </div>
           </div>
         </div>

@@ -729,3 +729,18 @@ Stage Summary:
 - Profile is now the single systematically-arranged control page: identity → preparation → readiness → progress → roadmap → settings, with digests compiled from live APIs (no duplicated interactive views, no fabricated data) and deep links into full Progress/Roadmap/Concept views.
 - Two latent mobile-overflow root causes fixed app-wide-pattern-wise: nowrap buttons in single-column implicit grids, and implicit auto tracks — pattern documented here for future views (use grid-cols-1 + whitespace-normal on wide CTAs).
 - No schema/API changes; additive UI only. Screenshots: 16-mobile-profile-hub.png (full page).
+
+---
+Task ID: 17
+Agent: Z.ai Code (main)
+Task: Remove Progress + Roadmap as standalone nav sections (they are integrated into the Profile hub)
+
+Work Log:
+- Confirmed Task 16 state: Profile hub already compiles Readiness (03), Progress digest (04) and Roadmap digest (05) — but app-shell NAV still listed Progress and Roadmap as top-level sections (13 sidebar items), which duplicated the hub.
+- src/components/app-shell.tsx: removed 'progress' and 'roadmap' from NAV (desktop sidebar + mobile drawer + More sheet all derive from NAV, so one change covers all three surfaces → 11 sections); dropped now-unused LineChart/Route icon imports; added PARENT_OF map {progress→profile, roadmap→profile} + sectionOf() helper so all three nav surfaces highlight PROFILE as the parent section while a drill-down is open (aria-current + active styles + indicator dot); comments updated to document the IA.
+- Kept the views fully renderable as Profile drill-downs: page.tsx rendering, store APP_VIEWS, #/progress + #/roadmap deep links, profile digest CTAs ("Full breakdown", "Open full Progress/Roadmap"), dashboard readiness/progress handoffs and quiz result "View progress" all unchanged and still functional — no dead references (grep-verified all setView('progress'/'roadmap') call sites).
+- Verification: bun run lint → 0 errors (1 pre-existing seed warning); tsc --noEmit → 0 errors in touched files. agent-browser E2E: desktop sidebar = exactly 11 buttons (Home…Profile), profile hub renders all sections + digests; "Open full Progress" → full Progress view (mastery ring renders) with Profile highlighted in sidebar; #/roadmap deep link after real reload → h1 ROADMAP + Profile highlighted (note: hash-only change without reload is same-document navigation by design — deep links resolve on load); mobile 390×844 More sheet = exactly 7 items (Medical Map, Explore, Research, Understand, Learn, Cases, Profile) — no Progress/Roadmap; console errors 0; dev.log shows only 200s (progress/profile/roadmap APIs).
+
+Stage Summary:
+- Navigation is now consistent with the Profile-hub IA: Progress and Roadmap are no longer sections anywhere (sidebar, drawer, More sheet); they exist only as drill-down detail pages owned by Profile, which stays highlighted while they're open.
+- No data/schema/API changes; nav-only refactor. Deep links and contextual handoffs preserved.
