@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { DAY, estimatedRecall, updateKnowledge, statusFor } from '@/lib/engine'
 import { getDemoProfile } from '@/lib/profile'
+import { readJson } from '@/lib/http'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,8 +13,11 @@ export const dynamic = 'force-dynamic'
 const MIN_PROBES = 4
 
 export async function POST(req: NextRequest) {
-  const body = await req.json()
-  const { pairId, probes = 0 } = body as { pairId?: string; probes?: number }
+  const body = await readJson<{ pairId?: string; probes?: number }>(req)
+  if (!body) {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+  }
+  const { pairId, probes = 0 } = body
   if (!pairId) {
     return NextResponse.json({ error: 'pairId is required' }, { status: 400 })
   }

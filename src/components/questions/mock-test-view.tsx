@@ -556,30 +556,34 @@ export function MockTestView() {
             <Timer className="size-4" />
             {fmtTime(secondsLeft)}
           </span>
-          <div className="flex min-w-0 flex-1 items-center gap-1" aria-hidden>
-            {questions.map((qq, i) => {
-              const answered = !!answers[qq.id]
-              const isMarked = marked.has(qq.id)
-              return (
-                <button
-                  key={qq.id}
-                  type="button"
-                  onClick={() => goTo(i)}
-                  aria-label={`Question ${i + 1}${answered ? ' — answered' : ''}${isMarked ? ' — marked for review' : ''}`}
-                  className={cn(
-                    'relative h-6 min-w-0 flex-1 rounded-md border text-[9px] font-semibold transition-colors',
-                    i === qIndex
-                      ? 'border-primary bg-primary text-primary-foreground'
-                      : answered
-                        ? 'border-sev-ok/50 bg-sev-ok/15 text-sev-ok'
-                        : 'border-line bg-surface-2 text-ink-soft hover:border-primary/40',
-                  )}
-                >
-                  {i + 1}
-                  {isMarked && <span className="absolute -right-0.5 -top-0.5 size-1.5 rounded-full bg-sev-warn" />}
-                </button>
-              )
-            })}
+          <div className="min-w-0 flex-1" role="group" aria-label="Question palette">
+            {/* Two-row horizontally scrollable grid: 100 questions stay usable
+                and every cell keeps a 36px touch target (min-h-9 min-w-9). */}
+            <div className="med-scroll grid auto-cols-9 grid-flow-col grid-rows-2 gap-1 overflow-x-auto pb-1">
+              {questions.map((qq, i) => {
+                const answered = !!answers[qq.id]
+                const isMarked = marked.has(qq.id)
+                return (
+                  <button
+                    key={qq.id}
+                    type="button"
+                    onClick={() => goTo(i)}
+                    aria-label={`Question ${i + 1}${answered ? ' — answered' : ''}${isMarked ? ' — marked for review' : ''}`}
+                    className={cn(
+                      'relative min-h-9 w-9 rounded-md border text-[9px] font-semibold transition-colors',
+                      i === qIndex
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : answered
+                          ? 'border-sev-ok/50 bg-sev-ok/15 text-sev-ok'
+                          : 'border-line bg-surface-2 text-ink-soft hover:border-primary/40',
+                    )}
+                  >
+                    {i + 1}
+                    {isMarked && <span className="absolute -right-0.5 -top-0.5 size-1.5 rounded-full bg-sev-warn" />}
+                  </button>
+                )
+              })}
+            </div>
           </div>
           <Button size="sm" className="min-h-9 shrink-0 gap-1" onClick={() => setSubmitOpen(true)}>
             <Send className="size-3.5" /> Submit

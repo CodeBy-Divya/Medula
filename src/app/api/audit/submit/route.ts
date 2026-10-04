@@ -2,65 +2,86 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { DAY, estimatedRecall, updateKnowledge, statusFor } from '@/lib/engine'
 import { getDemoProfile } from '@/lib/profile'
+import { readJson } from '@/lib/http'
 import type { AuditResultPayload, AuditSubjectResult } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
 
+// Hard cap on batch size — an unbounded array is a DoS vector.
+const MAX_RESULTS = 50
+
 // Submit audit results: record attempts, update knowledge states, return the knowledge map.
 export async function POST(req: NextRequest) {
-  const profile = await getDemoProfile()
-  const body = await req.json() as { results: { questionId: string; selected: string }[] }
+  const body = await readJson<{ results?: unknown }>(req)
+  if (!body) return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+  if (!Array.isArray(body.results)) {
+    return NextResponse.json({ error: 'results must be an array' }, { status: 400 })
+  }
 
-  const questionIds = body.results.map(r => r.questionId)
+  const capped = body.results.length > MAX_RESULTS
+  // The client contract is { questionId, selected } — correctness is scored
+  // server-side against the answer key, never trusted from the client. Rows
+  // missing either string are dropped rather than 500-ing on Prisma writes.
+  const results = (capped ? body.results.slice(0, MAX_RESULTS) : body.results)
+    .filter((r): r is { questionId: string; selected: string } =>
+      !!r && typeof r === 'object' && typeof (r as { questionId?: unknown }).questionId === 'string' &&
+      typeof (r as { selected?: unknown }).selected === 'string')
+
+  const profile = await getDemoProfile()
+
+  const questionIds = results.map(r => r.questionId)
   const questions = await db.question.findMany({ where: { id: { in: questionIds } } })
   const qMap = new Map(questions.map(q => [q.id, q]))
   const now = new Date()
 
-  // Record attempts + update knowledge states
-  for (const r of body.results) {
-    const q = qMap.get(r.questionId)
-    if (!q) continue
-    const correct = r.selected === q.answer
-    await db.questionAttempt.create({
-      data: { questionId: q.id, profileId: profile.id, selected: r.selected, correct, timeMs: 0, confidence: 2 },
-    })
-    if (q.conceptId) {
-      const existing = await db.knowledgeState.findUnique({
-        where: { profileId_conceptId: { profileId: profile.id, conceptId: q.conceptId } },
+  // Record attempts + update knowledge states — ONE atomic transaction so a
+  // failure mid-batch can't leave the audit half-applied.
+  await db.$transaction(async (tx) => {
+    for (const r of results) {
+      const q = qMap.get(r.questionId)
+      if (!q) continue
+      const correct = r.selected === q.answer
+      await tx.questionAttempt.create({
+        data: { questionId: q.id, profileId: profile.id, selected: r.selected, correct, timeMs: 0, confidence: 2 },
       })
-      if (!existing) {
-        const init = updateKnowledge(0, 1, correct, q.difficulty)
-        await db.knowledgeState.create({
-          data: {
-            profileId: profile.id, conceptId: q.conceptId,
-            score: init.score, stability: init.stability, estRecall: 1,
-            attemptCount: 1, correctCount: correct ? 1 : 0,
-            lastReviewed: now, lastCorrect: correct ? now : null,
-            status: statusFor(init.score, 1),
-          },
+      if (q.conceptId) {
+        const existing = await tx.knowledgeState.findUnique({
+          where: { profileId_conceptId: { profileId: profile.id, conceptId: q.conceptId } },
         })
-      } else {
-        const days = existing.lastReviewed ? (now.getTime() - existing.lastReviewed.getTime()) / DAY : 999
-        const recall = estimatedRecall(days, existing.stability)
-        const blended = existing.score * recall + (1 - recall) * existing.score * 0.4
-        const upd = updateKnowledge(blended, existing.stability, correct, q.difficulty)
-        await db.knowledgeState.update({
-          where: { id: existing.id },
-          data: {
-            score: upd.score, stability: upd.stability, estRecall: recall,
-            attemptCount: existing.attemptCount + 1,
-            correctCount: existing.correctCount + (correct ? 1 : 0),
-            lastReviewed: now, lastCorrect: correct ? now : existing.lastCorrect,
-            status: statusFor(upd.score, recall),
-          },
-        })
+        if (!existing) {
+          const init = updateKnowledge(0, 1, correct, q.difficulty)
+          await tx.knowledgeState.create({
+            data: {
+              profileId: profile.id, conceptId: q.conceptId,
+              score: init.score, stability: init.stability, estRecall: 1,
+              attemptCount: 1, correctCount: correct ? 1 : 0,
+              lastReviewed: now, lastCorrect: correct ? now : null,
+              status: statusFor(init.score, 1),
+            },
+          })
+        } else {
+          const days = existing.lastReviewed ? (now.getTime() - existing.lastReviewed.getTime()) / DAY : 999
+          const recall = estimatedRecall(days, existing.stability)
+          const blended = existing.score * recall + (1 - recall) * existing.score * 0.4
+          const upd = updateKnowledge(blended, existing.stability, correct, q.difficulty)
+          await tx.knowledgeState.update({
+            where: { id: existing.id },
+            data: {
+              score: upd.score, stability: upd.stability, estRecall: recall,
+              attemptCount: existing.attemptCount + 1,
+              correctCount: existing.correctCount + (correct ? 1 : 0),
+              lastReviewed: now, lastCorrect: correct ? now : existing.lastCorrect,
+              status: statusFor(upd.score, recall),
+            },
+          })
+        }
       }
     }
-  }
+  })
 
   // Per-subject breakdown across the audited sample
   const bySubject = new Map<string, { correct: number; total: number }>()
-  for (const r of body.results) {
+  for (const r of results) {
     const q = qMap.get(r.questionId)
     if (!q) continue
     const s = q.subjectCode
@@ -102,8 +123,8 @@ export async function POST(req: NextRequest) {
     }
   }).sort((a, b) => b.accuracy - a.accuracy)
 
-  const total = body.results.length
-  const correct = body.results.filter(r => {
+  const total = results.length
+  const correct = results.filter(r => {
     const q = qMap.get(r.questionId)
     return q ? r.selected === q.answer : false
   }).length
@@ -128,5 +149,6 @@ export async function POST(req: NextRequest) {
   await db.studySession.create({
     data: { profileId: profile.id, minutes: 10, kind: 'study', label: 'Knowledge audit completed' },
   })
-  return NextResponse.json(payload)
+  // Additive meta only: flag when the batch was truncated to the cap.
+  return NextResponse.json(capped ? { ...payload, meta: { capped: true } } : payload)
 }

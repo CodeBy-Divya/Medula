@@ -254,7 +254,7 @@ const SCENE_EMOJI = ['🍃', '☁️', '🌿', '🌤️', '🦋', '☁️', '�
 function SceneBackdrop() {
   const reduce = useReducedMotion()
   return (
-    <div aria-hidden className="map-scene-dawn pointer-events-none absolute inset-0 overflow-hidden rounded-3xl">
+    <div aria-hidden className="scene-dawn pointer-events-none absolute inset-0 overflow-hidden rounded-3xl">
       {/* floating nature emoji — slow, calm drift */}
       {SCENE_EMOJI.map((e, i) => (
         <span

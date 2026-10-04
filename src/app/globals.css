@@ -402,6 +402,43 @@ body::before {
   animation: shimmer 1.6s infinite;
 }
 
+/* ── Safe-area + fixed-nav clearance (notched phones / standalone PWA) ──
+   The mobile bottom nav (min-h-14 rows ≈ 3.5rem + home-indicator inset) is
+   position:fixed, so flow content would slide under it. 5rem + inset clears
+   the bar with a small breathing gap; on lg the nav is hidden entirely. */
+.pb-safe-nav {
+  padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+}
+@media (min-width: 64rem) {
+  .pb-safe-nav { padding-bottom: 0px; }
+}
+/* Inside the fixed nav / bottom sheet itself: only the device inset */
+.pb-safe-inset {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ── Skip-to-content link — visually hidden until keyboard-focused ── */
+.skip-link {
+  position: fixed;
+  top: 0.75rem;
+  left: 50%;
+  z-index: 100;
+  transform: translate(-50%, calc(-100% - 1.5rem));
+  border-radius: calc(var(--radius) + 2px);
+  background: var(--primary);
+  color: var(--primary-foreground);
+  padding: 0.625rem 1.125rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  box-shadow: 0 10px 24px -10px var(--clay-lo);
+  transition: transform 0.15s ease;
+}
+.skip-link:focus,
+.skip-link:focus-visible {
+  transform: translate(-50%, 0);
+}
+
 /* ── Reduced motion ── */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

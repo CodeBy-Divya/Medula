@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { DAY, estimatedRecall, computeStreak, greetingFor, buildNextAction, examClock, type ActionCandidate } from '@/lib/engine'
+import { DAY, estimatedRecall, computeStreak, greetingFor, buildNextAction, examClock, scoreCandidate, istDayKey, type ActionCandidate } from '@/lib/engine'
 import { getDemoProfile } from '@/lib/profile'
 import { YEAR_LABELS, PREP_STAGE_LABELS } from '@/lib/types'
 import type { DashboardPayload, NextAction, PlanSegment } from '@/lib/types'
@@ -34,8 +34,6 @@ export async function GET() {
   const strong = states.filter(s => s.status === 'strong' && s.estRecall >= 0.6)
   const unstable = states.filter(s => s.status === 'unstable' || (s.estRecall < 0.55 && s.score >= 45))
 
-  const totalQ = await db.questionAttempt.count({ where: { profileId: profile.id } })
-  const correctQ = await db.questionAttempt.count({ where: { profileId: profile.id, correct: true } })
   const brainScore = states.length
     ? Math.round(states.reduce((a, s) => a + s.score * s.estRecall, 0) / states.length)
     : 0
@@ -45,7 +43,7 @@ export async function GET() {
 
   const last7 = sessions.filter(s => s.date >= new Date(now.getTime() - 7 * DAY))
   const prev7 = sessions.filter(s => s.date < new Date(now.getTime() - 7 * DAY) && s.date >= new Date(now.getTime() - 14 * DAY))
-  const today = sessions.filter(s => s.date.toISOString().slice(0, 10) === now.toISOString().slice(0, 10))
+  const today = sessions.filter(s => istDayKey(s.date) === istDayKey(now))
   const recommendedMinutes = Math.round(profile.dailyHours * 60)
 
   // NEXT BEST ACTION — deterministic scoring over at-risk + weak concepts
@@ -66,7 +64,8 @@ export async function GET() {
   candidates.sort((a, b) => (b.estRecall < 0.6 ? 1 : 0) - (a.estRecall < 0.6 ? 1 : 0))
   let nextAction: NextAction | null = null
   if (candidates.length) {
-    const scored = candidates.map(c => ({ c, v: (1 - c.estRecall) * 0.3 + (1 - c.score / 100) * 0.28 + (c.examRelevance / 5) * 0.22 + c.yearMatch * 0.1 + Math.min(1, c.errorCount / 4) * 0.1 }))
+    // Single source of truth: the engine's transparent NBA weights (deduped — was inlined here)
+    const scored = candidates.map(c => ({ c, v: scoreCandidate(c) }))
     scored.sort((a, b) => b.v - a.v)
     nextAction = buildNextAction(scored[0].c)
   }
@@ -79,8 +78,8 @@ export async function GET() {
       ]
     : [{ minutes: 20, activity: 'Knowledge audit', detail: 'Take a diagnostic assessment to build your first knowledge map.' }]
 
-  const thisWeekAcc = await recentAccuracy(7)
-  const prevWeekAcc = await recentAccuracy(14, 7)
+  const thisWeekAcc = await recentAccuracy(profile.id, 7)
+  const prevWeekAcc = await recentAccuracy(profile.id, 14, 7)
 
   const clock = examClock(profile.year, profile.gradYear, profile.dailyHours, profile.examDate ? new Date(profile.examDate) : null)
 
@@ -121,17 +120,17 @@ export async function GET() {
       minutes: today.reduce((a, s) => a + s.minutes, 0),
     },
   }
-  void totalQ; void correctQ; void weak; void dueQuestions
   return NextResponse.json(payload)
 }
 
-async function recentAccuracy(days: number, offset = 0): Promise<number> {
+// BUGFIX: was missing the profileId filter — accuracy was computed across ALL profiles.
+async function recentAccuracy(profileId: string, days: number, offset = 0): Promise<number> {
   const now = new Date()
   const from = new Date(now.getTime() - (days + offset) * DAY)
   const to = new Date(now.getTime() - offset * DAY)
   const [total, correct] = await Promise.all([
-    db.questionAttempt.count({ where: { createdAt: { gte: from, lt: to } } }),
-    db.questionAttempt.count({ where: { createdAt: { gte: from, lt: to }, correct: true } }),
+    db.questionAttempt.count({ where: { profileId, createdAt: { gte: from, lt: to } } }),
+    db.questionAttempt.count({ where: { profileId, createdAt: { gte: from, lt: to }, correct: true } }),
   ])
   return total ? Math.round((correct / total) * 100) : 0
 }

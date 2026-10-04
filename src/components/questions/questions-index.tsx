@@ -1,16 +1,18 @@
 'use client'
 
 // ─── QUESTION LAB INDEX ───
-// Tab shell: focused PRACTICE (quiz-view) vs exam-condition MOCK TEST.
+// Tab shell: focused PRACTICE (quiz-view), exam-condition MOCK TEST,
+// and the MISTAKE BOOK (personal error intelligence + re-drills).
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { FlaskConical, GraduationCap } from 'lucide-react'
+import { BookX, FlaskConical, GraduationCap } from 'lucide-react'
 import { QuizView } from '@/components/questions/quiz-view'
 import { MockTestView } from '@/components/questions/mock-test-view'
+import { MistakeBook } from '@/components/questions/mistake-book'
 import { cn } from '@/lib/utils'
 
-type LabTab = 'practice' | 'mock'
+type LabTab = 'practice' | 'mock' | 'mistakes'
 
 export function QuestionsIndex() {
   const [tab, setTab] = useState<LabTab>('practice')
@@ -24,6 +26,7 @@ export function QuestionsIndex() {
             [
               { id: 'practice', label: 'Practice', icon: FlaskConical, hint: 'Instant feedback' },
               { id: 'mock', label: 'Mock Test', icon: GraduationCap, hint: 'Exam conditions' },
+              { id: 'mistakes', label: 'Mistakes', icon: BookX, hint: 'Error intelligence' },
             ] as const
           ).map((t) => {
             const active = tab === t.id
@@ -49,7 +52,7 @@ export function QuestionsIndex() {
                 <span className="relative inline-flex items-center gap-2">
                   <t.icon className="size-4" />
                   <span className="hidden sm:inline">{t.label}</span>
-                  <span className="sm:hidden">{t.id === 'practice' ? 'Practice' : 'Mock'}</span>
+                  <span className="sm:hidden">{t.id === 'practice' ? 'Practice' : t.id === 'mock' ? 'Mock' : 'Errors'}</span>
                   <span className={cn('hidden rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide md:inline', active ? 'bg-primary-foreground/15 text-primary-foreground' : 'bg-surface-2 text-ink-soft')}>
                     {t.hint}
                   </span>
@@ -60,7 +63,7 @@ export function QuestionsIndex() {
         </div>
       </div>
 
-      {tab === 'practice' ? <QuizView /> : <MockTestView />}
+      {tab === 'practice' ? <QuizView /> : tab === 'mock' ? <MockTestView /> : <MistakeBook onGoPractice={() => setTab('practice')} />}
     </div>
   )
 }

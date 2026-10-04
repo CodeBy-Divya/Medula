@@ -2,14 +2,23 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { DAY, estimatedRecall, updateKnowledge, statusFor } from '@/lib/engine'
 import { getDemoProfile } from '@/lib/profile'
+import { asInt, asTrimmed, readJson } from '@/lib/http'
 
 export const dynamic = 'force-dynamic'
 
 // Clear a revision item after completing its revision block
 export async function POST(req: NextRequest) {
-  const { conceptId, minutes = 15 } = await req.json() as { conceptId: string; minutes?: number }
+  const body = await readJson<{ conceptId?: unknown; minutes?: unknown }>(req)
+  if (!body) return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+
+  const conceptId = asTrimmed(body.conceptId, 200)
+  if (!conceptId) return NextResponse.json({ error: 'conceptId is required' }, { status: 400 })
+  const minutes = asInt(body.minutes, 1, 240, 15)
+
   const profile = await getDemoProfile()
 
+  // updateMany is scoped to this profile, so a foreign conceptId simply no-ops
+  // (ownership enforced by the profileId filter, not by the id alone).
   await db.revisionItem.updateMany({
     where: { profileId: profile.id, conceptId, cleared: false },
     data: { cleared: true, clearedAt: new Date() },

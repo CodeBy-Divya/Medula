@@ -27,6 +27,16 @@ export const api = {
   getProfile: () => get<{ profile: Profile | null }>('/api/profile'),
   saveProfile: (p: Record<string, unknown>) => post<{ profile: Profile }>('/api/profile', p),
   dashboard: () => get<DashboardPayload>('/api/dashboard'),
+  readiness: () => get<{
+    overall: number
+    band: string
+    components: { key: string; label: string; weight: number; value: number; note: string; suggestion: string }[]
+    focusSubjects: { code: string; name: string; readiness: number }[]
+    dataBasis: { concepts: number; engaged: number; attemptsConsidered: number; activeDaysLast14: number }
+    methodology: string
+    disclaimer: string
+  }>('/api/readiness'),
+  understandComplete: (body: { topicId: string; title: string }) => post<{ ok: boolean }>('/api/understand/complete', body),
   graph: (scope: string) => get<GraphPayload>(`/api/graph?scope=${encodeURIComponent(scope)}`),
   concept: (id: string) => get<ConceptDetail>(`/api/concepts/${id}`),
   subjects: () => get<{ subjects: import('./types').SubjectSummary[] }>('/api/subjects'),

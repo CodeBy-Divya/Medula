@@ -15,7 +15,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { LogoMark } from '@/components/brand/logo'
-import { useAppStore } from '@/lib/store'
+import { useAppStore, readStoredSession } from '@/lib/store'
 
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1]
 
@@ -408,7 +408,11 @@ export function LandingPage() {
                 size="lg"
                 variant="ghost"
                 className="h-12 rounded-full border border-line px-8 text-sm font-semibold tracking-wide text-ink-soft transition-transform hover:scale-[1.03] hover:text-foreground"
-                onClick={() => setView('map')}
+                onClick={() => {
+                  // Never dead-end into the app without a session — route to sign-in instead.
+                  if (readStoredSession()) setView('map')
+                  else setView('signin')
+                }}
               >
                 EXPLORE THE MEDICAL MAP
               </Button>

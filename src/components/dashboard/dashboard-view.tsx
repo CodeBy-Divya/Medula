@@ -11,6 +11,7 @@ import {
   Flame,
   GraduationCap,
   History,
+  Info,
   Map as MapIcon,
   Play,
   RefreshCw,
@@ -40,6 +41,7 @@ import { cn } from '@/lib/utils'
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1]
 
 type LoadState = 'loading' | 'ready' | 'error'
+type ReadinessPayload = Awaited<ReturnType<typeof api.readiness>>
 
 // ─── Primitives ──────────────────────────────────────────────────────────────
 
@@ -273,16 +275,19 @@ export function DashboardView() {
 
   const [data, setData] = useState<DashboardPayload | null>(null)
   const [insights, setInsights] = useState<MapInsights | null>(null)
+  const [readiness, setReadiness] = useState<ReadinessPayload | null>(null)
+  const [showMethod, setShowMethod] = useState(false)
   const [status, setStatus] = useState<LoadState>('loading')
   const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     let cancelled = false
-    Promise.all([api.dashboard(), api.mapInsights().catch(() => null)]).then(
-      ([d, ins]) => {
+    Promise.all([api.dashboard(), api.mapInsights().catch(() => null), api.readiness().catch(() => null)]).then(
+      ([d, ins, rdy]) => {
         if (cancelled) return
         setData(d)
         setInsights(ins)
+        setReadiness(rdy)
         setStatus('ready')
       },
       () => {
@@ -407,10 +412,10 @@ export function DashboardView() {
             {stats.streak}-day streak
           </span>
           <span className="inline-flex items-center gap-2 text-sm text-ink-soft">
-            <ProgressRing value={brainScore} size={40} stroke={4} gradientId="ring-strip">
-              <span className="text-[10px] font-bold tabular-nums">{brainScore}</span>
+            <ProgressRing value={readiness?.overall ?? brainScore} size={40} stroke={4} gradientId="ring-strip">
+              <span className="text-[10px] font-bold tabular-nums">{readiness?.overall ?? brainScore}</span>
             </ProgressRing>
-            Brain score
+            Readiness
           </span>
         </div>
       </Reveal>
@@ -418,18 +423,68 @@ export function DashboardView() {
       {/* 5 · Brain score + knowledge split */}
       <Reveal index={4}>
         <div className="grid gap-4 md:grid-cols-3">
-          <section className="glass flex flex-col items-center rounded-2xl p-6">
-            <h3 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-soft">
-              NEET-PG Preparation
-            </h3>
-            <ProgressRing value={brainScore} size={180} stroke={12} gradientId="ring-brain">
-              <span className="text-4xl font-semibold tabular-nums tracking-tight">
-                <AnimatedNumber value={brainScore} />%
-              </span>
-              <span className="mt-1 px-6 text-center text-xs text-ink-soft">{stageLabel}</span>
-            </ProgressRing>
-            <p className="mt-2 text-center text-xs text-ink-soft">
-              Overall readiness across your mapped concepts
+          <section className="glass flex flex-col rounded-2xl p-6">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-soft">
+                NEET-PG Readiness
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowMethod((v) => !v)}
+                aria-expanded={showMethod}
+                className="inline-flex min-h-8 items-center gap-1 rounded-full border border-line px-2.5 py-1 text-[11px] font-medium text-ink-soft transition-colors hover:bg-surface-2"
+              >
+                <Info className="size-3" />
+                Method
+              </button>
+            </div>
+            <div className="mt-3 flex flex-1 items-center gap-4">
+              <ProgressRing value={readiness?.overall ?? brainScore} size={150} stroke={11} gradientId="ring-brain">
+                <span className="text-3xl font-semibold tabular-nums tracking-tight">
+                  <AnimatedNumber value={readiness?.overall ?? brainScore} />%
+                </span>
+                <span className="mt-0.5 text-center text-[11px] font-medium text-ink-soft">{readiness?.band ?? stageLabel}</span>
+              </ProgressRing>
+              <ul className="min-w-0 flex-1 space-y-2.5" aria-label="Readiness components">
+                {(readiness?.components ?? []).map((c) => (
+                  <li key={c.key}>
+                    <div className="flex items-baseline justify-between gap-2 text-[11px]">
+                      <span className="truncate font-medium text-ink-soft">
+                        {c.label} <span className="text-muted-foreground">·{c.weight}%</span>
+                      </span>
+                      <span className="font-semibold tabular-nums">{c.value}%</span>
+                    </div>
+                    <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-surface-2">
+                      <Bar pct={c.value} className="bg-primary" delay={0.3} />
+                    </div>
+                  </li>
+                ))}
+                {!readiness && (
+                  <li className="text-xs text-ink-soft">Components are computing…</li>
+                )}
+              </ul>
+            </div>
+            {showMethod && readiness && (
+              <div className="mt-4 space-y-2 rounded-xl border border-line bg-surface-2/60 p-3 text-xs">
+                <p className="font-mono text-[10px] text-ink-soft">{readiness.methodology}</p>
+                <ul className="space-y-1.5">
+                  {readiness.components.map((c) => (
+                    <li key={`m-${c.key}`} className="text-ink-soft">
+                      <span className="font-medium text-foreground">{c.label}:</span> {c.note} — {c.suggestion}
+                    </li>
+                  ))}
+                </ul>
+                {readiness.focusSubjects.length > 0 && (
+                  <p className="text-ink-soft">
+                    <span className="font-medium text-foreground">Focus first:</span>{' '}
+                    {readiness.focusSubjects.map((s) => `${s.name} (${s.readiness}%)`).join(' · ')}
+                  </p>
+                )}
+                <p className="text-[10px] italic text-muted-foreground">{readiness.disclaimer}</p>
+              </div>
+            )}
+            <p className="mt-3 text-center text-xs text-ink-soft">
+              {stageLabel} · an estimate, never a rank prediction
             </p>
           </section>
 
@@ -582,7 +637,7 @@ export function DashboardView() {
                 MEDULA has no knowledge map for you yet. A short diagnostic will reveal what to study first.
               </p>
             </div>
-            <Button size="lg" className="min-h-11" onClick={() => setView('progress')}>
+            <Button size="lg" className="min-h-11" onClick={() => setAuditOpen(true)}>
               TAKE THE AUDIT
             </Button>
           </section>

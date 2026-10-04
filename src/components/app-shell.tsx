@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAppStore } from '@/lib/store'
 import { useOnline } from '@/hooks/use-online'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils'
 import {
   Home, Map as MapIcon, Brain, BookOpen, CircleHelp, Stethoscope, RefreshCcw,
   Sparkles, LineChart, Route, UserRound, Search, Moon, SunMedium, Menu, X,
-  Keyboard, WifiOff,
+  Keyboard, WifiOff, LayoutGrid,
 } from 'lucide-react'
 import type { View } from '@/lib/types'
 
@@ -29,7 +29,16 @@ const NAV: { id: View; label: string; icon: typeof Home; hint?: string }[] = [
   { id: 'profile', label: 'Profile', icon: UserRound },
 ]
 
-const MOBILE_NAV = NAV.slice(0, 5)
+// Mobile bottom bar — curated daily loop (Home/Questions/Revise/Tutor) plus a
+// "More" button that opens a bottom sheet with the remaining views. The
+// desktop sidebar keeps all 11 items unchanged.
+const MOBILE_NAV: { id: View; label: string; icon: typeof Home }[] = [
+  { id: 'home', label: 'Home', icon: Home },
+  { id: 'questions', label: 'Questions', icon: CircleHelp },
+  { id: 'revise', label: 'Revise', icon: RefreshCcw },
+  { id: 'tutor', label: 'Tutor', icon: Sparkles },
+]
+const MORE_NAV = NAV.filter((item) => !MOBILE_NAV.some((m) => m.id === item.id))
 
 // Brand logo comes from @/components/brand/logo (imported above)
 
@@ -56,8 +65,44 @@ function ThemeToggle() {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { view, setView, setSearchOpen, setShortcutsOpen, profile } = useAppStore()
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
+  const moreBtnRef = useRef<HTMLButtonElement>(null)
+  const moreSheetRef = useRef<HTMLDivElement>(null)
   const online = useOnline()
   const reduce = useReducedMotion()
+
+  // "More" bottom sheet: Escape closes (focus returns to the toggle) and a
+  // light focus trap keeps Tab cycling inside the sheet while it's open.
+  useEffect(() => {
+    if (!moreOpen) return
+    const raf = requestAnimationFrame(() => moreSheetRef.current?.focus())
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setMoreOpen(false)
+        moreBtnRef.current?.focus()
+        return
+      }
+      if (e.key === 'Tab' && moreSheetRef.current) {
+        const items = Array.from(moreSheetRef.current.querySelectorAll<HTMLElement>('button:not(:disabled)'))
+        if (items.length === 0) return
+        const first = items[0]
+        const last = items[items.length - 1]
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault()
+          last.focus()
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault()
+          first.focus()
+        }
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [moreOpen])
 
   // Cmd/Ctrl+K opens search
   useEffect(() => {
@@ -74,6 +119,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const go = (v: View) => {
     setView(v)
     setMobileNavOpen(false)
+    if (moreOpen) {
+      setMoreOpen(false)
+      // Keyboard flow: after choosing a section in the sheet, move focus into
+      // the new view instead of dropping it on <body>.
+      requestAnimationFrame(() => document.getElementById('main-content')?.focus())
+    }
   }
 
   const logoButton = (compact: boolean) => (
@@ -84,6 +135,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen flex-col">
+      {/* Skip-to-content — invisible until keyboard-focused (a11y) */}
+      <a href="#main-content" className="skip-link">Skip to main content</a>
+
       {/* ── Desktop sidebar ── */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-line bg-sidebar/80 backdrop-blur-xl lg:flex">
         <div className="p-5"><button onClick={() => setView('landing')} aria-label="MEDULA home" className="rounded-xl"><Logo /></button></div>
@@ -171,7 +225,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true">
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setMobileNavOpen(false)} />
             <nav className="absolute inset-y-0 left-0 w-72 border-r border-line bg-background p-4 pt-5 shadow-2xl">
-              <div className="mb-5"><button onClick={() => setMobileNavOpen(false)} aria-label="Close navigation" className="rounded-xl"><Logo /></button></div>
+              <div className="mb-5"><button onClick={() => setMobileNavOpen(false)} aria-label="Close menu" className="rounded-xl"><Logo /></button></div>
               <div className="space-y-1">
                 {NAV.map((item) => (
                   <button
@@ -215,20 +269,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           )}
         </AnimatePresence>
 
-        {/* Content */}
-        <main className="flex-1 pb-20 lg:pb-0">{children}</main>
+        {/* Content — id/aria give the skip link a target; pb-safe-nav clears
+            the fixed mobile bottom nav + device safe-area inset */}
+        <main id="main-content" aria-label="Main content" tabIndex={-1} className="flex-1 pb-safe-nav">
+          {children}
+        </main>
 
-        {/* Sticky footer — mt-auto keeps it pinned when content is short */}
-        <footer className="mt-auto border-t border-line px-4 py-4 md:px-6">
-          <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 text-[11px] text-ink-soft sm:flex-row">
+        {/* Sticky footer — mt-auto keeps it pinned when content is short;
+            pb-safe-nav lifts its text above the fixed mobile bottom nav */}
+        <footer className="mt-auto border-t border-line px-4 pb-safe-nav md:px-6">
+          <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 py-4 text-[11px] text-ink-soft sm:flex-row">
             <span>MEDULA — the control centre of your medical mind.</span>
             <span>Educational platform · Not medical advice · Verify against official NMC / NBEMS sources</span>
           </div>
         </footer>
       </div>
 
-      {/* ── Mobile bottom nav ── */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-background/90 backdrop-blur-xl lg:hidden" aria-label="Primary">
+      {/* ── Mobile bottom nav: daily loop + More ── */}
+      <nav className="pb-safe-inset fixed inset-x-0 bottom-0 z-40 border-t border-line bg-background/90 backdrop-blur-xl lg:hidden" aria-label="Primary">
         <div className="grid grid-cols-5">
           {MOBILE_NAV.map((item) => (
             <button
@@ -244,8 +302,58 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               {item.label}
             </button>
           ))}
+          <button
+            ref={moreBtnRef}
+            onClick={() => { setMobileNavOpen(false); setMoreOpen((o) => !o) }}
+            className={cn(
+              'flex min-h-14 flex-col items-center justify-center gap-0.5 py-1.5 text-[10px] transition-colors',
+              moreOpen ? 'text-primary' : 'text-ink-soft',
+            )}
+            aria-expanded={moreOpen}
+            aria-haspopup="dialog"
+          >
+            <LayoutGrid className="size-5" />
+            More
+          </button>
         </div>
       </nav>
+
+      {/* ── "More" bottom sheet — the remaining views, mobile only ── */}
+      {moreOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setMoreOpen(false)} aria-hidden />
+          <div
+            ref={moreSheetRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="More sections"
+            tabIndex={-1}
+            className="pb-safe-inset glass-strong absolute inset-x-0 bottom-0 max-h-[85dvh] overflow-y-auto rounded-t-3xl p-4 pt-3 shadow-2xl outline-none"
+          >
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-line" aria-hidden />
+            <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-soft">All sections</p>
+            <div className="space-y-1">
+              {MORE_NAV.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => go(item.id)}
+                  aria-current={view === item.id ? 'page' : undefined}
+                  className={cn(
+                    'flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm transition-colors',
+                    view === item.id
+                      ? 'bg-primary/12 font-medium text-primary'
+                      : 'text-ink-soft hover:bg-surface-2 hover:text-foreground',
+                  )}
+                >
+                  <item.icon className="size-4" />
+                  {item.label}
+                  {view === item.id && <span className="ml-auto size-1.5 rounded-full bg-primary" />}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

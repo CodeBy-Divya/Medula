@@ -1,8 +1,18 @@
-// ─── MEDOS KNOWLEDGE ENGINE (server-side) ───
+// ─── MEDULA KNOWLEDGE ENGINE (server-side) ───
 // Learning analytics indicators — NOT measures of biological memory or clinical competence.
 import type { PlanSegment, NextAction, RoadmapPhase } from './types'
 
 export const DAY = 24 * 3600 * 1000
+
+// The entire audience is IST (Asia/Kolkata, UTC+5:30, no DST) — all day-bucketing
+// (streaks, "today" filters, heatmaps) must use IST calendar days, not UTC.
+const IST_DAY = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }) // en-CA → YYYY-MM-DD
+export function istDayKey(d: Date): string {
+  return IST_DAY.format(d)
+}
+export function istHour(d: Date): number {
+  return Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Kolkata', hour: 'numeric', hour12: false }).format(d))
+}
 
 // Ebbinghaus-style estimate: R = e^(-t / (S * k))
 export function estimatedRecall(daysSinceReview: number, stabilityDays: number): number {
@@ -183,23 +193,24 @@ export function buildRoadmap(year: number, prepStage: string, dailyHours: number
   return { horizonYears: remaining, phases, stageLabel }
 }
 
-// Streak from session dates
+// Streak from session dates — bucketed by IST calendar day (fixed UTC-day bug that
+// broke streaks for sessions logged before 05:30 IST)
 export function computeStreak(dates: Date[]): number {
   if (dates.length === 0) return 0
-  const days = new Set(dates.map(d => d.toISOString().slice(0, 10)))
+  const days = new Set(dates.map(istDayKey))
   let streak = 0
   const cur = new Date()
   for (let i = 0; i < 400; i++) {
-    const key = cur.toISOString().slice(0, 10)
-    if (days.has(key)) { streak++; cur.setDate(cur.getDate() - 1) }
-    else if (streak === 0) { cur.setDate(cur.getDate() - 1); if (!days.has(cur.toISOString().slice(0, 10))) break }
+    const key = istDayKey(cur)
+    if (days.has(key)) { streak++; cur.setTime(cur.getTime() - DAY) }
+    else if (streak === 0) { cur.setTime(cur.getTime() - DAY); if (!days.has(istDayKey(cur))) break }
     else break
   }
   return streak
 }
 
 export function greetingFor(d = new Date()): string {
-  const h = d.getHours()
+  const h = istHour(d) // IST, not server-local (server runs UTC → wrong greeting for IST users)
   if (h < 5) return 'Burning the midnight oil'
   if (h < 12) return 'Good morning'
   if (h < 17) return 'Good afternoon'

@@ -484,7 +484,7 @@ export function ReviseView() {
                   aria-pressed={!activeSub}
                   onClick={() => setActiveSub(null)}
                   className={cn(
-                    'min-h-8 rounded-full border px-3 py-1 text-[11px] font-semibold tabular-nums transition-colors',
+                    'min-h-11 rounded-full border px-3 py-1 text-[11px] font-semibold tabular-nums transition-colors',
                     !activeSub
                       ? 'border-primary/60 bg-primary/15 text-primary'
                       : 'border-line bg-surface-2 text-ink-soft hover:border-primary/40 hover:text-foreground',
@@ -499,7 +499,7 @@ export function ReviseView() {
                     aria-pressed={activeSub === code}
                     onClick={() => setActiveSub(code)}
                     className={cn(
-                      'min-h-8 rounded-full border px-3 py-1 text-[11px] font-semibold tabular-nums transition-colors',
+                      'min-h-11 rounded-full border px-3 py-1 text-[11px] font-semibold tabular-nums transition-colors',
                       activeSub === code
                         ? 'border-primary/60 bg-primary/15 text-primary'
                         : 'border-line bg-surface-2 text-ink-soft hover:border-primary/40 hover:text-foreground',

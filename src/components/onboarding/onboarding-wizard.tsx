@@ -376,7 +376,7 @@ export function OnboardingWizard() {
               <span className="text-base font-extrabold tracking-tight">MEDULA</span>
             </div>
             <p className="text-xs font-medium tracking-wide text-muted-foreground" aria-live="polite">
-              {isReview ? 'Final review' : `Step ${step + 1} of 6`}
+              {isReview ? 'Final review' : `Step ${step + 1} of ${STEPS.length}`}
             </p>
           </div>
 

@@ -72,7 +72,7 @@ Drill plan: probe sudden-vs-gradual first, then the single most discriminatory s
   }
 
   const yearLabel = profile.year <= 4 ? `Year ${profile.year} MBBS` : profile.year === 5 ? 'Intern' : 'Dedicated NEET-PG aspirant'
-  const system = `You are the MEDOS AI Medical Tutor for Indian MBBS students preparing for NEET-PG.
+  const system = `You are the MEDULA AI Medical Tutor for Indian MBBS students preparing for NEET-PG.
 
 STUDENT PROFILE: ${yearLabel}, preparation stage: ${profile.prepStage}. Align depth accordingly.
 

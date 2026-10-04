@@ -1,14 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getDemoProfile } from '@/lib/profile'
+import { asTrimmed, readJson } from '@/lib/http'
 
 export const dynamic = 'force-dynamic'
 
+// Allowed self-reported error types (mirrors QuestionAttempt.errorType in the schema)
+const ERROR_TYPES = ['didnt_know', 'forgot', 'misread', 'confused', 'calculation', 'reasoning', 'changed', 'time', 'guess'] as const
+
 export async function POST(req: NextRequest) {
-  const { questionId, errorType } = await req.json() as { questionId: string; errorType: string }
+  const body = await readJson<{ questionId?: unknown; errorType?: unknown }>(req)
+  if (!body) return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+
+  const errorType = asTrimmed(body.errorType, 40)
+  if (!errorType || !(ERROR_TYPES as readonly string[]).includes(errorType)) {
+    return NextResponse.json(
+      { error: `errorType must be one of: ${ERROR_TYPES.join(', ')}` },
+      { status: 400 },
+    )
+  }
+
+  // questionId is optional; when provided it must reference a real question
+  const questionId = asTrimmed(body.questionId, 200)
+  let conceptId: string | null = null
+  if (questionId) {
+    const question = await db.question.findUnique({ where: { id: questionId } })
+    if (!question) return NextResponse.json({ error: 'Question not found' }, { status: 404 })
+    conceptId = question.conceptId ?? null
+  }
+
   const profile = await getDemoProfile()
-  const question = await db.question.findUnique({ where: { id: questionId } })
-  const conceptId = question?.conceptId ?? null
 
   const existing = await db.errorPattern.findFirst({
     where: { profileId: profile.id, errorType, conceptId },

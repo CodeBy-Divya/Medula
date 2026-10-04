@@ -68,14 +68,19 @@ export default function Home() {
   }, [setProfile, setView])
 
   const loaded = profile !== null
+  // Render-gate: an app view without an explicit session must NEVER spin forever —
+  // it means a stale deep-link or a landing CTA fired before sign-in. Show sign-in.
+  const hasSession = readStoredSession() !== null
 
   // ── Landing / onboarding (standalone pages without shell) ──
   if (view === 'landing') return <LandingPage />
   if (view === 'signin') return <SignInView />
   if (view === 'onboarding') return <OnboardingWizard />
 
-  // Wait for profile hydration before entering the app
+  // Wait for profile hydration before entering the app — but only when a session
+  // actually exists; otherwise route to sign-in instead of a dead-end spinner.
   if (!loaded) {
+    if (!hasSession) return <SignInView />
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">

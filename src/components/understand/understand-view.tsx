@@ -14,6 +14,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
+import { api } from '@/lib/api'
 import { UNDERSTAND_SUBJECTS, SEVERITY_META, YIELD_META } from '@/lib/understand-types'
 import type { UnderstandTopic, YieldTier } from '@/lib/understand-types'
 import { BASE_TOPICS } from '@/lib/understand-catalog-base'
@@ -113,7 +114,11 @@ export function UnderstandView() {
         toast({ title: 'Marked as not yet understood', description: 'It stays on your list — honesty helps the algorithm.' })
       } else {
         next.add(id)
-        toast({ title: 'Topic understood ✓', description: 'Nice — the syllabus shrinks by one.' })
+        // Wire into the engine: a real StudySession backs this — streak, consistency
+        // in the Readiness Score and the heatmap all reflect the time spent here.
+        const title = ALL_TOPICS.find((t) => t.id === id)?.title ?? 'Topic'
+        api.understandComplete({ topicId: id, title }).catch(() => { /* session log is best-effort */ })
+        toast({ title: 'Topic understood ✓', description: 'Logged to your timeline — the syllabus shrinks by one.' })
       }
       try { window.localStorage.setItem(UNDERSTOOD_KEY, JSON.stringify([...next])) } catch { /* private mode */ }
       return next

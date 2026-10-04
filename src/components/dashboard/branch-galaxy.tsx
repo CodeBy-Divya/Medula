@@ -8,7 +8,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { BookOpen, Loader2, Map as MapIcon, Play, ShieldCheck, Waypoints, X } from 'lucide-react'
+import { BookOpen, Loader2, Map as MapIcon, Play, RotateCcw, ShieldCheck, Waypoints, X } from 'lucide-react'
 import { api } from '@/lib/api'
 import { useAppStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
@@ -404,12 +404,13 @@ export function BranchGalaxy({
   const [insights, setInsights] = useState<MapInsights | null>(null)
   const [failed, setFailed] = useState(false)
   const [selected, setSelected] = useState<MapBranch | null>(null)
+  const [retryTick, setRetryTick] = useState(0) // bump to re-run the fetch
 
   useEffect(() => {
     let ok = true
     api.mapInsights().then(d => { if (ok) setInsights(d) }).catch(() => { if (ok) setFailed(true) })
     return () => { ok = false }
-  }, [])
+  }, [retryTick])
 
   const branches = insights?.branches ?? []
   const placed = useMemo(() => (branches.length ? orbitLayout(branches) : []), [branches])
@@ -483,9 +484,17 @@ export function BranchGalaxy({
       )}
 
       {failed && (
-        <p className="relative py-8 text-center text-sm text-ink-soft">
-          The galaxy could not load — refresh to retry.
-        </p>
+        <div className="relative flex flex-col items-center gap-3 py-8 text-center" role="status">
+          <p className="text-sm text-ink-soft">The galaxy could not load — check your connection.</p>
+          <Button
+            size="sm"
+            variant="outline"
+            className="min-h-9 gap-1.5 rounded-full px-4"
+            onClick={() => { setFailed(false); setRetryTick(t => t + 1) }}
+          >
+            <RotateCcw className="size-3.5" aria-hidden /> Retry
+          </Button>
+        </div>
       )}
       {!failed && branches.length === 0 && (
         <div className="relative grid h-[320px] place-items-center md:h-[420px]" aria-busy="true">
