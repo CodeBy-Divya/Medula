@@ -18,9 +18,15 @@ export const SESSION_KEY = 'medos:session'
 // The demo backend has no cookies — GET /api/profile always returns the
 // seeded account. To keep sign-in meaningful, the client records an
 // explicit "session" in localStorage only after the user actually signs
-// in (or finishes onboarding). Reloads with an active session resume the
-// app; sign-out (or a fresh browser) starts from the landing page.
+// in (or finishes onboarding). A stored session NEVER silently signs the
+// doctor in: reloads and deep links land on the sign-in page's explicit
+// "Welcome back — Continue" gate (one tap, no password). Sessions expire
+// after 30 days of inactivity; sign-out (or a fresh browser) starts from
+// the landing page.
 export type StoredSession = { account: 'demo' | 'new'; at: number }
+
+// 30 days of inactivity — sign-in is never assumed forever, even in a demo.
+const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000
 
 export function readStoredSession(): StoredSession | null {
   if (typeof window === 'undefined') return null
@@ -29,7 +35,13 @@ export function readStoredSession(): StoredSession | null {
     if (!raw) return null
     const parsed = JSON.parse(raw) as Partial<StoredSession>
     if (parsed?.account !== 'demo' && parsed?.account !== 'new') return null
-    return { account: parsed.account, at: typeof parsed.at === 'number' ? parsed.at : 0 }
+    const at = typeof parsed.at === 'number' ? parsed.at : 0
+    // Expired (or timestamp-less) sessions are indistinguishable from no session.
+    if (!at || Date.now() - at > SESSION_TTL_MS) {
+      window.localStorage.removeItem(SESSION_KEY)
+      return null
+    }
+    return { account: parsed.account, at }
   } catch { return null }
 }
 

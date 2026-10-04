@@ -1,8 +1,7 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
-import { readStoredSession, useAppStore, viewFromHash, isAppView } from '@/lib/store'
-import { api } from '@/lib/api'
+import { useEffect, useState } from 'react'
+import { readStoredSession, useAppStore, isAppView } from '@/lib/store'
 import { AppShell } from '@/components/app-shell'
 import { RegisterSW } from '@/components/pwa/register-sw'
 import { LandingPage } from '@/components/landing/landing-page'
@@ -28,7 +27,7 @@ import { ResearchView } from '@/components/research/research-view'
 import { Loader2 } from 'lucide-react'
 
 export default function Home() {
-  const { view, setView, profile, setProfile, researchSeedQuery, setResearchSeedQuery } = useAppStore()
+  const { view, setView, profile, researchSeedQuery, setResearchSeedQuery } = useAppStore()
 
   // Explore → other surfaces: hand the query to the Research Hub (seeded
   // search) and route to any app view the Explore view requests.
@@ -39,10 +38,9 @@ export default function Home() {
 
   // Capture the deep-link hash synchronously on first client render — the
   // landing-state effect below strips the hash before hydration resolves.
-  const initialHashRef = useRef<string | null>(null)
-  if (initialHashRef.current === null) {
-    initialHashRef.current = typeof window !== 'undefined' ? window.location.hash : ''
-  }
+  // (One-time state, not a ref: it's read during render when handing the
+  // hash to the sign-in view. It's never rendered to DOM, so no mismatch.)
+  const [initialHash] = useState(() => (typeof window !== 'undefined' ? window.location.hash : ''))
 
   // Reset scroll whenever the view changes (SPA views share one scroll context)
   useEffect(() => {
@@ -56,25 +54,15 @@ export default function Home() {
     }
   }, [view])
 
-  // Hydrate profile once — but only for an explicit session.
-  // GET /api/profile always returns the demo account, so without the
-  // session gate every reload would silently skip sign-in. With it:
-  // fresh visitor → landing page; signed-in reload → straight back in.
+  // Sign-in is ALWAYS an explicit user action. A stored session never
+  // silently signs the doctor in — reloads and deep links with an active
+  // session land on the sign-in page's one-tap "Welcome back" resume card
+  // instead. The captured deep-link hash (#/learn) is handed to SignInView
+  // so Continue resumes the linked view.
   useEffect(() => {
     if (!readStoredSession()) return
-    let ok = true
-    api.getProfile()
-      .then((r) => {
-        if (!ok) return
-        setProfile(r.profile)
-        if (r.profile?.onboarded) {
-          // Deep link wins (#/map), otherwise the stored last view, else home.
-          setView(viewFromHash(initialHashRef.current ?? '') ?? 'home')
-        }
-      })
-      .catch(() => {})
-    return () => { ok = false }
-  }, [setProfile, setView])
+    setView('signin')
+  }, [setView])
 
   const loaded = profile !== null
   // Render-gate: an app view without an explicit session must NEVER spin forever —
@@ -83,7 +71,7 @@ export default function Home() {
 
   // ── Landing / onboarding (standalone pages without shell) ──
   if (view === 'landing') return <LandingPage />
-  if (view === 'signin') return <SignInView />
+  if (view === 'signin') return <SignInView initialHash={initialHash || undefined} />
   if (view === 'onboarding') return <OnboardingWizard />
 
   // Wait for profile hydration before entering the app — but only when a session

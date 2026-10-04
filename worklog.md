@@ -856,3 +856,25 @@ Stage Summary:
 - ACCEPTANCE: year/phase → subject → topic → concept → deep lesson (30s/eli5/first-principles/mechanism/DDx/mgmt+verify/numbers/drugs/mistakes/mnemonics) → 3D visualization (guided tour 6 steps + quiz + isolate + labels) → clinical reasoning stepper → global India/US/UK/WHO comparison → sources & further reading with honest attribution → cross-subject connections → Test me (quiz handoff) → all verified live in agent-browser E2E (desktop + mobile 390, screenshots 19-*.png).
 - Verification: tsc 0 errors, lint 0 errors (2 fixable warnings), all learn APIs 200 with real data, dev.log clean, mobile scrollW 390 exact.
 - Honest limits: clinical/para/pre-clinical subjects average 2-9 deep lessons each (deep coverage prioritized over fake counts; existing explorer detail sections still render for concepts without full lessons); 6 of 32 atlas assets are unlinked teaching-notes fallbacks by design; paper explainers avoid uncertain metrics via confidence notes; search does not yet index lesson body text (P2 candidate).
+
+---
+Task ID: 20
+Agent: Z.ai Code (main)
+Task: Recheck the sign-in page — "why automatically signed in?" Root-cause + fix: sign-in must be an explicit action, never silent.
+
+Work Log:
+- AUDIT: traced the full auth/session path. Backend = single-user demo (GET /api/profile always returns the seeded account); client-side session flag localStorage['medos:session'] written ONLY on explicit sign-in, cleared ONLY on Profile → Sign out. Root cause of the complaint was THREE compounding behaviors, all client-side:
+  1. page.tsx boot effect: every reload with a stored session called api.getProfile() and dropped straight into the app — silent auto sign-in, zero interaction.
+  2. Session never expired: the stored `at` timestamp was never checked — one demo login (even weeks ago, or from an old E2E run) stuck forever in that browser, so the sign-in page became unreachable without a manual sign-out.
+  3. Landing "EXPLORE THE MEDICAL MAP" CTA: `if (readStoredSession()) setView('map')` silently bypassed sign-in entirely.
+- FIX (Google account-picker pattern — explicit but one-tap):
+  - store.ts: 30-day inactivity TTL in readStoredSession (expired/timestamp-less sessions are removed and treated as no session; writeStoredSession slides the window on each sign-in/resume).
+  - signin-view.tsx: new "Welcome back, Doctor" resume mode. When a session exists the page shows: identity chip (Demo account · doctor@medula.in / Personal account), last-active relative time, optional "Picks up at {view}" chip, primary one-tap "Continue as Demo Doctor" (demo → POST /api/auth mode:demo; personal → GET /api/profile then routes to onboarding if never finished), and "Use a different account" (clears session → full form). Component now takes `initialHash` prop so Continue honors deep links (viewFromHash(initialHash) ?? readStoredView() ?? 'home').
+  - page.tsx: boot effect no longer silently enters the app — with a session it routes to 'signin' (the resume gate). Deep-link hash captured via one-time useState (replaced useRef — lint react-hooks/refs forbids reading ref.current during render) and handed to SignInView. Removed now-unused api/viewFromHash/setProfile from Home.
+  - landing-page.tsx: EXPLORE CTA always routes to 'signin' (the sign-in page itself decides resume-vs-form). No silent map entry.
+- E2E (agent-browser, 11 scenarios, all PASS): fresh visitor → landing; EXPLORE CTA → form (was silent map entry); demo sign-in → dashboard; reload → resume gate (was auto sign-in); card shows identity + "Last active just now"; Continue → #/home; Learn + true reload → "Picks up at Learn" → Continue → #/learn; "Use a different account" → session null + form; no-session reload → landing; form sign-in works (resumes stored last view); Profile sign-out → session null + form; planted 31-day-old session → rejected + auto-removed → landing; mobile 390px resume card no overflow (scrollW=390); mobile Continue → app.
+- Note: agent-browser hash-only `open` is same-document navigation (known gotcha) — used window.location.reload() to force true reloads in tests.
+- Screenshots: agent-ctx/auth-resume-card.png, agent-ctx/auth-resume-desktop.png.
+
+Stage Summary:
+- Sign-in is now ALWAYS an explicit user action: no session = landing/full form; active session = one-tap "Welcome back" resume gate; 30-day TTL; deep links preserved through the gate; switch-account escape hatch. tsc src/ clean, lint 0 errors (2 pre-existing seed warnings), dev.log clean, no console errors. No backend changes; zero data touched.
