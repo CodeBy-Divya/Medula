@@ -56,3 +56,8 @@ server.log
 tool-results/
 dev.log
 agent-ctx/
+
+# qa artifacts
+/screenshots/
+/download/
+/.zscripts/
