@@ -25,6 +25,37 @@ const KIND_EMOJI: Record<string, string> = {
   microbiology: '🦠', clinical_skill: '🤲',
 }
 
+// ── Medical nomenclature ── every branch carries its formal Latin name and
+// its stage of the MBBS arc, so the galaxy reads like an anatomical atlas.
+const LATIN_NAMES: Record<string, string> = {
+  ANAT: 'Morphologia', PHYS: 'Physiologia', BIOCH: 'Biochemia',
+  PATHO: 'Pathologia', PHARM: 'Pharmacologia', MICRO: 'Microbiologia',
+  FMT: 'Medicina Forensis', CM: 'Medicina Communitatis',
+  ENT: 'Otorhinolaryngologia', OPHT: 'Ophthalmologia',
+  MED: 'Medicina Interna', SURG: 'Chirurgia',
+  OBGY: 'Obstetria et Gynaecologia', PEDS: 'Paediatricia',
+  ORTH: 'Orthopaedia', DERM: 'Dermatologia', PSY: 'Psychiatria',
+  RAD: 'Radiologia', ANES: 'Anaesthesiologia',
+}
+
+const STAGE_BY_YEAR: Record<number, string> = {
+  1: 'Pre-clinical sciences',
+  2: 'Para-clinical sciences',
+  3: 'Clinical disciplines',
+  4: 'Clinical specialties',
+  5: 'Internship rotas',
+  6: 'Dedicated preparation',
+}
+
+// deterministic starfield — index-math so SSR and client render identically
+const STARS = Array.from({ length: 46 }, (_, i) => ({
+  x: ((i * 83.7) % 97) + 1.5,
+  y: ((i * 57.3) % 92) + 3,
+  r: 0.6 + ((i * 13) % 10) / 10,
+  delay: ((i * 29) % 40) / 10,
+  dur: 2.4 + ((i * 7) % 20) / 10,
+}))
+
 const STATUS_TONE: Record<MapBranch['status'], { ring: string; label: string; chip: string }> = {
   strong: { ring: 'var(--sev-ok)', label: 'Strong', chip: 'bg-sev-ok/10 text-sev-ok' },
   unstable: { ring: 'var(--sev-warn)', label: 'Unstable', chip: 'bg-sev-warn/10 text-sev-warn' },
@@ -147,11 +178,14 @@ function BranchPanel({ branch, onClose }: { branch: MapBranch; onClose: () => vo
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h4 className="text-base font-semibold tracking-tight">{branch.emoji} {branch.name}</h4>
+              <span className="rounded-full border border-primary/25 bg-primary/[0.07] px-2 py-0.5 text-[10px] font-semibold italic text-primary">
+                {LATIN_NAMES[branch.code] ?? branch.code}
+              </span>
               <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide', tone.chip)}>
                 {tone.label}
               </span>
               <span className="rounded-full border border-line px-2 py-0.5 text-[10px] font-medium text-ink-soft">
-                Year {branch.year} · NEET-PG weight {branch.neetWeight}%
+                Year {branch.year} · {STAGE_BY_YEAR[branch.year] ?? 'MBBS'} · NEET-PG weight {branch.neetWeight}%
               </span>
             </div>
             <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-soft">
@@ -303,6 +337,12 @@ function BranchSphere({ b, reduce, active, onToggle }: { b: Placed; reduce: bool
             opacity={0.95}
           />
         </svg>
+        {/* soft colour halo — depth without clutter */}
+        <span
+          aria-hidden
+          className="absolute -inset-1.5 -z-10 rounded-full opacity-60 blur-md"
+          style={{ background: `radial-gradient(circle, ${b.color}55, transparent 70%)` }}
+        />
         {/* 3D sphere body */}
         <span
           className="sphere-3d grid size-[78%] place-items-center rounded-full text-xl md:text-2xl"
@@ -313,6 +353,12 @@ function BranchSphere({ b, reduce, active, onToggle }: { b: Placed; reduce: bool
           aria-hidden
         >
           <span className="drop-shadow-sm" style={{ filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.25))' }}>{b.emoji}</span>
+          {/* glass reflection arc */}
+          <span
+            aria-hidden
+            className="pointer-events-none absolute left-[16%] top-[10%] h-[26%] w-[38%] rounded-full opacity-70"
+            style={{ background: 'linear-gradient(160deg, rgba(255,255,255,0.85), rgba(255,255,255,0) 70%)', filter: 'blur(1px)' }}
+          />
         </span>
         {/* heartbeat pulse for weak subjects */}
         {b.status === 'weak' && (
@@ -326,24 +372,23 @@ function BranchSphere({ b, reduce, active, onToggle }: { b: Placed; reduce: bool
           initial={{ opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.15 }}
-          className="pointer-events-none absolute left-1/2 top-full z-30 mt-2 w-max max-w-[180px] -translate-x-1/2 rounded-xl border border-line bg-card/95 p-2.5 text-left shadow-xl backdrop-blur"
+          className="pointer-events-none absolute left-1/2 top-full z-30 mt-2 w-max max-w-[200px] -translate-x-1/2 rounded-xl border border-line bg-card/95 p-2.5 text-left shadow-xl backdrop-blur"
           role="tooltip"
         >
           <p className="text-xs font-semibold leading-tight">{b.emoji} {b.name}</p>
+          <p className="text-[10px] italic text-primary/90">{LATIN_NAMES[b.code] ?? b.code}</p>
           <p className="mt-1 text-[10px] text-ink-soft">
             {b.conceptCount} concepts · mastery <span className="font-semibold tabular-nums">{b.mastery}%</span> · {tone.label}
           </p>
-          <p className="mt-0.5 text-[10px] text-muted-foreground">Click for a closer look · NEET-PG weight {b.neetWeight}%</p>
+          <p className="mt-0.5 text-[10px] text-muted-foreground">{STAGE_BY_YEAR[b.year] ?? 'MBBS'} · NEET-PG weight {b.neetWeight}%</p>
         </motion.div>
       )}
 
-      {/* always-visible name label — systematic, professional */}
-      <p
-        aria-hidden
-        className="pointer-events-none absolute left-1/2 top-full mt-1 w-max max-w-[110px] -translate-x-1/2 truncate text-center text-[9.5px] font-medium uppercase tracking-wide text-ink-soft"
-      >
-        {b.name}
-      </p>
+      {/* always-visible name label — systematic, with Latin nomenclature */}
+      <div aria-hidden className="pointer-events-none absolute left-1/2 top-full mt-1 w-max max-w-[118px] -translate-x-1/2 text-center">
+        <p className="truncate text-[9.5px] font-semibold uppercase tracking-wide text-ink-soft">{b.name}</p>
+        <p className="truncate text-[8px] italic tracking-wide text-muted-foreground/80">{LATIN_NAMES[b.code] ?? ''}</p>
+      </div>
     </div>
   )
 }
@@ -386,16 +431,17 @@ export function BranchGalaxy({
       {/* professional header — title, stats, CTA */}
       <div className="relative flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">Your medical universe</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">Universum Medicum · Your medical universe</p>
           <h2 className="mt-1 flex items-center gap-2 text-xl font-semibold tracking-tight md:text-2xl">
             <Waypoints className="size-5 text-primary" aria-hidden />
-            Branch Galaxy
+            Corpus Medicum
+            <span className="text-sm font-medium italic text-ink-soft">— the Branch Galaxy</span>
             <motion.span aria-hidden animate={reduce ? undefined : { y: [0, -3, 0] }} transition={{ duration: 2.6, repeat: Infinity }}>
               🌌
             </motion.span>
           </h2>
           <p className="mt-1 text-xs text-ink-soft md:text-sm">
-            19 MBBS subjects organized around you — tap a sphere for a closer look.
+            19 MBBS disciplines in orbit around you — every sphere carries its formal nomenclature. Tap one for a closer look.
           </p>
         </div>
 
@@ -454,11 +500,77 @@ export function BranchGalaxy({
             role="group"
             aria-label="Subject branches"
           >
-            {/* orbit rings (elliptical — matches sphere placement) */}
+            {/* deep-space nebula backdrop — calm, warm, premium */}
+            <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden rounded-[2rem]">
+              <div className="absolute left-[8%] top-[12%] size-56 rounded-full bg-rose-400/[0.10] blur-3xl" />
+              <div className="absolute right-[6%] top-[38%] size-64 rounded-full bg-cyan-400/[0.10] blur-3xl" />
+              <div className="absolute bottom-[4%] left-[30%] size-56 rounded-full bg-amber-300/[0.10] blur-3xl" />
+              {/* galactic band */}
+              <div
+                className="absolute left-1/2 top-1/2 h-[46%] w-[88%] -translate-x-1/2 -translate-y-1/2 rounded-[100%] opacity-70 blur-2xl"
+                style={{ background: 'conic-gradient(from 210deg, rgba(52,211,153,0.08), rgba(34,211,238,0.10), rgba(251,191,36,0.07), rgba(52,211,153,0.08))' }}
+              />
+              {/* twinkling starfield */}
+              {STARS.map((s, i) => (
+                <span
+                  key={i}
+                  aria-hidden
+                  className="star-twinkle absolute rounded-full bg-foreground"
+                  style={{
+                    left: `${s.x}%`,
+                    top: `${s.y}%`,
+                    width: s.r * 1.6,
+                    height: s.r * 1.6,
+                    opacity: 0.35,
+                    ['--tw' as string]: `${s.dur}s`,
+                    animationDelay: `${s.delay}s`,
+                  }}
+                />
+              ))}
+            </div>
+
+            {/* orbit rings (elliptical — matches sphere placement) with glow + slow rotation */}
             <svg aria-hidden className="absolute inset-0 size-full">
+              <defs>
+                <linearGradient id="orbitGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.5" />
+                  <stop offset="55%" stopColor="#0ea5e9" stopOpacity="0.28" />
+                  <stop offset="100%" stopColor="#34d399" stopOpacity="0.5" />
+                </linearGradient>
+              </defs>
               <ellipse cx="50%" cy="50%" rx="24%" ry="19%" className="fill-none stroke-line" strokeWidth="1" strokeDasharray="3 6" />
               <ellipse cx="50%" cy="50%" rx="41%" ry="32%" className="fill-none stroke-line" strokeWidth="1" strokeDasharray="3 6" />
-              <ellipse cx="50%" cy="50%" rx="43.5%" ry="34.5%" className="fill-none stroke-primary/15" strokeWidth="1.5" />
+              {/* glowing energy ring + counter-rotating dash overlay */}
+              <ellipse cx="50%" cy="50%" rx="43.5%" ry="34.5%" fill="none" stroke="url(#orbitGrad)" strokeWidth="1.6" opacity="0.8" />
+              <g className={reduce ? undefined : 'galaxy-spin'}>
+                <ellipse cx="50%" cy="50%" rx="43.5%" ry="34.5%" fill="none" stroke="url(#orbitGrad)" strokeWidth="2.4" strokeDasharray="10 220" strokeLinecap="round" />
+              </g>
+              <g className={reduce ? undefined : 'galaxy-spin-rev'}>
+                <ellipse cx="50%" cy="50%" rx="41%" ry="32%" fill="none" stroke="#22d3ee" strokeOpacity="0.35" strokeWidth="1.2" strokeDasharray="4 90" strokeLinecap="round" />
+              </g>
+            </svg>
+
+            {/* constellation web — faint links between the high-weight inner branches */}
+            <svg aria-hidden className="absolute inset-0 size-full">
+              {placed.slice(0, 8).map((b, i, arr) => {
+                const nxt = arr[(i + 1) % arr.length]
+                return (
+                  <line
+                    key={`web-${i}`}
+                    x1={`${b.x}%`} y1={`${b.y}%`}
+                    x2={`${nxt.x}%`} y2={`${nxt.y}%`}
+                    stroke="url(#orbitGrad)" strokeWidth="0.7" strokeDasharray="2 5" opacity="0.35"
+                  />
+                )
+              })}
+              {placed.slice(0, 8).map((b, i) => (
+                <line
+                  key={`spoke-${i}`}
+                  x1="50%" y1="50%"
+                  x2={`${b.x}%`} y2={`${b.y}%`}
+                  stroke={b.color} strokeOpacity="0.14" strokeWidth="0.7"
+                />
+              ))}
             </svg>
 
             {/* you — the sun of this galaxy */}
@@ -471,7 +583,7 @@ export function BranchGalaxy({
               >
                 🧑‍⚕️
               </motion.div>
-              <p className="mt-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-soft">You</p>
+              <p className="mt-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-soft">You · Nucleus</p>
             </div>
 
             {/* orbiting branch spheres */}
@@ -497,7 +609,7 @@ export function BranchGalaxy({
           <div className="relative mt-5">
             <div className="mb-2 flex items-center justify-between">
               <h3 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-soft">
-                Subject index · Year 1 → Intern
+                Index Subjectarum · Year 1 → Intern
               </h3>
               <span className="text-[10px] text-muted-foreground">tap to inspect</span>
             </div>
@@ -511,7 +623,7 @@ export function BranchGalaxy({
                       type="button"
                       onClick={() => setSelected(cur => (cur?.id === b.id ? null : b))}
                       aria-pressed={active}
-                      aria-label={`${b.name}, mastery ${b.mastery}%, ${tone.label}`}
+                      aria-label={`${b.name} (${LATIN_NAMES[b.code] ?? b.code}), mastery ${b.mastery}%, ${tone.label}`}
                       className={cn(
                         'clay-in group flex w-full flex-col items-start gap-1 rounded-xl px-2.5 py-2 text-left transition-all',
                         'hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
@@ -523,6 +635,7 @@ export function BranchGalaxy({
                         <span className="size-1.5 shrink-0 rounded-full" style={{ background: tone.ring }} aria-hidden />
                       </span>
                       <span className="w-full truncate text-[10px] font-semibold leading-tight">{b.code}</span>
+                      <span className="w-full truncate text-[8px] italic leading-tight text-muted-foreground/80">{LATIN_NAMES[b.code] ?? b.name}</span>
                       <span className="flex w-full items-center gap-1.5">
                         <span className="h-1 flex-1 overflow-hidden rounded-full bg-background/60">
                           <span

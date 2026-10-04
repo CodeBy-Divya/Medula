@@ -8,7 +8,7 @@ import type { Profile, View } from './types'
 // the doctor back where they left off, and mirror to the URL hash (#/map)
 // so a reload keeps the same view.
 export const APP_VIEWS: readonly View[] = [
-  'home', 'map', 'learn', 'questions', 'cases', 'revise', 'tutor', 'progress', 'roadmap', 'profile',
+  'home', 'map', 'understand', 'learn', 'questions', 'cases', 'revise', 'tutor', 'progress', 'roadmap', 'profile',
 ] as const
 
 export const LAST_VIEW_KEY = 'medos:last-view'
@@ -62,7 +62,7 @@ export function viewFromHash(hash?: string): View | null {
 
 export function viewToLabel(v: View): string {
   const labels: Partial<Record<View, string>> = {
-    home: 'Home', map: 'the Medical Map', learn: 'Learn', questions: 'the Question Lab',
+    home: 'Home', map: 'the Medical Map', understand: 'Understand Your Topic', learn: 'Learn', questions: 'the Question Lab',
     cases: 'the Case Simulator', revise: 'Revise', tutor: 'the AI Tutor',
     progress: 'Progress', roadmap: 'Roadmap', profile: 'Profile',
   }

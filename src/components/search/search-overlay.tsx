@@ -154,7 +154,7 @@ export function SearchOverlay() {
       >
         <DialogTitle className="sr-only">Search Medicine</DialogTitle>
         <DialogDescription className="sr-only">
-          Search concepts, subjects, topics, questions, flashcards and clinical cases across MEDOS.
+          Search concepts, subjects, topics, questions, flashcards and clinical cases across MEDULA.
         </DialogDescription>
 
         <Command shouldFilter={false} className="w-full">

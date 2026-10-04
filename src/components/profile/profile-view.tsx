@@ -67,13 +67,13 @@ const STYLE_OPTIONS = ['Visual', 'Text', 'Questions', 'Clinical cases', 'Flashca
 const RESOURCE_OPTIONS = ['Marrow', 'PW', 'PrepLadder', 'DAMS', 'Cerebellum', 'Other']
 
 const RESOURCE_NOTE =
-  'MEDOS sits above your resources — it never copies their content. After a lecture, come here for the recall + questions that make it stick.'
+  'MEDULA sits above your resources — it never copies their content. After a lecture, come here for the recall + questions that make it stick.'
 
 const DISCLAIMER_BULLETS = [
   'Knowledge scores are learning-analytics indicators — not assessments of clinical competence.',
   'Content and structure align to the NMC CBME curriculum.',
   'Exam dates are estimates — always verify with NBEMS and official sources.',
-  'MEDOS is for educational use only — never a substitute for clinical judgment.',
+  'MEDULA is for educational use only — never a substitute for clinical judgment.',
 ]
 
 function initialsOf(name: string): string {
@@ -322,7 +322,7 @@ function ExamModeCard({ profile, onSaved }: { profile: Profile; onSaved: (p: Pro
 
 const SW_STATUS_META: Record<SWStatus, { label: string; detail: string; ok: boolean }> = {
   checking: { label: 'Checking…', detail: 'Reading the offline-shell status.', ok: true },
-  active: { label: 'Offline shell active', detail: 'MEDOS opens even without a connection — questions you already loaded stay available.', ok: true },
+  active: { label: 'Offline shell active', detail: 'MEDULA opens even without a connection — questions you already loaded stay available.', ok: true },
   registering: { label: 'Offline shell ready', detail: 'Fully offline on your next visit after this one.', ok: true },
   dev: { label: 'Dev preview — shell dormant', detail: 'The offline shell ships with production builds so edited code always stays fresh here.', ok: true },
   unsupported: { label: 'Not available here', detail: 'This browser does not support offline shells.', ok: false },
@@ -349,7 +349,7 @@ function OfflineCard() {
           </div>
         </div>
         <p className="rounded-lg bg-surface-2/60 px-3 py-2 text-[11px] leading-relaxed text-ink-soft">
-          To install MEDOS as an app: open your browser menu and choose
+          To install MEDULA as an app: open your browser menu and choose
           {' '}<span className="font-semibold">“Add to Home Screen”</span> (mobile) or
           {' '}<span className="font-semibold">“Install app”</span> (desktop Chrome/Edge).
         </p>
@@ -549,7 +549,7 @@ export function ProfileView() {
           </h1>
           <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">
             {noneYet
-              ? 'Tell MEDOS who you are and where you are in MBBS — everything else personalizes from there.'
+              ? 'Tell MEDULA who you are and where you are in MBBS — everything else personalizes from there.'
               : 'Check your connection, then retry.'}
           </p>
           <div className="mt-5 flex items-center justify-center gap-2">
@@ -892,8 +892,8 @@ export function ProfileView() {
                 M
               </span>
               <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-foreground">MEDOS demo account</p>
-                <p className="truncate font-mono text-[11px] text-ink-soft">doctor@medos.in</p>
+                <p className="truncate text-sm font-medium text-foreground">MEDULA demo account</p>
+                <p className="truncate font-mono text-[11px] text-ink-soft">doctor@medula.in</p>
               </div>
               <span className="ml-auto shrink-0 rounded-full border border-sev-ok/40 bg-sev-ok/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-sev-ok">
                 Active

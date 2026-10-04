@@ -12,11 +12,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAppStore, readStoredView, viewToLabel, writeStoredSession } from '@/lib/store'
+import { LogoMark } from '@/components/brand/logo'
 import type { Profile, View } from '@/lib/types'
 
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1]
-const DEMO_EMAIL = 'doctor@medos.in'
-const DEMO_PASSWORD = 'medos2024'
+const DEMO_EMAIL = 'doctor@medula.in'
+const DEMO_PASSWORD = 'medula2024'
 
 type Phase = 'idle' | 'working' | 'error'
 
@@ -124,11 +125,9 @@ export function SignInView() {
         >
           {/* brand */}
           <div className="flex flex-col items-center text-center">
-            <span className="relative grid size-14 place-items-center rounded-2xl border border-primary/30 bg-primary/10">
-              <span className="font-mono text-2xl font-bold text-primary">M</span>
-              <span className="absolute -right-1 -top-1 size-3 animate-pulse rounded-full bg-primary" />
-            </span>
-            <h1 className="mt-4 text-2xl font-semibold tracking-tight">Welcome back, doctor</h1>
+            <LogoMark size={58} />
+            <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.3em] text-ink-soft">Medula · Medical Learning OS</p>
+            <h1 className="mt-3 text-2xl font-semibold tracking-tight">Welcome back, doctor</h1>
             <p className="mt-1.5 text-sm text-ink-soft">
               Sign in to your medical universe — your map remembers exactly where you left off.
             </p>
@@ -226,7 +225,7 @@ export function SignInView() {
 
       {/* footer */}
       <footer className="relative z-10 mt-auto border-t border-line px-4 py-4 text-center text-xs text-muted-foreground sm:px-6">
-        MEDOS — educational learning platform. Not medical advice. Verify with official NMC/NBEMS sources.
+        MEDULA — educational learning platform. Not medical advice. Verify with official NMC/NBEMS sources.
       </footer>
     </div>
   )

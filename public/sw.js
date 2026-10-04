@@ -1,5 +1,5 @@
 /*
- * MEDOS service worker — offline app shell.
+ * MEDULA service worker — offline app shell.
  * Registered ONLY in production builds (dev serves fresh chunks every edit,
  * and a caching SW would resurrect stale bundles).
  *

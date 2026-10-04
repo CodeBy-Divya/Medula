@@ -24,6 +24,7 @@ import type { LucideIcon } from 'lucide-react'
 import { api } from '@/lib/api'
 import { useAppStore } from '@/lib/store'
 import { useToast } from '@/hooks/use-toast'
+import { LogoMark } from '@/components/brand/logo'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -75,7 +76,7 @@ const STYLE_OPTIONS = ['Visual', 'Text', 'Questions', 'Clinical cases', 'Flashca
 const RESOURCE_OPTIONS = ['Marrow', 'PW', 'PrepLadder', 'DAMS', 'Cerebellum', 'Other']
 
 const RESOURCE_NOTE =
-  "MEDOS never copies these platforms' content. Tell us what you use and it becomes the intelligence layer above them — after a lecture, we queue the recall, questions and revision that make it stick."
+  "MEDULA never copies these platforms' content. Tell us what you use and it becomes the intelligence layer above them — after a lecture, we queue the recall, questions and revision that make it stick."
 
 const stepVariants = {
   enter: (dir: number) => ({ opacity: 0, x: dir * 44 }),
@@ -291,7 +292,7 @@ export function OnboardingWizard() {
     next()
   }
 
-  const enterMedos = async () => {
+  const enterMedula = async () => {
     if (saving) return
     setSaving(true)
     setError(null)
@@ -314,14 +315,14 @@ export function OnboardingWizard() {
       })
       setProfile(res.profile)
       toast({
-        title: `Welcome to MEDOS, ${res.profile.name}.`,
+        title: `Welcome to MEDULA, ${res.profile.name}.`,
         description: 'Your learning system is calibrated. Building your first dashboard…',
       })
       setView('home')
     } catch (err) {
       setError(
         err instanceof Error
-          ? `${err.message} — check your connection and press ENTER MEDOS again.`
+          ? `${err.message} — check your connection and press ENTER MEDULA again.`
           : 'Something went wrong while saving your profile. Please try again.'
       )
       setSaving(false)
@@ -370,12 +371,9 @@ export function OnboardingWizard() {
         >
           {/* Header: wordmark + step counter */}
           <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5 text-base font-bold tracking-tight">
-              <span className="relative flex size-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-400 opacity-60" />
-                <span className="relative inline-flex size-2 rounded-full bg-cyan-400" />
-              </span>
-              MEDOS
+            <div className="flex items-center gap-2.5">
+              <LogoMark size={30} />
+              <span className="text-base font-extrabold tracking-tight">MEDULA</span>
             </div>
             <p className="text-xs font-medium tracking-wide text-muted-foreground" aria-live="polite">
               {isReview ? 'Final review' : `Step ${step + 1} of 6`}
@@ -414,7 +412,7 @@ export function OnboardingWizard() {
                     <StepHeader
                       icon={Sparkles}
                       title="Welcome, future doctor."
-                      sub="Five minutes of setup — then MEDOS starts working like a system, not a pile of PDFs."
+                      sub="Five minutes of setup — then MEDULA starts working like a system, not a pile of PDFs."
                     />
                     <div className="mt-6 space-y-2">
                       <Label htmlFor="ob-name">What should we call you?</Label>
@@ -664,7 +662,7 @@ export function OnboardingWizard() {
                     <StepHeader
                       icon={Layers}
                       title="What do you study from?"
-                      sub="Optional — but telling MEDOS lets it build the intelligence layer above your platforms."
+                      sub="Optional — but telling MEDULA lets it build the intelligence layer above your platforms."
                     />
                     <div className="mt-6 flex flex-wrap gap-2">
                       {RESOURCE_OPTIONS.map((r) => (
@@ -718,7 +716,7 @@ export function OnboardingWizard() {
             {isReview ? (
               <Button
                 className="h-11 min-w-44 rounded-xl text-sm font-semibold tracking-wide"
-                onClick={enterMedos}
+                onClick={enterMedula}
                 disabled={saving || !stepValid}
               >
                 {saving ? (
@@ -728,7 +726,7 @@ export function OnboardingWizard() {
                   </>
                 ) : (
                   <>
-                    ENTER MEDOS
+                    ENTER MEDULA
                     <ChevronRight className="size-4" aria-hidden />
                   </>
                 )}

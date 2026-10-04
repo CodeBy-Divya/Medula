@@ -71,7 +71,7 @@ const MIXES = [
 // One-tap quick starts — jump straight into a run without touching the config
 const QUICK_STARTS = [
   { label: 'Full Mock 50', emoji: '🏛️', desc: 'The real-feel paper — 50 questions weighted across the whole bank', size: 50, mix: 'high-yield' },
-  { label: 'Grand Mock 100', emoji: '👑', desc: 'The biggest paper in MEDOS — 100 questions, 100 minutes, every subject in play', size: 100, mix: 'high-yield' },
+  { label: 'Grand Mock 100', emoji: '👑', desc: 'The biggest paper in MEDULA — 100 questions, 100 minutes, every subject in play', size: 100, mix: 'high-yield' },
   { label: 'Rapid Fire 20', emoji: '⚡', desc: 'A 20-minute mixed bag at exam pace', size: 20, mix: 'random' },
   { label: 'Weak-Spot 10', emoji: '🎯', desc: 'Ten questions aimed at your flagged weak concepts', size: 10, mix: 'weak' },
 ] as const

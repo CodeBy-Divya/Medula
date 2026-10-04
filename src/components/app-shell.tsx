@@ -6,9 +6,10 @@ import { useOnline } from '@/hooks/use-online'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
+import { Logo } from '@/components/brand/logo'
 import { cn } from '@/lib/utils'
 import {
-  Home, Map as MapIcon, BookOpen, CircleHelp, Stethoscope, RefreshCcw,
+  Home, Map as MapIcon, Brain, BookOpen, CircleHelp, Stethoscope, RefreshCcw,
   Sparkles, LineChart, Route, UserRound, Search, Moon, SunMedium, Menu, X,
   Keyboard, WifiOff,
 } from 'lucide-react'
@@ -17,6 +18,7 @@ import type { View } from '@/lib/types'
 const NAV: { id: View; label: string; icon: typeof Home; hint?: string }[] = [
   { id: 'home', label: 'Home', icon: Home },
   { id: 'map', label: 'Medical Map', icon: MapIcon },
+  { id: 'understand', label: 'Understand', icon: Brain },
   { id: 'learn', label: 'Learn', icon: BookOpen },
   { id: 'questions', label: 'Questions', icon: CircleHelp },
   { id: 'cases', label: 'Cases', icon: Stethoscope },
@@ -29,22 +31,7 @@ const NAV: { id: View; label: string; icon: typeof Home; hint?: string }[] = [
 
 const MOBILE_NAV = NAV.slice(0, 5)
 
-function Logo({ compact = false }: { compact?: boolean }) {
-  return (
-    <div className="flex items-center gap-2.5">
-      <span className="relative flex size-8 items-center justify-center rounded-xl bg-primary/15 border border-primary/30">
-        <span className="font-mono text-sm font-bold text-primary">M</span>
-        <span className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-primary animate-pulse" />
-      </span>
-      {!compact && (
-        <div className="leading-none">
-          <span className="block text-[15px] font-bold tracking-tight">MEDOS</span>
-          <span className="block text-[9px] uppercase tracking-[0.18em] text-ink-soft">Medical OS</span>
-        </div>
-      )}
-    </div>
-  )
-}
+// Brand logo comes from @/components/brand/logo (imported above)
 
 function ThemeToggle() {
   const { theme, setTheme } = useTheme()
@@ -90,7 +77,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   const logoButton = (compact: boolean) => (
-    <button onClick={() => setView('landing')} aria-label="MEDOS home" className="rounded-xl outline-none ring-primary/50 focus-visible:ring-2">
+    <button onClick={() => setView('landing')} aria-label="MEDULA home" className="rounded-xl outline-none ring-primary/50 focus-visible:ring-2">
       <Logo compact={compact} />
     </button>
   )
@@ -99,7 +86,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen flex-col">
       {/* ── Desktop sidebar ── */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-line bg-sidebar/80 backdrop-blur-xl lg:flex">
-        <div className="p-5"><button onClick={() => setView('landing')} aria-label="MEDOS home" className="rounded-xl"><Logo /></button></div>
+        <div className="p-5"><button onClick={() => setView('landing')} aria-label="MEDULA home" className="rounded-xl"><Logo /></button></div>
         <nav className="flex-1 space-y-1 px-3" aria-label="Main navigation">
           {NAV.map((item) => (
             <button
@@ -234,7 +221,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {/* Sticky footer — mt-auto keeps it pinned when content is short */}
         <footer className="mt-auto border-t border-line px-4 py-4 md:px-6">
           <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 text-[11px] text-ink-soft sm:flex-row">
-            <span>MEDOS — the intelligence layer for medical education.</span>
+            <span>MEDULA — the control centre of your medical mind.</span>
             <span>Educational platform · Not medical advice · Verify against official NMC / NBEMS sources</span>
           </div>
         </footer>

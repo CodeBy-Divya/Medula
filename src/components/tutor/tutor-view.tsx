@@ -62,7 +62,7 @@ const SUGGESTED_PROMPTS = [
 const SENSITIVE_RE = /my patient|should i (give|prescribe|start)|real patient/i
 
 const SENSITIVE_NOTICE =
-  'This looks like a real-patient question — MEDOS is educational. Discuss with your seniors/faculty.'
+  'This looks like a real-patient question — MEDULA is educational. Discuss with your seniors/faculty.'
 
 const FOOTER_TEXT =
   'Educational content only — not for real-patient decisions. The AI can be wrong; verify against standard textbooks.'

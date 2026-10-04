@@ -579,7 +579,7 @@ export function DashboardView() {
             <div className="flex-1">
               <h3 className="text-lg font-semibold tracking-tight">Take your knowledge audit</h3>
               <p className="mt-1 text-sm text-ink-soft">
-                MEDOS has no knowledge map for you yet. A short diagnostic will reveal what to study first.
+                MEDULA has no knowledge map for you yet. A short diagnostic will reveal what to study first.
               </p>
             </div>
             <Button size="lg" className="min-h-11" onClick={() => setView('progress')}>

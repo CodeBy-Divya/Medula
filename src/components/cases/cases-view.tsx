@@ -1184,7 +1184,7 @@ function LogbookPanel({ reduce }: { reduce: boolean | null }) {
           <NotebookPen className="mx-auto size-8 text-ink-soft" />
           <p className="mt-3 text-sm font-medium">Your logbook is empty</p>
           <p className="mx-auto mt-1 max-w-md text-xs leading-relaxed text-ink-soft">
-            After every ward case or interesting patient, log one line here. MEDOS turns each exposure into
+            After every ward case or interesting patient, log one line here. MEDULA turns each exposure into
             recall tasks and question sets — clinical experience becomes exam preparation.
           </p>
         </div>

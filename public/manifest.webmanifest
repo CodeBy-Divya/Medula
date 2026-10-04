@@ -1,7 +1,7 @@
 {
-  "name": "MEDOS — The Medical Learning Operating System",
-  "short_name": "MEDOS",
-  "description": "AI-powered MBBS → NEET-PG learning OS: knowledge map, spaced repetition, mock tests and a calm study companion.",
+  "name": "MEDULA — The Medical Learning Operating System",
+  "short_name": "MEDULA",
+  "description": "AI-powered MBBS → NEET-PG learning OS: knowledge galaxy, living 3D diagrams, spaced repetition, mock tests and a calm study companion.",
   "id": "/",
   "start_url": "/",
   "scope": "/",

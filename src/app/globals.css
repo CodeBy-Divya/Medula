@@ -592,3 +592,68 @@ body::before {
 @media (prefers-reduced-motion: reduce) {
   .layer3d-float { animation: none !important; }
 }
+
+/* ── Understand · living-scene engine ─────────────────────────────────────
+   Continuous loops are pure CSS so play/pause is one rule:
+   [data-playing="false"] freezes every animation inside the scene. */
+.medos-scene { display: block; width: 100%; height: auto; }
+.medos-scene[data-playing='false'],
+.medos-scene[data-playing='false'] * { animation-play-state: paused !important; }
+
+@keyframes medos-beat {
+  0%, 100% { transform: scale(1); }
+  10% { transform: scale(1.14); }
+  22% { transform: scale(0.97); }
+  34% { transform: scale(1.06); }
+  48% { transform: scale(1); }
+}
+@keyframes medos-atria {
+  0%, 100% { transform: scale(1); }
+  15% { transform: scale(0.92); }
+  45% { transform: scale(1.08); }
+}
+@keyframes medos-flow { from { offset-distance: 0%; } to { offset-distance: 100%; } }
+@keyframes medos-dash { to { stroke-dashoffset: -26; } }
+@keyframes medos-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.07); }
+}
+@keyframes medos-glow { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+@keyframes medos-floaty {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+@keyframes medos-ring {
+  0% { opacity: 0.85; transform: scale(0.75); }
+  100% { opacity: 0; transform: scale(1.6); }
+}
+@keyframes medos-scan { from { transform: translateX(0); } to { transform: translateX(420px); } }
+.medos-flow { offset-path: var(--path, none); offset-rotate: 0deg; animation: medos-flow var(--dur, 4s) linear infinite; }
+.medos-dash { animation: medos-dash 1s linear infinite; }
+.medos-anchor-pulse { animation: medos-ring 1.1s ease-out infinite; transform-origin: center; transform-box: fill-box; }
+
+@media (prefers-reduced-motion: reduce) {
+  .medos-flow, .medos-dash, .medos-anchor-pulse { animation: none !important; }
+}
+
+/* ── MEDULA galaxy premium layer ────────────────────────────────────── */
+@keyframes galaxy-rotate { to { transform: rotate(360deg); } }
+.galaxy-spin {
+  animation: galaxy-rotate 90s linear infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@keyframes galaxy-rotate-rev { to { transform: rotate(-360deg); } }
+.galaxy-spin-rev {
+  animation: galaxy-rotate-rev 140s linear infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@keyframes star-twinkle {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.9; }
+}
+.star-twinkle { animation: star-twinkle var(--tw, 3s) ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .galaxy-spin, .galaxy-spin-rev, .star-twinkle { animation: none !important; }
+}

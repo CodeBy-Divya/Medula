@@ -12,8 +12,8 @@ export const dynamic = 'force-dynamic'
 // NOTE: this is a learning-demo authenticator, not production IAM. No secrets
 // are stored; nothing here grants access to real patient or user data.
 
-const DEMO_EMAIL = 'doctor@medos.in'
-const DEMO_PASSWORD = 'medos2024'
+const DEMO_EMAIL = 'doctor@medula.in'
+const DEMO_PASSWORD = 'medula2024'
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export async function POST(req: NextRequest) {

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { motion, useInView, useReducedMotion } from 'framer-motion'
 import {
+  BrainCircuit,
   ChevronRight,
   Map as MapIcon,
   Network,
@@ -13,6 +14,7 @@ import {
   Stethoscope,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { LogoMark } from '@/components/brand/logo'
 import { useAppStore } from '@/lib/store'
 
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1]
@@ -61,13 +63,13 @@ function Eyebrow({ children }: { children: ReactNode }) {
 // ─── Fragmented → connected constellation ───
 type Pt = { x: number; y: number }
 
-const NODES: { label: string; scattered: Pt; formed: Pt; color: string }[] = [
-  { label: 'Anatomy', scattered: { x: 100, y: 84 }, formed: { x: 168, y: 128 }, color: '#38bdf8' },
-  { label: 'Physiology', scattered: { x: 688, y: 64 }, formed: { x: 632, y: 128 }, color: '#34d399' },
-  { label: 'Pathology', scattered: { x: 84, y: 384 }, formed: { x: 168, y: 332 }, color: '#38bdf8' },
-  { label: 'Pharmacology', scattered: { x: 706, y: 392 }, formed: { x: 632, y: 332 }, color: '#34d399' },
-  { label: 'Medicine', scattered: { x: 352, y: 428 }, formed: { x: 400, y: 234 }, color: '#22d3ee' },
-  { label: 'NEET-PG', scattered: { x: 452, y: 44 }, formed: { x: 400, y: 72 }, color: '#fbbf24' },
+const NODES: { label: string; latin: string; scattered: Pt; formed: Pt; color: string }[] = [
+  { label: 'Anatomy', latin: 'Morphologia', scattered: { x: 100, y: 84 }, formed: { x: 168, y: 128 }, color: '#38bdf8' },
+  { label: 'Physiology', latin: 'Physiologia', scattered: { x: 688, y: 64 }, formed: { x: 632, y: 128 }, color: '#34d399' },
+  { label: 'Pathology', latin: 'Pathologia', scattered: { x: 84, y: 384 }, formed: { x: 168, y: 332 }, color: '#38bdf8' },
+  { label: 'Pharmacology', latin: 'Pharmacologia', scattered: { x: 706, y: 392 }, formed: { x: 632, y: 332 }, color: '#34d399' },
+  { label: 'Medicine', latin: 'Medicina Interna', scattered: { x: 352, y: 428 }, formed: { x: 400, y: 234 }, color: '#22d3ee' },
+  { label: 'NEET-PG', latin: 'Examen supremum', scattered: { x: 452, y: 44 }, formed: { x: 400, y: 72 }, color: '#fbbf24' },
 ]
 
 const EDGES: [number, number][] = [
@@ -180,6 +182,7 @@ function Constellation() {
             transition={{ duration: reduce ? 0 : 1.15, delay: reduce ? 0 : 0.15 + i * 0.09, ease: EASE }}
           >
             <circle r={18} fill={n.color} opacity={0.14} />
+            <circle r={18} fill="none" stroke={n.color} strokeOpacity={connected ? 0.4 : 0.1} strokeWidth={1} />
             <circle r={5.5} fill={n.color} />
             <text
               y={26}
@@ -189,6 +192,16 @@ function Constellation() {
               fill="currentColor"
             >
               {n.label}
+            </text>
+            <text
+              y={39}
+              textAnchor="middle"
+              fontSize={9}
+              fontStyle="italic"
+              fill="currentColor"
+              opacity={0.55}
+            >
+              {n.latin}
             </text>
           </motion.g>
         ))}
@@ -202,37 +215,50 @@ const FEATURES = [
   {
     icon: MapIcon,
     title: 'Medical Map',
+    latin: 'Atlas Medicus',
     hue: 'cyan',
     desc: "Google Maps for medicine — every subject, topic and concept as a navigable knowledge graph, with your mastery painted on top.",
   },
   {
     icon: Network,
     title: 'Concept Explorer',
+    latin: 'Nexus Conceptuum',
     hue: 'sky',
     desc: "Every node answers the question “Why am I learning this?” — chains that link today's lecture to the wards, the viva and the exam hall.",
   },
   {
+    icon: BrainCircuit,
+    title: 'Understand Your Topic',
+    latin: 'Ars Vivendi Diagrammatum',
+    hue: 'emerald',
+    desc: 'The whole syllabus as living, moving 3D diagrams — narrated step by step, with every point students slip on highlighted.',
+  },
+  {
     icon: RefreshCcw,
     title: 'Adaptive Revision',
-    hue: 'emerald',
+    latin: 'Repetitio Spatiata',
+    hue: 'amber',
     desc: 'Spaced repetition driven by a real forgetting curve — each concept resurfaces exactly when your memory of it starts to decay.',
   },
   {
     icon: ScanSearch,
     title: 'Error Intelligence',
-    hue: 'amber',
+    latin: 'Analysis Errorum',
+    hue: 'sky',
     desc: 'Confusion detection and mistake-pattern analysis turn every wrong answer into a targeted fix instead of a shrug.',
   },
   {
     icon: Stethoscope,
     title: 'Clinical Case Simulator',
-    hue: 'sky',
+    latin: 'Simulationes Clinicae',
+    hue: 'cyan',
     desc: 'Progressive-reveal cases that train reasoning the way wards do — history, examination, investigations, decisions.',
   },
   {
     icon: Sparkles,
     title: 'AI Study Coach',
-    hue: 'cyan',
+    latin: 'Praeceptor Artificialis',
+    hue: 'emerald',
     desc: 'Next-best-action scheduling and an AI tutor with 7 explanation modes — from five-year-old-simple to exam-crisp.',
   },
 ] as const
@@ -276,13 +302,11 @@ export function LandingPage() {
           <a
             href="#top"
             onClick={(e) => scrollTo(e, '#top')}
-            className="flex items-center gap-2.5 text-lg font-bold tracking-tight"
+            className="flex items-center gap-2.5"
+            aria-label="MEDULA home"
           >
-            <span className="relative flex size-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-400 opacity-60" />
-              <span className="relative inline-flex size-2 rounded-full bg-cyan-400" />
-            </span>
-            MEDOS
+            <LogoMark size={34} />
+            <span className="text-lg font-extrabold tracking-tight">MEDULA</span>
           </a>
 
           <div className="hidden items-center gap-7 text-sm text-ink-soft md:flex">
@@ -341,7 +365,7 @@ export function LandingPage() {
               className="glass inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-[11px] font-medium tracking-wide text-muted-foreground sm:text-xs"
             >
               <span className="size-1.5 rounded-full bg-cyan-400" />
-              PROJECT MEDOS · The intelligence layer for medical education
+              PROJECT MEDULA · The control centre of your medical mind
             </motion.div>
 
             <motion.h1
@@ -439,6 +463,7 @@ export function LandingPage() {
                       <f.icon className="size-5" aria-hidden />
                     </div>
                     <h3 className="mt-5 text-lg font-semibold tracking-tight">{f.title}</h3>
+                    <p className="text-[10.5px] font-semibold italic uppercase tracking-wider text-primary/80">{f.latin}</p>
                     <p className="mt-2 text-sm leading-relaxed text-ink-soft">{f.desc}</p>
                   </motion.div>
                 </Reveal>
@@ -535,7 +560,7 @@ export function LandingPage() {
       {/* ─── Footer ─── */}
       <footer className="border-t border-line px-4 py-8 sm:px-6">
         <p className="mx-auto max-w-6xl text-center text-xs text-muted-foreground sm:text-left">
-          MEDOS — educational learning platform. Not medical advice. Always verify with official NMC/NBEMS sources.
+          MEDULA — the medical learning operating system. Not medical advice. Always verify with official NMC/NBEMS sources.
         </p>
       </footer>
     </div>

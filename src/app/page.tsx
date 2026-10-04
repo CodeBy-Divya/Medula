@@ -10,6 +10,7 @@ import { SignInView } from '@/components/auth/signin-view'
 import { OnboardingWizard } from '@/components/onboarding/onboarding-wizard'
 import { DashboardView } from '@/components/dashboard/dashboard-view'
 import { MedicalMapView } from '@/components/map/medical-map-view'
+import { UnderstandView } from '@/components/understand/understand-view'
 import { LearnView } from '@/components/learn/learn-view'
 import { QuestionsIndex } from '@/components/questions/questions-index'
 import { CasesView } from '@/components/cases/cases-view'
@@ -94,6 +95,7 @@ export default function Home() {
       <RegisterSW />
       {view === 'home' && <DashboardView />}
       {view === 'map' && <MedicalMapView />}
+      {view === 'understand' && <UnderstandView />}
       {view === 'learn' && <LearnView />}
       {view === 'questions' && <QuestionsIndex />}
       {view === 'cases' && <CasesView />}

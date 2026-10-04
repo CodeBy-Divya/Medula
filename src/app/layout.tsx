@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MEDOS — The Medical Learning Operating System",
+  title: "MEDULA — The Medical Learning Operating System",
   description:
     "An AI-powered learning system that connects your MBBS curriculum, clinical reasoning and NEET-PG preparation into one continuously evolving knowledge map.",
   keywords: ["MBBS", "NEET-PG", "medical education", "AI tutor", "knowledge graph", "spaced repetition"],
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "MEDOS",
+    title: "MEDULA",
   },
 };
 
