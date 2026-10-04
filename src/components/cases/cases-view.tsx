@@ -8,12 +8,14 @@ import {
   ArrowRight,
   Check,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
   Eye,
   FileText,
   Lightbulb,
   Loader2,
   NotebookPen,
+  Orbit,
   Play,
   Plus,
   RefreshCw,
@@ -28,11 +30,22 @@ import {
 
 import { api } from '@/lib/api'
 import { useAppStore } from '@/lib/store'
+import { Concept3D } from '@/components/concept/concept-3d'
+import type { ConceptDetail } from '@/lib/types'
 import { SYSTEMS } from '@/lib/types'
 import type { LogbookEntryClient } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
+
+// Case → diagrammed concept whose 3D layer diagram best explains the mechanism
+// behind the case's final diagnosis (only cases with a matching diagram).
+const CASE_3D: Record<string, string> = {
+  'case-graves': 'c-thyroidphys',
+  'case-nephrotic': 'c-gfr',
+  'case-ami': 'c-ecg',
+  'case-dka': 'c-dka',
+}
 
 // ─── Local types (mirror api.cases / api.caseDetail payloads) ────────────────
 
@@ -269,6 +282,31 @@ export function CasesView() {
   const runIdRef = useRef(0)
   const completeFiredRef = useRef(false)
 
+  // "The mechanism, in 3D" — collapsed drawer in the case report that renders
+  // the compact Concept3D diagram for the concept behind the case diagnosis.
+  const [show3d, setShow3d] = useState(false)
+  const [detail3d, setDetail3d] = useState<ConceptDetail | null>(null)
+  const [detail3dLoading, setDetail3dLoading] = useState(false)
+  const [detail3dError, setDetail3dError] = useState(false)
+
+  const concept3dId = detail ? CASE_3D[detail.id] : undefined
+
+  const load3d = useCallback((conceptId: string) => {
+    if (detail3d || detail3dLoading) return
+    setDetail3dLoading(true)
+    setDetail3dError(false)
+    api.concept(conceptId)
+      .then((d) => setDetail3d(d))
+      .catch(() => setDetail3dError(true))
+      .finally(() => setDetail3dLoading(false))
+  }, [detail3d, detail3dLoading])
+
+  const toggle3d = () => {
+    const next = !show3d
+    setShow3d(next)
+    if (next && concept3dId) load3d(concept3dId)
+  }
+
   // Cases list fetch (refetched on return from player so scores stay fresh)
   useEffect(() => {
     let cancelled = false
@@ -310,6 +348,10 @@ export function CasesView() {
     setDecisions([])
     setReport(null)
     setReportStatus('idle')
+    setShow3d(false)
+    setDetail3d(null)
+    setDetail3dLoading(false)
+    setDetail3dError(false)
     api.caseDetail(id).then(
       (res) => {
         if (runIdRef.current !== my) return
@@ -884,6 +926,60 @@ export function CasesView() {
                             </li>
                           ))}
                         </ul>
+                      </div>
+                    )}
+
+                    {/* The mechanism, in 3D — compact layer diagram for the concept
+                        behind this case (collapsed by default, lazily fetched) */}
+                    {concept3dId && (
+                      <div className="overflow-hidden rounded-2xl border border-line bg-surface-2">
+                        <button
+                          type="button"
+                          onClick={toggle3d}
+                          aria-expanded={show3d}
+                          className="flex w-full items-center gap-2 p-3.5 text-left transition-colors hover:text-primary md:p-4"
+                        >
+                          <Orbit className="size-3.5 shrink-0 text-primary" />
+                          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
+                            The mechanism, in 3D
+                          </span>
+                          <ChevronDown
+                            className={`ml-auto size-4 shrink-0 text-ink-soft transition-transform ${show3d ? '' : '-rotate-90'}`}
+                          />
+                        </button>
+                        <AnimatePresence initial={false}>
+                          {show3d && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.22 }}
+                            >
+                              <div className="border-t border-line p-3.5 md:p-4">
+                                {detail3dLoading && (
+                                  <div className="space-y-2.5">
+                                    <Skeleton className="h-8 w-1/2 rounded-full" />
+                                    <Skeleton className="h-[240px] w-full rounded-2xl md:h-[290px]" />
+                                  </div>
+                                )}
+                                {detail3dError && !detail3dLoading && (
+                                  <div className="flex flex-wrap items-center gap-2 rounded-xl border border-sev-crit/30 bg-sev-crit/5 px-3 py-2.5">
+                                    <p className="text-xs text-ink-soft">Couldn&apos;t load the 3D diagram for this concept.</p>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="ml-auto min-h-8"
+                                      onClick={() => concept3dId && load3d(concept3dId)}
+                                    >
+                                      <RefreshCw className="mr-1.5 size-3" />Retry
+                                    </Button>
+                                  </div>
+                                )}
+                                {detail3d && <Concept3D detail={detail3d} compact />}
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
                     )}
 

@@ -14,10 +14,12 @@ import {
   RefreshCw,
   Target,
   TrendingUp,
+  Zap,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 import { api } from '@/lib/api'
+import { useAppStore } from '@/lib/store'
 import type { ProgressPayload, SubjectSummary } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -393,6 +395,8 @@ function SubjectCard({ s, maxWeight, index }: { s: ProgressPayload['subjects'][n
 // ─── Main view ───────────────────────────────────────────────────────────────
 
 export function ProgressView() {
+  const setView = useAppStore((s) => s.setView)
+  const setQuizPreset = useAppStore((s) => s.setQuizPreset)
   const [data, setData] = useState<ProgressPayload | null>(null)
   const [status, setStatus] = useState<LoadState>('loading')
   const [reloadKey, setReloadKey] = useState(0)
@@ -682,6 +686,23 @@ export function ProgressView() {
                       <Lightbulb className="mt-0.5 size-3.5 shrink-0 text-sev-warn" />
                       <p className="text-[11px] italic leading-relaxed text-ink-soft">{c.mnemonic}</p>
                     </div>
+
+                    {/* pair drill hand-off */}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setQuizPreset({ pairId: c.id, pairLabel: `${c.a} vs ${c.b}`, count: 6 })
+                        setView('questions')
+                      }}
+                      className={cn(
+                        'mt-2.5 min-h-9 w-full gap-1.5 text-xs',
+                        c.detected && 'border-sev-crit/40 text-sev-crit hover:bg-sev-crit/10',
+                      )}
+                    >
+                      <Zap className="size-3.5" />
+                      {c.detected ? 'You mixed these up — drill now' : 'Drill this pair'}
+                    </Button>
                   </li>
                 ))}
               </ul>

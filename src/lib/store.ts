@@ -50,7 +50,7 @@ interface AppState {
   searchOpen: boolean
   auditOpen: boolean
   mapScope: string | null // pending scope to apply in the map view (e.g. "subject:anatomy")
-  quizPreset: { subjectCode?: string; system?: string; conceptId?: string; count?: number } | null
+  quizPreset: { subjectCode?: string; system?: string; conceptId?: string; count?: number; pairId?: string; pairLabel?: string } | null
   setView: (v: View) => void
   setProfile: (p: Profile | null) => void
   setHydrated: (v: boolean) => void

@@ -52,6 +52,8 @@ interface RunParams {
   conceptId?: string
   count?: number
   qtype?: string
+  pairId?: string
+  pairLabel?: string
 }
 
 interface ResultEntry {
@@ -71,6 +73,8 @@ interface QuizPresetParams {
   system?: string
   conceptId?: string
   count?: number
+  pairId?: string
+  pairLabel?: string
 }
 
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1]
@@ -121,6 +125,19 @@ function FocusBanner({ label }: { label: string }) {
       <p className="leading-snug">
         <span className="font-semibold text-primary">Focused practice</span>
         <span className="text-ink-soft"> — drilling questions linked to </span>
+        <span className="font-medium">{label}</span>
+      </p>
+    </div>
+  )
+}
+
+function PairBanner({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-2.5 rounded-xl border border-sev-warn/40 bg-sev-warn/10 px-4 py-3 text-sm">
+      <Zap className="size-4 shrink-0 text-sev-warn" />
+      <p className="leading-snug">
+        <span className="font-semibold text-sev-warn">Confusion-pair drill</span>
+        <span className="text-ink-soft"> — separating </span>
         <span className="font-medium">{label}</span>
       </p>
     </div>
@@ -248,6 +265,7 @@ export function QuizView() {
 
   // Run state
   const [runStatus, setRunStatus] = useState<RunStatus>('loading')
+  const [pairLabel, setPairLabel] = useState<string | null>(null)
   const [questions, setQuestions] = useState<QuestionClient[]>([])
   const [qIndex, setQIndex] = useState(0)
   const [selected, setSelected] = useState<string | null>(null)
@@ -308,6 +326,7 @@ export function QuizView() {
     setErrorType(null)
     setErrorSaved(false)
     setLastKnowledge(null)
+    setPairLabel(params.pairId ? (params.pairLabel ?? 'a confusable pair') : null)
     if (params.conceptId) {
       setFocusLabel('Focused concept')
       api.concept(params.conceptId).then(
@@ -317,7 +336,9 @@ export function QuizView() {
     } else {
       setFocusLabel(null)
     }
-    api.questions({ ...params, count: params.count ?? 10 }).then(
+    const { pairId, pairLabel, ...rest } = params
+    void pairLabel
+    api.questions({ ...rest, pair: pairId, count: params.count ?? 10 }).then(
       (res) => {
         if (!res.questions.length) {
           setRunStatus('empty')
@@ -346,6 +367,8 @@ export function QuizView() {
         system: preset.system,
         conceptId: preset.conceptId,
         count: preset.count ?? 6,
+        pairId: preset.pairId,
+        pairLabel: preset.pairLabel,
       })
     }, 0)
     return () => window.clearTimeout(t)
@@ -516,7 +539,7 @@ export function QuizView() {
           </p>
         </header>
 
-        {focusLabel && <FocusBanner label={focusLabel} />}
+        {pairLabel ? <PairBanner label={pairLabel} /> : focusLabel && <FocusBanner label={focusLabel} />}
 
         {subjectsStatus === 'loading' && <ConfigSkeleton />}
         {subjectsStatus === 'error' && (
@@ -658,7 +681,7 @@ export function QuizView() {
           </AlertDialog>
         </div>
 
-        {focusLabel && <FocusBanner label={focusLabel} />}
+        {pairLabel ? <PairBanner label={pairLabel} /> : focusLabel && <FocusBanner label={focusLabel} />}
 
         {runStatus === 'loading' && <RunSkeleton />}
         {runStatus === 'error' && <LoadErrorCard message="Couldn't start this session" onRetry={retryRun} />}

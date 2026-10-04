@@ -10,6 +10,8 @@ export const dynamic = 'force-dynamic'
 // mix=random     → uniform shuffle (default)
 // subjects=MED,SURG → restrict the pool to these subject codes (composable with any mix;
 //                       only applied when the single `subjectCode` param is absent)
+// pair=cf-11     → confusion-pair drill: questions tagged to either concept of the
+//                  ConfusionPair, topped up from the pair's own subject if short
 type Mix = 'random' | 'high-yield' | 'weak'
 
 const MAX_SUBJECT_FILTERS = 25 // hard cap on the comma-separated subjects list
@@ -21,6 +23,7 @@ export async function GET(req: NextRequest) {
   const system = sp.get('system') ?? undefined
   const conceptId = sp.get('conceptId') ?? undefined
   const qtype = sp.get('qtype') ?? undefined
+  const pairId = sp.get('pair') ?? undefined
   const mix = (sp.get('mix') ?? 'random') as Mix
   const count = Math.min(50, Math.max(1, Number(sp.get('count') ?? 10)))
 
@@ -40,6 +43,24 @@ export async function GET(req: NextRequest) {
   if (system) where.system = system
   if (conceptId) where.OR = [{ conceptId }, { concept: { edgesIn: { some: { fromId: conceptId } } } }]
   if (qtype) where.qtype = qtype
+
+  // Confusion-pair drill: resolve the pair, then pull questions tied to either
+  // of its concepts. Pairs without concept codes drill from the pair's subject.
+  let pairSubject: string | null = null
+  if (pairId) {
+    const pair = await db.confusionPair.findUnique({ where: { id: pairId } })
+    if (!pair) {
+      return NextResponse.json({ error: 'Unknown confusion pair' }, { status: 404 })
+    }
+    const codes = [pair.aCode, pair.bCode].filter(Boolean)
+    if (codes.length > 0) {
+      where.OR = codes.map((c) => ({ conceptId: c }))
+    } else {
+      where.subjectCode = pair.subjectCode
+    }
+    // Remember the pair's subject so a short pool can be topped up below.
+    pairSubject = pair.subjectCode
+  }
 
   const all = await db.question.findMany({ where, take: 500 })
 
@@ -93,6 +114,18 @@ export async function GET(req: NextRequest) {
   } else {
     // shuffle deterministically-ish then slice
     pool = shuffle([...all]).slice(0, count)
+  }
+
+  // Pair drill top-up: if the two concepts alone don't fill the ask, top up
+  // from the pair's own subject (excluding what we already picked) so the
+  // drill still feels like a run without diluting beyond the subject.
+  if (pairId && pairSubject && pool.length < count) {
+    const have = new Set(pool.map(q => q.id))
+    const filler = await db.question.findMany({
+      where: { subjectCode: pairSubject, id: { notIn: [...have] } },
+      take: count - pool.length,
+    })
+    pool = [...pool, ...shuffle(filler)]
   }
 
   const questions: QuestionClient[] = pool.map(q => ({

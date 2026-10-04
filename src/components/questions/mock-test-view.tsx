@@ -55,7 +55,7 @@ interface MockAnswer {
   teaching?: string
 }
 
-const SIZES = [10, 15, 20] as const
+const SIZES = [10, 15, 20, 50] as const
 const SEC_PER_Q = 60 // NEET-PG pace: ~1 min per question
 
 // Paper-mix presets — how the question set is composed
@@ -64,6 +64,13 @@ const MIXES = [
   { id: 'weak', label: 'Weak-Areas Focus', emoji: '🎯', desc: 'Pulled from concepts your knowledge map flags as weak or unstable' },
   { id: 'random', label: 'Mixed Bag', emoji: '🎲', desc: 'A uniform draw across the whole bank — good for surprises' },
   { id: 'custom', label: 'Build My Paper', emoji: '🧪', desc: 'Pick your own subject mix — your personal mock, your rules' },
+] as const
+
+// One-tap quick starts — jump straight into a run without touching the config
+const QUICK_STARTS = [
+  { label: 'Full Mock 50', emoji: '🏛️', desc: 'The real-feel paper — 50 questions weighted across the whole bank', size: 50, mix: 'high-yield' },
+  { label: 'Rapid Fire 20', emoji: '⚡', desc: 'A 20-minute mixed bag at exam pace', size: 20, mix: 'random' },
+  { label: 'Weak-Spot 10', emoji: '🎯', desc: 'Ten questions aimed at your flagged weak concepts', size: 10, mix: 'weak' },
 ] as const
 
 // Quick-pick bundles for the custom paper builder (codes must match seeded subjects)
@@ -162,14 +169,16 @@ export function MockTestView() {
     }
   }, [phase, submitAll])
 
-  const startTest = () => {
+  const startTest = (override?: { size?: (typeof SIZES)[number]; mix?: (typeof MIXES)[number]['id'] }) => {
+    const useSize = override?.size ?? size
+    const useMix = override?.mix ?? mix
     setLoadState('loading')
     api
       .questions({
-        count: size,
+        count: useSize,
         // Custom papers draw from the picked subjects, weighted by NEET yield
-        mix: mix === 'custom' ? 'high-yield' : mix,
-        ...(customActive && picked.size > 0 ? { subjects: [...picked].join(',') } : {}),
+        mix: useMix === 'custom' ? 'high-yield' : useMix,
+        ...(useMix === 'custom' && picked.size > 0 ? { subjects: [...picked].join(',') } : {}),
       })
       .then((res) => {
         if (!res.questions.length) {
@@ -295,6 +304,30 @@ export function MockTestView() {
         </header>
 
         <section className="glass space-y-6 rounded-2xl p-5 md:p-7">
+          {/* Quick starts — one tap, straight into the run */}
+          <div className="space-y-3">
+            <label className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-soft">
+              Start straight away
+            </label>
+            <div className="grid gap-2 sm:grid-cols-3">
+              {QUICK_STARTS.map((qk) => (
+                <button
+                  key={qk.label}
+                  type="button"
+                  disabled={loadState === 'loading'}
+                  onClick={() => startTest({ size: qk.size, mix: qk.mix })}
+                  className="clay-btn min-h-11 border border-line bg-surface-2/40 p-3 text-left transition-colors hover:border-primary/40 disabled:pointer-events-none disabled:opacity-50"
+                >
+                  <span className="flex items-center gap-1.5 text-sm font-semibold">
+                    <span aria-hidden>{qk.emoji}</span>
+                    <span className="whitespace-nowrap">{qk.label}</span>
+                  </span>
+                  <span className="mt-1 block text-[11px] leading-snug text-ink-soft">{qk.desc}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="space-y-3">
             <label className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-soft">Test length</label>
             <div className="flex flex-wrap gap-2">
@@ -459,7 +492,7 @@ export function MockTestView() {
             <li className="flex items-center gap-2">🧠 <span>Every attempt still updates your knowledge map and spaced-repetition schedule.</span></li>
           </ul>
 
-          <Button size="lg" className="min-h-12 w-full text-base font-semibold" onClick={startTest} disabled={loadState === 'loading' || !canStart}>
+          <Button size="lg" className="min-h-12 w-full text-base font-semibold" onClick={() => startTest()} disabled={loadState === 'loading' || !canStart}>
             {loadState === 'loading' ? <Loader2 className="size-5 animate-spin" /> : <Play className="size-5" />}
             BEGIN MOCK TEST
           </Button>
@@ -656,7 +689,7 @@ export function MockTestView() {
               <p className="text-xs text-ink-soft">{questions.length} questions · {fmtTime(size * SEC_PER_Q - secondsLeft)} used</p>
             </div>
           </div>
-          <Button variant="outline" className="min-h-11 gap-2" onClick={startTest}>
+          <Button variant="outline" className="min-h-11 gap-2" onClick={() => startTest()}>
             <RotateCcw className="size-4" /> New mock
           </Button>
         </header>

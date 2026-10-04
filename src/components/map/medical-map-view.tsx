@@ -333,9 +333,10 @@ export function MedicalMapCanvas({
 
   useEffect(() => { void load(scope) }, [scope, load])
 
-  // Pending scope handed over from the dashboard Branch Galaxy
+  // Pending scope handed over from the dashboard Branch Galaxy / Roadmap.
+  // 'tour' is NOT a scope — it's consumed by the auto-tour effect below.
   useEffect(() => {
-    if (!mapScope) return
+    if (!mapScope || mapScope === 'tour') return
     setScope(mapScope)
     setMapScope(null)
   }, [mapScope, setMapScope])
@@ -560,6 +561,14 @@ export function MedicalMapCanvas({
     setTour(null)
     setAppView('questions')
   }, [setQuizPreset, setAppView])
+
+  // Pending scope 'tour' (handed over from the Roadmap "Repair weakest" block)
+  // → auto-start the guided tour once the graph data has loaded.
+  useEffect(() => {
+    if (mapScope !== 'tour' || !data) return
+    setMapScope(null)
+    startTour()
+  }, [mapScope, data, setMapScope, startTour])
 
   const centerId = scope.startsWith('concept:') ? scope.slice(8) : null
   const centerName = centerId ? data?.nodes.find(n => n.id === centerId)?.name ?? 'Focused concept' : null

@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react'
 import { useAppStore, viewFromHash } from '@/lib/store'
 import { api } from '@/lib/api'
 import { AppShell } from '@/components/app-shell'
+import { RegisterSW } from '@/components/pwa/register-sw'
 import { LandingPage } from '@/components/landing/landing-page'
 import { SignInView } from '@/components/auth/signin-view'
 import { OnboardingWizard } from '@/components/onboarding/onboarding-wizard'
@@ -85,6 +86,7 @@ export default function Home() {
   // ── App views inside the shell ──
   return (
     <AppShell>
+      <RegisterSW />
       {view === 'home' && <DashboardView />}
       {view === 'map' && <MedicalMapView />}
       {view === 'learn' && <LearnView />}

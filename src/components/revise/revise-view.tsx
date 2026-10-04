@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { animate, AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { ArrowRight, Brain, CheckCircle2, Loader2, RefreshCw, Sparkles, Timer, XCircle } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -240,8 +240,11 @@ export function ReviseView() {
   const [reloadKey, setReloadKey] = useState(0)
 
   // flashcard deck (local so reviewed cards stay gone between data refreshes)
-  const [deck, setDeck] = useState<DueFlashcard[] | null>(null)
-  const [deckTotal, setDeckTotal] = useState(0)
+  // fullDeck = every due card; deck = the ACTIVE QUEUE (respects subject filter);
+  // graded = cards already reviewed this session (moves out of fullDeck).
+  const [fullDeck, setFullDeck] = useState<DueFlashcard[] | null>(null)
+  const [graded, setGraded] = useState<DueFlashcard[]>([])
+  const [activeSub, setActiveSub] = useState<string | null>(null) // null = all subjects
   const [flipped, setFlipped] = useState(false)
   const [grading, setGrading] = useState(false)
   const [feedback, setFeedback] = useState<number | null>(null)
@@ -259,8 +262,9 @@ export function ReviseView() {
       (payload) => {
         if (cancelled) return
         setData(payload)
-        setDeck(payload.dueFlashcards)
-        setDeckTotal(payload.dueFlashcards.length)
+        setFullDeck(payload.dueFlashcards)
+        setGraded([])
+        setActiveSub(null)
         setStatus('ready')
       },
       () => {
@@ -278,8 +282,37 @@ export function ReviseView() {
     setReloadKey((k) => k + 1)
   }, [])
 
+  // Active queue = full deck filtered by the chosen subject chip (null = all)
+  const deck = useMemo(
+    () =>
+      fullDeck
+        ? activeSub
+          ? fullDeck.filter((c) => c.subjectCode === activeSub)
+          : fullDeck
+        : null,
+    [fullDeck, activeSub],
+  )
+
+  // Remaining cards per subject → filter chips (only when >1 subject is due)
+  const subjectChips = useMemo(() => {
+    if (!fullDeck) return []
+    const m = new Map<string, number>()
+    for (const c of fullDeck) m.set(c.subjectCode, (m.get(c.subjectCode) ?? 0) + 1)
+    return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+  }, [fullDeck])
+
   const current = deck && deck.length > 0 ? deck[0] : null
-  const reviewed = deck ? deckTotal - deck.length : 0
+  const gradedInScope = useMemo(
+    () => (activeSub ? graded.filter((c) => c.subjectCode === activeSub) : graded),
+    [graded, activeSub],
+  )
+  const scopeTotal = (deck?.length ?? 0) + gradedInScope.length
+  const reviewed = gradedInScope.length
+
+  // Switching subject filter resets the flip so the next card starts face-down
+  useEffect(() => {
+    setFlipped(false)
+  }, [activeSub])
 
   const grade = useCallback(
     async (g: number) => {
@@ -294,7 +327,8 @@ export function ReviseView() {
         }
         setFeedback(typeof res.nextDueDays === 'number' ? res.nextDueDays : null)
         setFlipped(false)
-        setDeck((d) => (d ? d.slice(1) : d))
+        setGraded((g) => [...g, card])
+        setFullDeck((d) => (d ? d.filter((c) => c.id !== card.id) : d))
       } catch {
         setGradeError(true)
       } finally {
@@ -369,7 +403,7 @@ export function ReviseView() {
   if (status === 'error' || !data) return <ReviseError onRetry={retry} />
 
   const { debt, counts, dueConcepts } = data
-  const progressPct = deckTotal > 0 ? Math.round((reviewed / deckTotal) * 100) : 0
+  const progressPct = scopeTotal > 0 ? Math.round((reviewed / scopeTotal) * 100) : 0
   const recallTone = (r: number) => (r < 50 ? 'bg-sev-crit' : r < 75 ? 'bg-sev-warn' : 'bg-sev-ok')
 
   return (
@@ -426,7 +460,7 @@ export function ReviseView() {
             >
               Flashcards
               <span className="rounded-full bg-primary/15 px-1.5 text-[10px] font-bold tabular-nums text-primary">
-                {deck?.length ?? 0}
+                {fullDeck?.length ?? 0}
               </span>
             </TabsTrigger>
             <TabsTrigger
@@ -442,13 +476,52 @@ export function ReviseView() {
 
           {/* ── FLASHCARDS ── */}
           <TabsContent value="flashcards" className="space-y-4">
+            {/* subject filter chips (only when the deck spans >1 subject) */}
+            {deck && fullDeck && fullDeck.length > 0 && subjectChips.length > 1 && (
+              <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filter deck by subject">
+                <button
+                  type="button"
+                  aria-pressed={!activeSub}
+                  onClick={() => setActiveSub(null)}
+                  className={cn(
+                    'min-h-8 rounded-full border px-3 py-1 text-[11px] font-semibold tabular-nums transition-colors',
+                    !activeSub
+                      ? 'border-primary/60 bg-primary/15 text-primary'
+                      : 'border-line bg-surface-2 text-ink-soft hover:border-primary/40 hover:text-foreground',
+                  )}
+                >
+                  All · {fullDeck.length}
+                </button>
+                {subjectChips.map(([code, n]) => (
+                  <button
+                    key={code}
+                    type="button"
+                    aria-pressed={activeSub === code}
+                    onClick={() => setActiveSub(code)}
+                    className={cn(
+                      'min-h-8 rounded-full border px-3 py-1 text-[11px] font-semibold tabular-nums transition-colors',
+                      activeSub === code
+                        ? 'border-primary/60 bg-primary/15 text-primary'
+                        : 'border-line bg-surface-2 text-ink-soft hover:border-primary/40 hover:text-foreground',
+                    )}
+                  >
+                    {code} · {n}
+                  </button>
+                ))}
+              </div>
+            )}
             {current ? (
               <>
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-xs text-ink-soft">
                     <span>
                       card <span className="font-semibold tabular-nums text-foreground">{reviewed + 1}</span>/
-                      <span className="tabular-nums">{deckTotal}</span>
+                      <span className="tabular-nums">{scopeTotal}</span>
+                      {activeSub && (
+                        <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold tracking-wide text-primary">
+                          {activeSub}
+                        </span>
+                      )}
                     </span>
                     <span className="hidden text-[11px] text-muted-foreground sm:inline">
                       Space — flip · 1–4 — grade
@@ -521,6 +594,18 @@ export function ReviseView() {
                   </p>
                 )}
               </>
+            ) : fullDeck && fullDeck.length > 0 ? (
+              /* filter exhausted but cards remain elsewhere */
+              <div
+                className="flex flex-col items-center gap-3 rounded-2xl border border-line/60 bg-surface-2/30 px-4 py-10 text-center"
+                role="status"
+              >
+                <CheckCircle2 className="size-8 text-sev-ok" aria-hidden />
+                <p className="text-sm font-semibold">All {activeSub} cards graded this session.</p>
+                <Button size="sm" variant="outline" className="min-h-9" onClick={() => setActiveSub(null)}>
+                  Show the {fullDeck.length} remaining card{fullDeck.length === 1 ? '' : 's'}
+                </Button>
+              </div>
             ) : (
               <EmptyState
                 icon={CheckCircle2}

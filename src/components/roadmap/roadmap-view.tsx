@@ -54,7 +54,7 @@ const BLOCK_ACTION_LABEL: Record<string, string> = {
   mocks: 'Start a mock',
   revision: 'Open Revise',
   flashcards: 'Recall drill',
-  weakness: 'Go to next best action',
+  weakness: 'Repair weakest on the Map',
 }
 
 function fmtDur(minutes: number): string {
@@ -407,6 +407,7 @@ function RoadmapError({ onRetry }: { onRetry: () => void }) {
 export function RoadmapView() {
   const setView = useAppStore((s) => s.setView)
   const setQuizPreset = useAppStore((s) => s.setQuizPreset)
+  const setMapScope = useAppStore((s) => s.setMapScope)
 
   const [data, setData] = useState<RoadmapPayload | null>(null)
   const [status, setStatus] = useState<LoadState>('loading')
@@ -453,11 +454,14 @@ export function RoadmapView() {
           setView('revise')
           break
         case 'weakness':
-          setView('home')
+          // Hand off to the Medical Map with its guided tour — struggle zones
+          // first, then the highest-leverage hub concepts.
+          setMapScope('tour')
+          setView('map')
           break
       }
     },
-    [setQuizPreset, setView],
+    [setQuizPreset, setView, setMapScope],
   )
 
   if (status === 'loading') return <RoadmapSkeleton />

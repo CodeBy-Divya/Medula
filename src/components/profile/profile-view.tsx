@@ -9,6 +9,7 @@ import {
   CalendarClock,
   Check,
   Clock3,
+  CloudOff,
   GraduationCap,
   Hourglass,
   Info,
@@ -23,6 +24,7 @@ import type { LucideIcon } from 'lucide-react'
 import { api } from '@/lib/api'
 import { useAppStore } from '@/lib/store'
 import { useToast } from '@/hooks/use-toast'
+import { useSWStatus, type SWStatus } from '@/hooks/use-sw-status'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -311,6 +313,46 @@ function ExamModeCard({ profile, onSaved }: { profile: Profile; onSaved: (p: Pro
         {saving ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Check className="size-4" aria-hidden />}
         Save exam mode
       </Button>
+    </Card>
+  )
+}
+
+// ─── Offline & install status ───────────────────────────────────────────────────
+
+const SW_STATUS_META: Record<SWStatus, { label: string; detail: string; ok: boolean }> = {
+  checking: { label: 'Checking…', detail: 'Reading the offline-shell status.', ok: true },
+  active: { label: 'Offline shell active', detail: 'MEDOS opens even without a connection — questions you already loaded stay available.', ok: true },
+  registering: { label: 'Offline shell ready', detail: 'Fully offline on your next visit after this one.', ok: true },
+  dev: { label: 'Dev preview — shell dormant', detail: 'The offline shell ships with production builds so edited code always stays fresh here.', ok: true },
+  unsupported: { label: 'Not available here', detail: 'This browser does not support offline shells.', ok: false },
+}
+
+function OfflineCard() {
+  const status = useSWStatus()
+  const meta = SW_STATUS_META[status]
+  return (
+    <Card icon={CloudOff} title="Offline & install">
+      <div className="space-y-3">
+        <div className="flex items-start gap-2.5">
+          {status === 'checking' ? (
+            <Loader2 className="mt-0.5 size-3.5 shrink-0 animate-spin text-primary" aria-hidden />
+          ) : (
+            <Check
+              className={`mt-0.5 size-3.5 shrink-0 ${meta.ok ? 'text-sev-ok' : 'text-sev-warn'}`}
+              aria-hidden
+            />
+          )}
+          <div className="min-w-0">
+            <p className="text-xs font-semibold" aria-live="polite">{meta.label}</p>
+            <p className="mt-0.5 text-[11px] leading-relaxed text-ink-soft">{meta.detail}</p>
+          </div>
+        </div>
+        <p className="rounded-lg bg-surface-2/60 px-3 py-2 text-[11px] leading-relaxed text-ink-soft">
+          To install MEDOS as an app: open your browser menu and choose
+          {' '}<span className="font-semibold">“Add to Home Screen”</span> (mobile) or
+          {' '}<span className="font-semibold">“Install app”</span> (desktop Chrome/Edge).
+        </p>
+      </div>
     </Card>
   )
 }
@@ -840,6 +882,8 @@ export function ProfileView() {
               ))}
             </ul>
           </Card>
+
+          <OfflineCard />
         </div>
       </div>
     </div>
