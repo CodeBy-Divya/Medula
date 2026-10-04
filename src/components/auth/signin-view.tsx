@@ -11,7 +11,7 @@ import { ArrowLeft, Eye, EyeOff, History, Loader2, LockKeyhole, LogIn, Mail, Shi
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useAppStore, readStoredView, viewToLabel } from '@/lib/store'
+import { useAppStore, readStoredView, viewToLabel, writeStoredSession } from '@/lib/store'
 import type { Profile, View } from '@/lib/types'
 
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1]
@@ -68,6 +68,8 @@ export function SignInView() {
         setPhase('error')
         return
       }
+      // Explicit session — reloads stay signed in; sign-out clears it.
+      writeStoredSession(data.account === 'demo' ? 'demo' : 'new')
       enterApp(data.profile ?? null)
     } catch {
       setError('Could not reach the server. Check your connection and try again.')

@@ -12,6 +12,34 @@ export const APP_VIEWS: readonly View[] = [
 ] as const
 
 export const LAST_VIEW_KEY = 'medos:last-view'
+export const SESSION_KEY = 'medos:session'
+
+// ── Session flag ───────────────────────────────────────────────────────
+// The demo backend has no cookies — GET /api/profile always returns the
+// seeded account. To keep sign-in meaningful, the client records an
+// explicit "session" in localStorage only after the user actually signs
+// in (or finishes onboarding). Reloads with an active session resume the
+// app; sign-out (or a fresh browser) starts from the landing page.
+export type StoredSession = { account: 'demo' | 'new'; at: number }
+
+export function readStoredSession(): StoredSession | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.localStorage.getItem(SESSION_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as Partial<StoredSession>
+    if (parsed?.account !== 'demo' && parsed?.account !== 'new') return null
+    return { account: parsed.account, at: typeof parsed.at === 'number' ? parsed.at : 0 }
+  } catch { return null }
+}
+
+export function writeStoredSession(account: 'demo' | 'new'): void {
+  try { window.localStorage.setItem(SESSION_KEY, JSON.stringify({ account, at: Date.now() })) } catch { /* private mode */ }
+}
+
+export function clearStoredSession(): void {
+  try { window.localStorage.removeItem(SESSION_KEY) } catch { /* private mode */ }
+}
 
 export function isAppView(v: string | null): v is View {
   return !!v && (APP_VIEWS as readonly string[]).includes(v)

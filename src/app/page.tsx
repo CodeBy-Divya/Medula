@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { useAppStore, viewFromHash } from '@/lib/store'
+import { readStoredSession, useAppStore, viewFromHash } from '@/lib/store'
 import { api } from '@/lib/api'
 import { AppShell } from '@/components/app-shell'
 import { RegisterSW } from '@/components/pwa/register-sw'
@@ -46,8 +46,12 @@ export default function Home() {
     }
   }, [view])
 
-  // Hydrate profile once — decides landing vs app
+  // Hydrate profile once — but only for an explicit session.
+  // GET /api/profile always returns the demo account, so without the
+  // session gate every reload would silently skip sign-in. With it:
+  // fresh visitor → landing page; signed-in reload → straight back in.
   useEffect(() => {
+    if (!readStoredSession()) return
     let ok = true
     api.getProfile()
       .then((r) => {

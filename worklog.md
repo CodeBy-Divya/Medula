@@ -458,3 +458,29 @@ Work Log:
 Stage Summary:
 - Round 9 closes 5 of 6 Task-12 priorities (bank→137 + pairs cf-13/14, error-pattern debrief, mock retry-wrong, Socratic pair tutor; PWA prod-build check remains document-only per sandbox limits) and ties the round's content into every surface: the new questions feed practice/mock/search, cf-13/14 are drillable + drillable-via-AI, shock/HF/trauma/scrotum now have 3D diagrams and flashcards, and the mock report finally lets you re-attack exactly what you got wrong.
 - NEXT ROUND PRIORITIES: (1) continue bank expansion toward 200 (another ~30 Qs; still thin: fluids non-GI, cardiac arrhythmia management beyond cf-8, CNS infections, PLC/anaemia, electrolytes beyond K; new pairs to consider: Bell palsy vs Ramsay Hunt, MCD vs FSGS, complete vs partial molar) (2) Socratic drill should log its outcome back into the knowledge engine (a "drill completed" event on End-drill after ≥4 probes, mapped to the pair's concepts) (3) pair-drill error pattern could persist across runs (store per-pair a-vs-b miss history in the profile) so Progress shows a trend arrow (4) retry-wrong could offer "wrong only, no skipped" split (5) 3D diagrams for remaining concepts (26/88 custom; strong candidates: c-ulcer, c-fluids, c-cushing, c-antitb, c-appendicitis) (6) Grand Mock 200 still needs the bank at ~200 (3) consider exposing Socratic drills from Progress confusion list rows too.
+
+---
+Task ID: 9
+Agent: Z.ai Code (main)
+Task: Investigate & fix "sign-in happens automatically" — make sign-in explicit, add real sign-out
+
+Work Log:
+- Investigated auth flow: `GET /api/profile` unconditionally returns the seeded demo account (single-account demo backend, no cookies/sessions); `page.tsx` hydration effect called it on every load and jumped straight into the app → landing + sign-in pages were skipped on every reload, and the app had NO sign-out anywhere. Sign-in was effectively dead code.
+- Fix: introduced an explicit client-side session flag persisted in localStorage (`medos:session`):
+  - `src/lib/store.ts`: added `SESSION_KEY`, `StoredSession`, `readStoredSession()`, `writeStoredSession(account)`, `clearStoredSession()`.
+  - `src/app/page.tsx`: hydration now runs ONLY when a stored session exists — fresh visitors stay on the landing page; signed-in reloads resume the app (deep-link hash > last view > home).
+  - `src/components/auth/signin-view.tsx`: writes the session on successful sign-in (both form and one-tap demo paths).
+  - `src/components/profile/profile-view.tsx`: new "Account session" card (demo account badge + Active pill) with a Sign out button → clears session, clears store profile, routes to sign-in, toast confirmation. Last-view memory intentionally kept so the next sign-in resumes where the doctor left off.
+  - Onboarding needs no change: it is only reachable after sign-in, so the session already exists.
+- Verified with agent-browser E2E:
+  1. Fresh visit + localStorage cleared → stays on landing page (no auto sign-in) ✅
+  2. Sign in via "Use demo account" → enters app at #/home ✅
+  3. Reload while signed in → resumes app directly (explicit session honored) ✅
+  4. Profile → Account session → Sign out → sign-in screen, `medos:session` removed ✅
+  5. Reload after sign-out → landing page again (no auto re-login) ✅
+- `bun run lint`: 0 errors (only pre-existing seed.ts warning). dev.log clean during the whole flow.
+
+Stage Summary:
+- Sign-in is now an intentional act, not an automatic bypass. Session semantics: fresh browser → landing; explicit sign-in → app; reload → stays signed in; sign-out → returns to sign-in and stays out across reloads.
+- Files touched: src/lib/store.ts, src/app/page.tsx, src/components/auth/signin-view.tsx, src/components/profile/profile-view.tsx.
+- Note: the backend remains a single-account demo (GET /api/profile always returns the demo doctor). When real multi-user auth is added, replace the localStorage session flag with server sessions/cookies — the session gate in page.tsx is the single integration point.

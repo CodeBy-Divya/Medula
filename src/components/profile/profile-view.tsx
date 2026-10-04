@@ -14,6 +14,7 @@ import {
   Hourglass,
   Info,
   Loader2,
+  LogOut,
   Palette,
   Pencil,
   ShieldAlert,
@@ -22,7 +23,7 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { api } from '@/lib/api'
-import { useAppStore } from '@/lib/store'
+import { clearStoredSession, useAppStore } from '@/lib/store'
 import { useToast } from '@/hooks/use-toast'
 import { useSWStatus, type SWStatus } from '@/hooks/use-sw-status'
 import { Button } from '@/components/ui/button'
@@ -372,6 +373,19 @@ export function ProfileView() {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+
+  // Explicit sign-out: drop the client session, clear the store profile and
+  // return to the sign-in screen. The stored last view is intentionally kept
+  // — the next sign-in resumes right where the doctor left off.
+  const signOut = () => {
+    clearStoredSession()
+    setStoreProfile(null)
+    setView('signin')
+    toast({
+      title: 'Signed out',
+      description: 'Your map remembers where you left off — sign in to resume.',
+    })
+  }
 
   // Editable form state (hydrated from the loaded profile when edit starts)
   const [form, setForm] = useState({
@@ -869,6 +883,34 @@ export function ProfileView() {
                 Platform follow-up: 20 min recall · 10 questions · 1 case
               </p>
             </div>
+          </Card>
+
+          {/* ACCOUNT SESSION */}
+          <Card icon={UserRound} title="Account session">
+            <div className="flex items-start gap-3 rounded-xl border border-line bg-surface-2 p-3">
+              <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-primary/30 bg-primary/10 font-mono text-sm font-bold text-primary">
+                M
+              </span>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-foreground">MEDOS demo account</p>
+                <p className="truncate font-mono text-[11px] text-ink-soft">doctor@medos.in</p>
+              </div>
+              <span className="ml-auto shrink-0 rounded-full border border-sev-ok/40 bg-sev-ok/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-sev-ok">
+                Active
+              </span>
+            </div>
+            <p className="mt-2.5 text-xs leading-relaxed text-ink-soft">
+              Signing out returns you to the sign-in screen. Reloads while signed in keep you here — your progress stays on this device.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={signOut}
+              className="mt-3 min-h-10 w-full gap-2 border-sev-crit/35 text-sm font-semibold text-sev-crit hover:bg-sev-crit/10"
+            >
+              <LogOut className="size-4" aria-hidden />
+              Sign out
+            </Button>
           </Card>
 
           {/* DATA & DISCLAIMER */}
