@@ -83,6 +83,11 @@ model Concept {
   summary     String  @default("") // one-line idea
   whyMatters  String  @default("") // "Why am I learning this" narrative
   detail      Json?   // structured sections for explorer: [{h, body[], table?}]
+  // ── Global learning engine (additive, Task 19-h) ──
+  lesson      Json?   // serialized ConceptLesson (full structured lesson)
+  evidenceLevel String? // established|widely-taught|emerging|varies-by-guideline
+  lastReviewed  String? // ISO date stamp of content review, e.g. '2026-10-05'
+  examWeight    Int?    // 1..5 exam yield from the lesson quality system
   mnemonic    String  @default("")
   difficulty  Int     @default(2) // 1..3
   examRelevance    Int @default(3) // 1..5 NEET-PG yield
@@ -326,5 +331,55 @@ model LogbookEntry {
   system    String
   diagnosis String
   learned   String   @default("")
+  createdAt DateTime @default(now())
+}
+
+// ───────────────────── GLOBAL LEARNING ENGINE ─────────────────────
+// Additive layer (Task 19-h). New models are intentionally STANDALONE —
+// no FK relations to Concept/Subject — so db:push stays non-destructive
+// and cross-references happen app-side via id arrays stored in Json.
+
+model ResearchPaper {
+  id            String  @id
+  title         String
+  authors       String  @default("")
+  year          Int
+  journal       String  @default("")
+  doi           String?
+  url           String?
+  field         String  @default("ai-in-medicine")
+  evidenceLevel String  @default("landmark-study")
+  explainerJson Json // full PaperExplainer
+
+  @@index([field])
+}
+
+model CurriculumSource {
+  id              String  @id // e.g. "nmc-cbme-2024"
+  authority       String
+  country         String  @default("")
+  scope           String  @default("")
+  version         String  @default("")
+  sourceUrl       String?
+  lastReviewed    String
+  alignment       String  @default("concept-aligned") // official-structure|concept-aligned|supplementary
+  subjectsCovered Json    @default("[]") // string[] as Json
+}
+
+model Asset3D {
+  id          String  @id // diagram key
+  title       String
+  system      String  @default("")
+  handcrafted Boolean @default(false)
+  dataJson    Json // Asset3DRecord
+  conceptIds  Json    @default("[]")
+}
+
+model LearningModule {
+  id        String   @id
+  title     String
+  kind      String   @default("pathway") // pathway|course|reasoning-track
+  blurb     String   @default("")
+  stepsJson Json     @default("[]") // [{conceptId,label,note}] ordered
   createdAt DateTime @default(now())
 }
