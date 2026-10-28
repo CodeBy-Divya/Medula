@@ -94,17 +94,17 @@ A full frontier track (25 lessons): LLMs in medicine, imaging AI, model evaluati
 
 | View | Description |
 |---|---|
-| 🏠 **Home** | The dashboard — *Namaste, Doctor*, the *Index Subjectarum* subject grid, mastery stats, readiness score, today's plan |
-| 🗺️ **Medical Map** | Subject → system → topic → concept navigation with mastery heat-coloring and quiz handoffs |
-| 🧭 **Explore** | Browse medicine by specialty, disease, drug or mechanism — with AI-seeded deep dives |
-| 🔬 **Research** | The Research Hub — literature search, paper explainers and evidence summaries (AI-powered) |
-| 💡 **Understand** | Type any medical topic; get a structured, AI-generated explanation ladder |
-| 🧠 **Learn** | The Knowledge Engine (above) — curriculum, lessons, 3D Atlas, reasoning, global perspectives |
-| ❓ **Questions** | The Question Lab — adaptive quizzes, exam-mode simulation, misconception analytics |
-| 🏥 **Cases** | Clinical Case Simulator — branch through presentations, investigations and management |
-| 🔄 **Revise** | Spaced repetition, flashcards, due queues and error-pattern repair |
-| 🤖 **AI Tutor** | Your personal AI study coach — drill weak concepts, plan around your exam date |
-| 👤 **Profile** | The hub — edit your profile, view **Progress** and **Roadmap** digests (with full drill-down views), sign out |
+| **Home** | The dashboard — *Namaste, Doctor*, the *Index Subjectarum* subject grid, mastery stats, readiness score, today's plan |
+|  **Medical Map** | Subject → system → topic → concept navigation with mastery heat-coloring and quiz handoffs |
+|  **Explore** | Browse medicine by specialty, disease, drug or mechanism — with AI-seeded deep dives |
+|  **Research** | The Research Hub — literature search, paper explainers and evidence summaries (AI-powered) |
+| **Understand** | Type any medical topic; get a structured, AI-generated explanation ladder |
+| **Learn** | The Knowledge Engine (above) — curriculum, lessons, 3D Atlas, reasoning, global perspectives |
+| **Questions** | The Question Lab — adaptive quizzes, exam-mode simulation, misconception analytics |
+| **Cases** | Clinical Case Simulator — branch through presentations, investigations and management |
+| **Revise** | Spaced repetition, flashcards, due queues and error-pattern repair |
+| **AI Tutor** | Your personal AI study coach — drill weak concepts, plan around your exam date |
+| **Profile** | The hub — edit your profile, view **Progress** and **Roadmap** digests (with full drill-down views), sign out |
 
 ---
 
